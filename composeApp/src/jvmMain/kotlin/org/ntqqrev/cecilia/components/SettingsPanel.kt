@@ -7,9 +7,10 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import org.ntqqrev.acidify.Bot
 
 @Composable
-fun SettingsPanel() {
+fun SettingsPanel(bot: Bot) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center

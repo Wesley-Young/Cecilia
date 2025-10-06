@@ -6,6 +6,7 @@ import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
@@ -37,7 +38,7 @@ fun NavigationRail(
         Spacer(modifier = Modifier.height(16.dp))
 
         NavigationRailItem(
-            icon = Icons.Default.Message,
+            icon = Icons.AutoMirrored.Filled.Message,
             label = "消息",
             selected = selectedTab == NavigationTab.MESSAGES,
             onClick = { onTabSelected(NavigationTab.MESSAGES) }

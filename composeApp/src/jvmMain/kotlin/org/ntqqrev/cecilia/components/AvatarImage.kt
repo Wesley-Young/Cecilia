@@ -1,0 +1,82 @@
+package org.ntqqrev.cecilia.components
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.MaterialTheme
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Image
+
+@Composable
+fun AvatarImage(
+    httpClient: HttpClient,
+    uin: Long,
+    size: Dp = 48.dp,
+    isGroup: Boolean = false,
+    quality: Int = 100  // 100, 140, 640
+) {
+    var avatarBitmap by remember(uin, quality) { mutableStateOf<ImageBitmap?>(null) }
+    var isLoading by remember(uin, quality) { mutableStateOf(true) }
+
+    LaunchedEffect(uin, quality) {
+        launch {
+            try {
+                val bitmap = withContext(Dispatchers.IO) {
+                    val url = if (isGroup) {
+                        "https://p.qlogo.cn/gh/$uin/$uin/$quality"
+                    } else {
+                        "https://q1.qlogo.cn/g?b=qq&nk=$uin&s=$quality"
+                    }
+                    val response = httpClient.get(url)
+                    val imageBytes = response.readRawBytes()
+                    Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
+                }
+                avatarBitmap = bitmap
+            } catch (e: Exception) {
+                // 加载失败，保持占位符
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(MaterialTheme.colors.primary.copy(alpha = 0.2f)),
+        contentAlignment = Alignment.Center
+    ) {
+        avatarBitmap?.let { bitmap ->
+            Image(
+                bitmap = bitmap,
+                contentDescription = "头像",
+                modifier = Modifier.size(size).clip(CircleShape)
+            )
+        } ?: run {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(size / 2),
+                    strokeWidth = 2.dp
+                )
+            }
+        }
+    }
+}
+

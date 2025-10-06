@@ -119,8 +119,8 @@ private fun MainContent(bot: Bot) {
         // 中间和右侧：根据选择的标签显示不同内容
         when (selectedTab) {
             NavigationTab.MESSAGES -> MessagesPanel(bot)
-            NavigationTab.CONTACTS -> ContactsPanel()
-            NavigationTab.SETTINGS -> SettingsPanel()
+            NavigationTab.CONTACTS -> ContactsPanel(bot)
+            NavigationTab.SETTINGS -> SettingsPanel(bot)
         }
     }
 }
