@@ -25,7 +25,8 @@ fun ConversationList(
     conversations: List<Conversation>,
     selectedId: String?,
     onConversationClick: (String) -> Unit,
-    width: androidx.compose.ui.unit.Dp = 320.dp
+    width: androidx.compose.ui.unit.Dp = 320.dp,
+    showMenuButton: Boolean = true
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -48,42 +49,45 @@ fun ConversationList(
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "菜单",
-                            modifier = Modifier.size(24.dp)
-                        )
+                if (showMenuButton) {
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "菜单",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(onClick = {
+                                showMenu = false
+                                // TODO: 设置操作
+                            }) {
+                                Text("设置")
+                            }
+                            DropdownMenuItem(onClick = {
+                                showMenu = false
+                                // TODO: 关于操作
+                            }) {
+                                Text("关于")
+                            }
+                            Divider()
+                            DropdownMenuItem(onClick = {
+                                showMenu = false
+                                // TODO: 退出操作
+                            }) {
+                                Text("退出")
+                            }
+                        }
                     }
 
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(onClick = {
-                            showMenu = false
-                            // TODO: 设置操作
-                        }) {
-                            Text("设置")
-                        }
-                        DropdownMenuItem(onClick = {
-                            showMenu = false
-                            // TODO: 关于操作
-                        }) {
-                            Text("关于")
-                        }
-                        Divider()
-                        DropdownMenuItem(onClick = {
-                            showMenu = false
-                            // TODO: 退出操作
-                        }) {
-                            Text("退出")
-                        }
-                    }
+                    Spacer(modifier = Modifier.width(12.dp))
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "消息",
                     style = MaterialTheme.typography.h6,
