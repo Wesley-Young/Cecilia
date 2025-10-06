@@ -11,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -21,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
+import org.ntqqrev.cecilia.AvatarCache
 import org.ntqqrev.cecilia.LocalBot
 
 @Composable
@@ -31,10 +31,25 @@ fun AvatarImage(
     quality: Int = 100  // 100, 140, 640
 ) {
     val bot = LocalBot.current
-    var avatarBitmap by remember(uin, quality) { mutableStateOf<ImageBitmap?>(null) }
-    var isLoading by remember(uin, quality) { mutableStateOf(true) }
 
-    LaunchedEffect(uin, quality) {
+    // 先从缓存中获取
+    val cachedBitmap = remember(uin, isGroup, quality) {
+        AvatarCache.get(uin, isGroup, quality)
+    }
+
+    var avatarBitmap by remember(uin, isGroup, quality) {
+        mutableStateOf(cachedBitmap)
+    }
+    var isLoading by remember(uin, isGroup, quality) {
+        mutableStateOf(cachedBitmap == null)
+    }
+
+    LaunchedEffect(uin, isGroup, quality) {
+        // 如果缓存中已有，不需要重新加载
+        if (cachedBitmap != null) {
+            return@LaunchedEffect
+        }
+
         launch {
             try {
                 val bitmap = withContext(Dispatchers.IO) {
@@ -47,6 +62,8 @@ fun AvatarImage(
                     val imageBytes = response.readRawBytes()
                     Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
                 }
+                // 存入缓存
+                AvatarCache.put(uin, isGroup, quality, bitmap)
                 avatarBitmap = bitmap
             } catch (e: Exception) {
                 // 加载失败，保持占位符

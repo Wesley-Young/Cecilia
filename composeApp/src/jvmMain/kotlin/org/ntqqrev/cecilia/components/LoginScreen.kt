@@ -24,6 +24,7 @@ import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.event.QRCodeGeneratedEvent
 import org.ntqqrev.acidify.event.QRCodeStateQueryEvent
 import org.ntqqrev.acidify.struct.QRCodeState
+import org.ntqqrev.cecilia.AvatarCache
 import org.ntqqrev.cecilia.LocalBot
 import qrcode.QRCode
 
@@ -45,6 +46,13 @@ fun LoginScreen(
     // 加载用户头像
     LaunchedEffect(bot.sessionStore.uin) {
         if (bot.sessionStore.uin != 0L) {
+            // 先检查缓存
+            val cached = AvatarCache.get(bot.sessionStore.uin, false, 640)
+            if (cached != null) {
+                userAvatar = cached
+                return@LaunchedEffect
+            }
+
             launch {
                 try {
                     val avatarBitmap = withContext(Dispatchers.IO) {
@@ -52,6 +60,8 @@ fun LoginScreen(
                         val imageBytes = response.readRawBytes()
                         Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
                     }
+                    // 存入缓存
+                    AvatarCache.put(bot.sessionStore.uin, false, 640, avatarBitmap)
                     userAvatar = avatarBitmap
                 } catch (e: Exception) {
                     // 加载头像失败，忽略

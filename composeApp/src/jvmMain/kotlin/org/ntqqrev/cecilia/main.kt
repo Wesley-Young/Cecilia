@@ -2,6 +2,7 @@
 
 package org.ntqqrev.cecilia
 
+// import org.ntqqrev.cecilia.AvatarCache
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -23,6 +24,8 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 fun main() = application {
+    // 配置头像缓存有效期（可选，默认 24 小时）
+    // AvatarCache.setMaxAge(12.hours)
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     var bot by remember { mutableStateOf<Bot?>(null) }
     var loadingError by remember { mutableStateOf<String?>(null) }
