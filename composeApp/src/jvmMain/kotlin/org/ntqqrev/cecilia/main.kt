@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import java.awt.Dimension
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -74,6 +75,11 @@ fun main() = application {
             height = 800.dp
         )
     ) {
+        // 设置窗口最小尺寸
+        LaunchedEffect(Unit) {
+            window.minimumSize = Dimension(800, 600)
+        }
+        
         App(bot = bot, loadingError = loadingError)
     }
 }

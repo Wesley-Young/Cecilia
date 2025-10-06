@@ -24,13 +24,14 @@ import org.ntqqrev.cecilia.Conversation
 fun ConversationList(
     conversations: List<Conversation>,
     selectedId: String?,
-    onConversationClick: (String) -> Unit
+    onConversationClick: (String) -> Unit,
+    width: androidx.compose.ui.unit.Dp = 320.dp
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
-            .width(320.dp)
+            .width(width)
             .fillMaxHeight()
             .background(MaterialTheme.colors.surface)
     ) {

@@ -1,20 +1,23 @@
 package org.ntqqrev.cecilia
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Divider
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.Typography
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.components.ChatArea
 import org.ntqqrev.cecilia.components.ConversationList
+import java.awt.Cursor
 
 @Composable
 @Preview
@@ -81,9 +84,11 @@ fun App(bot: Bot?, loadingError: String? = null) {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun MainContent(bot: Bot) {
     var selectedConversationId by remember { mutableStateOf<String?>(null) }
+    var leftPanelWidth by remember { mutableStateOf(320.dp) }
 
     // 模拟数据
     val conversations = remember {
@@ -109,19 +114,47 @@ private fun MainContent(bot: Bot) {
 
     Row(modifier = Modifier.fillMaxSize()) {
         // 左侧：会话列表
-        ConversationList(
-            conversations = conversations,
-            selectedId = selectedConversationId,
-            onConversationClick = { selectedConversationId = it }
-        )
+        Box(modifier = Modifier.width(leftPanelWidth)) {
+            ConversationList(
+                conversations = conversations,
+                selectedId = selectedConversationId,
+                onConversationClick = { selectedConversationId = it },
+                width = leftPanelWidth
+            )
+        }
 
-        // 分界线
-        Divider(
+        // 可拖拽的分界线
+        Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(1.dp),
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
-        )
+                .width(6.dp)
+                .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
+                .pointerInput(Unit) {
+                    var dragStartWidth = 0.dp
+                    var totalDrag = 0f
+                    detectDragGestures(
+                        onDragStart = {
+                            dragStartWidth = leftPanelWidth
+                            totalDrag = 0f
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            totalDrag += dragAmount.x
+                            val newWidth = (dragStartWidth + totalDrag.toDp()).coerceIn(200.dp, 600.dp)
+                            leftPanelWidth = newWidth
+                        }
+                    )
+                }
+                .background(MaterialTheme.colors.surface),
+            contentAlignment = Alignment.Center
+        ) {
+            Divider(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(1.dp),
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
+            )
+        }
 
         // 右侧：聊天区域
         if (selectedConversationId != null) {
