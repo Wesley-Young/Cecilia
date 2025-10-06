@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -24,6 +25,7 @@ import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.event.QRCodeGeneratedEvent
 import org.ntqqrev.acidify.event.QRCodeStateQueryEvent
 import org.ntqqrev.acidify.struct.QRCodeState
+import qrcode.QRCode
 
 @Composable
 fun LoginScreen(
@@ -32,6 +34,7 @@ fun LoginScreen(
     onLoginStateChange: ((Boolean, Long) -> Unit)?
 ) {
     val hasSession = bot.sessionStore.uin != 0L
+    val qrCodeColorArgb = MaterialTheme.colors.primary.toArgb()
     var qrCodeImage by remember { mutableStateOf<ImageBitmap?>(null) }
     var qrCodeState by remember { mutableStateOf<QRCodeState?>(null) }
     var loginError by remember { mutableStateOf<String?>(null) }
@@ -59,11 +62,19 @@ fun LoginScreen(
 
     // 监听事件
     LaunchedEffect(bot) {
+
         launch {
             bot.eventFlow.collect { event ->
                 when (event) {
                     is QRCodeGeneratedEvent -> {
-                        qrCodeImage = Image.makeFromEncoded(event.png).toComposeImageBitmap()
+                        // 使用 qrcode-kotlin 生成自定义样式的二维码
+                        qrCodeImage = Image.makeFromEncoded(
+                            QRCode.ofCircles()
+                                .withColor(qrCodeColorArgb)
+                                .build(event.url)
+                                .render()
+                                .getBytes()
+                        ).toComposeImageBitmap()
                         qrCodeState = QRCodeState.WAITING_FOR_SCAN
                     }
 
@@ -218,7 +229,7 @@ fun LoginScreen(
                                     loginError = null
                                     bot.launch {
                                         try {
-                                            bot.qrCodeLogin()
+                                            bot.qrCodeLogin(queryInterval = 1000L)
                                         } catch (e: Exception) {
                                             loginError = e.message ?: "二维码登录失败"
                                             isLoggingIn = false
@@ -360,4 +371,3 @@ fun LoginScreen(
         }
     }
 }
-
