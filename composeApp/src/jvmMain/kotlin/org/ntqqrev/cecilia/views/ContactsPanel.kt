@@ -155,12 +155,70 @@ private fun ContactListPanel(
     onGroupClick: (BotGroupData) -> Unit,
     width: Dp
 ) {
+    var searchText by remember { mutableStateOf("") }
+    
+    // 切换联系人类型时清空搜索
+    LaunchedEffect(contactType) {
+        searchText = ""
+    }
+    
+    // 过滤好友
+    val filteredFriends = remember(friends, searchText) {
+        if (searchText.isEmpty()) {
+            friends
+        } else {
+            friends.filter { friend ->
+                friend.nickname.contains(searchText, ignoreCase = true) ||
+                friend.remark.contains(searchText, ignoreCase = true) ||
+                friend.uin.toString().contains(searchText)
+            }
+        }
+    }
+    
+    // 过滤群
+    val filteredGroups = remember(groups, searchText) {
+        if (searchText.isEmpty()) {
+            groups
+        } else {
+            groups.filter { group ->
+                group.name.contains(searchText, ignoreCase = true) ||
+                group.uin.toString().contains(searchText)
+            }
+        }
+    }
+    
     Column(
         modifier = Modifier
             .width(width)
             .fillMaxHeight()
             .background(MaterialTheme.colors.surface)
     ) {
+        // 搜索框
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = 1.dp
+        ) {
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { searchText = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = {
+                    Text(
+                        if (contactType == ContactType.FRIENDS) "搜索好友..."
+                        else "搜索群聊..."
+                    )
+                },
+                singleLine = true,
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    backgroundColor = MaterialTheme.colors.surface,
+                    focusedBorderColor = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                    unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
+                )
+            )
+        }
+
         // 顶部切换栏
         Surface(
             modifier = Modifier
@@ -219,8 +277,8 @@ private fun ContactListPanel(
             }
         } else {
             when (contactType) {
-                ContactType.FRIENDS -> FriendsList(friends, selectedFriend, onFriendClick)
-                ContactType.GROUPS -> GroupsList(groups, selectedGroup, onGroupClick)
+                ContactType.FRIENDS -> FriendsList(filteredFriends, selectedFriend, onFriendClick)
+                ContactType.GROUPS -> GroupsList(filteredGroups, selectedGroup, onGroupClick)
             }
         }
     }
