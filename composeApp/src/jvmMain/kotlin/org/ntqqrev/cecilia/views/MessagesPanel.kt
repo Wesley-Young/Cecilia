@@ -12,11 +12,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
-import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.Conversation
 import org.ntqqrev.cecilia.Message
 import org.ntqqrev.cecilia.components.ChatArea
 import org.ntqqrev.cecilia.components.ConversationList
