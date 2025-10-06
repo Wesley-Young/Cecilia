@@ -2,6 +2,10 @@ package org.ntqqrev.cecilia
 
 import androidx.compose.material.lightColors
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.platform.Font
 
 // 绿色主题
 val GreenColors = lightColors(
@@ -22,3 +26,7 @@ val GreenColors = lightColors(
 // 聊天区域背景色
 val ChatBackgroundColor = Color(0xFFEDF3EE)
 
+val FontFamily = FontFamily(
+    Font("fonts/NotoSansSC-Regular.ttf"),
+    Font("fonts/NotoSansSC-Bold.ttf", FontWeight.Bold),
+)

@@ -5,6 +5,7 @@ import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.Typography
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +19,12 @@ import org.ntqqrev.cecilia.components.ConversationList
 @Composable
 @Preview
 fun App(bot: Bot?, loadingError: String? = null) {
-    MaterialTheme(colors = GreenColors) {
+    MaterialTheme(
+        colors = GreenColors,
+        typography = Typography(
+            defaultFontFamily = FontFamily
+        )
+    ) {
         when {
             loadingError != null -> {
                 // 显示错误界面
