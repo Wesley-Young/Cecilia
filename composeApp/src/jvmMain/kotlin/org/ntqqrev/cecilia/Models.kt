@@ -11,7 +11,6 @@ import org.ntqqrev.acidify.message.MessageScene
  * @property peerUin 对端的 UIN（QQ号或群号）
  * @property scene 消息场景（好友/群聊/临时会话）
  * @property name 会话显示名称（好友备注/昵称 或 群名）
- * @property avatar 头像字符串（用于显示头像的首字母或标识）
  * @property lastMessage 最新消息预览文本
  * @property lastMessageSeq 最新消息的序列号
  * @property lastMessageTimestamp 最新消息的时间戳（Unix秒）
