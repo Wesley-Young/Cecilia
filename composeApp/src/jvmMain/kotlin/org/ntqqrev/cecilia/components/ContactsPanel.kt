@@ -1,5 +1,9 @@
 package org.ntqqrev.cecilia.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -7,10 +11,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
@@ -73,11 +81,11 @@ fun ContactsPanel() {
                     selectedGroup = null
                 },
                 onFriendClick = {
-                selectedFriend = it
+                    selectedFriend = it
                     selectedGroup = null
                 },
                 onGroupClick = {
-                selectedGroup = it
+                    selectedGroup = it
                     selectedFriend = null
                 },
                 width = leftPanelWidth
@@ -237,32 +245,68 @@ private fun FriendsList(
             }
     }
 
+    // 记录每个分组的展开状态，默认只展开 ID=0 的分组
+    val expandedCategories = remember {
+        mutableStateMapOf<Int, Boolean>().apply {
+            friendsByCategory.keys.forEach { (categoryId, _) ->
+                put(categoryId, categoryId == 0)  // 只有 ID=0 的分组默认展开
+            }
+        }
+    }
+
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         friendsByCategory.forEach { (categoryInfo, categoryFriends) ->
+            val categoryId = categoryInfo.first
             val categoryName = categoryInfo.second
+            val isExpanded = expandedCategories[categoryId] ?: true
 
             // 分组标题
-            item(key = "category_${categoryInfo.first}") {
+            item(key = "category_$categoryId") {
+                val rotation by animateFloatAsState(
+                    targetValue = if (isExpanded) 0f else -90f
+                )
+                
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { 
+                            expandedCategories[categoryId] = !isExpanded 
+                        },
                     color = MaterialTheme.colors.background
                 ) {
-                    Text(
-                        text = "$categoryName (${categoryFriends.size})",
-                        style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "$categoryName (${categoryFriends.size})",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ExpandLess,
+                            contentDescription = if (isExpanded) "收起" else "展开",
+                            modifier = Modifier
+                                .size(16.dp)
+                                .rotate(rotation),
+                            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
 
-            // 分组中的好友
-            items(categoryFriends, key = { it.uin }) { friend ->
-                FriendItem(
-                    friend = friend,
-                    isSelected = selectedFriend?.uin == friend.uin,
-                    onClick = { onFriendClick(friend) }
-                )
+            // 分组中的好友（只有展开时才显示，带动画）
+            if (isExpanded) {
+                items(categoryFriends, key = { it.uin }) { friend ->
+                    FriendItem(
+                        friend = friend,
+                        isSelected = selectedFriend?.uin == friend.uin,
+                        onClick = { onFriendClick(friend) }
+                    )
+                }
             }
         }
     }
