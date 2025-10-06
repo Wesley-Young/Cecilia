@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.Conversation
 
 @Composable
@@ -133,19 +134,12 @@ private fun ConversationItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 头像
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colors.primary.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = conversation.avatar,
-                    style = MaterialTheme.typography.subtitle1,
-                    color = MaterialTheme.colors.primary
-                )
-            }
+            AvatarImage(
+                uin = conversation.peerUin,
+                size = 48.dp,
+                isGroup = conversation.scene == MessageScene.GROUP,
+                quality = 100
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 

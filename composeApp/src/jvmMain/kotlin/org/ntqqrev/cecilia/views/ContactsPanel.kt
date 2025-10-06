@@ -3,7 +3,6 @@ package org.ntqqrev.cecilia.views
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,9 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -25,9 +21,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.struct.BotFriendData
 import org.ntqqrev.acidify.struct.BotGroupData
-import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.components.AvatarImage
-import java.awt.Cursor
+import org.ntqqrev.cecilia.components.DraggableDivider
+import org.ntqqrev.cecilia.utils.LocalBot
 
 enum class ContactType {
     FRIENDS,
@@ -90,37 +86,10 @@ fun ContactsPanel() {
         }
 
         // 可拖拽的分界线
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(6.dp)
-                .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
-                .pointerInput(Unit) {
-                    var dragStartWidth = 0.dp
-                    var totalDrag = 0f
-                    detectDragGestures(
-                        onDragStart = {
-                            dragStartWidth = leftPanelWidth
-                            totalDrag = 0f
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            totalDrag += dragAmount.x
-                            val newWidth = (dragStartWidth + totalDrag.toDp()).coerceIn(200.dp, 600.dp)
-                            leftPanelWidth = newWidth
-                        }
-                    )
-                }
-                .background(MaterialTheme.colors.surface),
-            contentAlignment = Alignment.Center
-        ) {
-            Divider(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(1.dp),
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
-            )
-        }
+        DraggableDivider(
+            currentWidth = leftPanelWidth,
+            onWidthChange = { leftPanelWidth = it }
+        )
 
         // 右侧：详细信息
         when {

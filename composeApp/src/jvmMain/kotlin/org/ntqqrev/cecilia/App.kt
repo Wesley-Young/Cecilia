@@ -9,8 +9,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
-import org.ntqqrev.cecilia.components.*
+import org.ntqqrev.cecilia.components.NavigationRail
+import org.ntqqrev.cecilia.components.NavigationTab
 import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.utils.LocalCacheManager
 import org.ntqqrev.cecilia.views.ContactsPanel
 import org.ntqqrev.cecilia.views.LoginScreen
 import org.ntqqrev.cecilia.views.MessagesPanel
@@ -20,6 +22,7 @@ import org.ntqqrev.cecilia.views.SettingsPanel
 @Preview
 fun App(
     bot: Bot?,
+    cacheManager: org.ntqqrev.cecilia.utils.CacheManager? = null,
     loadingError: String? = null,
     onLoginStateChange: ((Boolean, Long) -> Unit)? = null
 ) {
@@ -86,17 +89,30 @@ fun App(
                     onLoginStateChange?.invoke(isLoggedIn, bot.sessionStore.uin)
                 }
 
-                // 提供 Bot 到子组件
-                CompositionLocalProvider(LocalBot provides bot) {
-                    if (isLoggedIn) {
-                        // 已登录，显示主界面
-                        MainContent()
-                    } else {
-                        // 未登录，显示登录界面
-                        LoginScreen(
-                            onLoginSuccess = { isLoggedIn = true },
-                            onLoginStateChange = onLoginStateChange
-                        )
+                // 提供 Bot 和 CacheManager 到子组件
+                if (cacheManager != null) {
+                    CompositionLocalProvider(
+                        LocalBot provides bot,
+                        LocalCacheManager provides cacheManager
+                    ) {
+                        if (isLoggedIn) {
+                            // 已登录，显示主界面
+                            MainContent()
+                        } else {
+                            // 未登录，显示登录界面
+                            LoginScreen(
+                                onLoginSuccess = { isLoggedIn = true },
+                                onLoginStateChange = onLoginStateChange
+                            )
+                        }
+                    }
+                } else {
+                    // CacheManager 还未初始化，显示加载界面
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
                     }
                 }
             }

@@ -28,6 +28,7 @@ fun main() = application {
     // AvatarCache.setMaxAge(12.hours)
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     var bot by remember { mutableStateOf<Bot?>(null) }
+    var cacheManager by remember { mutableStateOf<org.ntqqrev.cecilia.utils.CacheManager?>(null) }
     var loadingError by remember { mutableStateOf<String?>(null) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var userUin by remember { mutableStateOf(0L) }
@@ -82,6 +83,8 @@ fun main() = application {
                 }
 
                 bot = newBot
+                // 创建缓存管理器
+                cacheManager = org.ntqqrev.cecilia.utils.CacheManager(newBot, scope)
                 userUin = newBot.sessionStore.uin
                 isLoggedIn = newBot.isLoggedIn
             } catch (e: Exception) {
@@ -131,6 +134,7 @@ fun main() = application {
 
         App(
             bot = bot,
+            cacheManager = cacheManager,
             loadingError = loadingError,
             onLoginStateChange = { loggedIn, uin ->
                 isLoggedIn = loggedIn
