@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -22,9 +24,6 @@ import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.event.QRCodeGeneratedEvent
 import org.ntqqrev.acidify.event.QRCodeStateQueryEvent
 import org.ntqqrev.acidify.struct.QRCodeState
-import java.io.ByteArrayOutputStream
-import java.net.URI
-import javax.imageio.ImageIO
 
 @Composable
 fun LoginScreen(
@@ -46,11 +45,9 @@ fun LoginScreen(
             launch {
                 try {
                     val avatarBitmap = withContext(Dispatchers.IO) {
-                        val url = URI("https://q1.qlogo.cn/g?b=qq&nk=${bot.sessionStore.uin}&s=640").toURL()
-                        val bufferedImage = ImageIO.read(url)
-                        val outputStream = ByteArrayOutputStream()
-                        ImageIO.write(bufferedImage, "png", outputStream)
-                        Image.makeFromEncoded(outputStream.toByteArray()).toComposeImageBitmap()
+                        val response = bot.httpClient.get("https://q1.qlogo.cn/g?b=qq&nk=${bot.sessionStore.uin}&s=640")
+                        val imageBytes = response.readRawBytes()
+                        Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
                     }
                     userAvatar = avatarBitmap
                 } catch (e: Exception) {

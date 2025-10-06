@@ -21,6 +21,9 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.serialization.json)
+            
+            // Ktor 依赖
+            implementation(libs.ktor.client.core)
 
             // Acidify 依赖
             implementation("acidify:acidify-core")
