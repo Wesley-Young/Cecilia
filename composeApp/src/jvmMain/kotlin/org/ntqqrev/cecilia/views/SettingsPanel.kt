@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia.components
+package org.ntqqrev.cecilia.views
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -7,7 +7,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import org.ntqqrev.cecilia.LocalBot
+import org.ntqqrev.cecilia.utils.LocalBot
 
 @Composable
 fun SettingsPanel() {

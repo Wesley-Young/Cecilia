@@ -10,6 +10,11 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.components.*
+import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.views.ContactsPanel
+import org.ntqqrev.cecilia.views.LoginScreen
+import org.ntqqrev.cecilia.views.MessagesPanel
+import org.ntqqrev.cecilia.views.SettingsPanel
 
 @Composable
 @Preview

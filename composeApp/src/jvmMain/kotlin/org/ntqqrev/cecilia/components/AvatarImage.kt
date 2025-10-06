@@ -20,8 +20,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
-import org.ntqqrev.cecilia.AvatarCache
-import org.ntqqrev.cecilia.LocalBot
+import org.ntqqrev.cecilia.utils.AvatarCache
+import org.ntqqrev.cecilia.utils.LocalBot
 
 @Composable
 fun AvatarImage(

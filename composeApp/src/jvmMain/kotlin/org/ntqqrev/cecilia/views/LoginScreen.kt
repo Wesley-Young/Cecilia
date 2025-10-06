@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia.components
+package org.ntqqrev.cecilia.views
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
@@ -24,8 +24,8 @@ import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.event.QRCodeGeneratedEvent
 import org.ntqqrev.acidify.event.QRCodeStateQueryEvent
 import org.ntqqrev.acidify.struct.QRCodeState
-import org.ntqqrev.cecilia.AvatarCache
-import org.ntqqrev.cecilia.LocalBot
+import org.ntqqrev.cecilia.utils.AvatarCache
+import org.ntqqrev.cecilia.utils.LocalBot
 import qrcode.QRCode
 
 @Composable

@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia.components
+package org.ntqqrev.cecilia.views
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -16,8 +16,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.cecilia.Conversation
-import org.ntqqrev.cecilia.LocalBot
+import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.Message
+import org.ntqqrev.cecilia.components.ChatArea
+import org.ntqqrev.cecilia.components.ConversationList
 import java.awt.Cursor
 
 @OptIn(ExperimentalComposeUiApi::class)

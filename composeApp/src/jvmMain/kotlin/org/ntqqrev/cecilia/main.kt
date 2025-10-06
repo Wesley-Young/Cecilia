@@ -2,7 +2,7 @@
 
 package org.ntqqrev.cecilia
 
-// import org.ntqqrev.cecilia.AvatarCache
+// import org.ntqqrev.cecilia.utils.AvatarCache
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window

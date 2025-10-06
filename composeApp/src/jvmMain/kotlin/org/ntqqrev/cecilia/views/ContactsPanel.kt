@@ -1,9 +1,6 @@
-package org.ntqqrev.cecilia.components
+package org.ntqqrev.cecilia.views
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -13,7 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -29,7 +25,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.struct.BotFriendData
 import org.ntqqrev.acidify.struct.BotGroupData
-import org.ntqqrev.cecilia.LocalBot
+import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.components.AvatarImage
 import java.awt.Cursor
 
 enum class ContactType {

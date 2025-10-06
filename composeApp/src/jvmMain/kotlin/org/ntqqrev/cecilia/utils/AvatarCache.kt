@@ -1,7 +1,7 @@
-package org.ntqqrev.cecilia
+package org.ntqqrev.cecilia.utils
 
 import androidx.compose.ui.graphics.ImageBitmap
-import org.ntqqrev.cecilia.AvatarCache.maxAge
+import org.ntqqrev.cecilia.utils.AvatarCache.maxAge
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours

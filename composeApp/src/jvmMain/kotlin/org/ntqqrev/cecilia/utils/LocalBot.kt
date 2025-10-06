@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia
+package org.ntqqrev.cecilia.utils
 
 import androidx.compose.runtime.compositionLocalOf
 import org.ntqqrev.acidify.Bot
