@@ -17,11 +17,16 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.components.ChatArea
 import org.ntqqrev.cecilia.components.ConversationList
+import org.ntqqrev.cecilia.components.LoginScreen
 import java.awt.Cursor
 
 @Composable
 @Preview
-fun App(bot: Bot?, loadingError: String? = null) {
+fun App(
+    bot: Bot?,
+    loadingError: String? = null,
+    onLoginStateChange: ((Boolean, Long) -> Unit)? = null
+) {
     MaterialTheme(
         colors = GreenColors,
         typography = Typography(
@@ -77,8 +82,25 @@ fun App(bot: Bot?, loadingError: String? = null) {
             }
 
             else -> {
-                // Bot 加载完成，显示主界面
-                MainContent(bot)
+                // Bot 加载完成
+                var isLoggedIn by remember { mutableStateOf(bot.isLoggedIn) }
+
+                // 通知登录状态变化
+                LaunchedEffect(isLoggedIn) {
+                    onLoginStateChange?.invoke(isLoggedIn, bot.sessionStore.uin)
+                }
+
+                if (isLoggedIn) {
+                    // 已登录，显示主界面
+                    MainContent(bot)
+                } else {
+                    // 未登录，显示登录界面
+                    LoginScreen(
+                        bot = bot,
+                        onLoginSuccess = { isLoggedIn = true },
+                        onLoginStateChange = onLoginStateChange
+                    )
+                }
             }
         }
     }

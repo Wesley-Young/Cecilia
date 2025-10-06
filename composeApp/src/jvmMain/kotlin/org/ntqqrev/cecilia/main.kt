@@ -7,26 +7,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import java.awt.Dimension
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.common.SessionStore
+import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.util.UrlSignProvider
 import org.ntqqrev.acidify.util.log.LogLevel
 import org.ntqqrev.acidify.util.log.SimpleColoredLogHandler
 import org.ntqqrev.cecilia.structs.CeciliaConfig
+import java.awt.Dimension
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 fun main() = application {
+    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     var bot by remember { mutableStateOf<Bot?>(null) }
     var loadingError by remember { mutableStateOf<String?>(null) }
+    var isLoggedIn by remember { mutableStateOf(false) }
+    var userUin by remember { mutableStateOf(0L) }
 
     // 异步加载 Bot
     LaunchedEffect(Unit) {
@@ -53,14 +54,33 @@ fun main() = application {
                 val signProvider = UrlSignProvider(config.signApiUrl)
                 val appInfo = signProvider.getAppInfo()!!
 
-                bot = Bot(
+                val newBot = Bot(
                     appInfo = appInfo,
                     sessionStore = sessionStore,
                     signProvider = signProvider,
-                    scope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
+                    scope = scope,
                     minLogLevel = LogLevel.DEBUG,
                     logHandler = SimpleColoredLogHandler
                 )
+
+                // 监听 SessionStore 更新事件并保存
+                newBot.launch {
+                    newBot.eventFlow.collect { event ->
+                        if (event is SessionStoreUpdatedEvent) {
+                            try {
+                                sessionStorePath.writeText(
+                                    Json.encodeToString(SessionStore.serializer(), event.sessionStore)
+                                )
+                            } catch (e: Exception) {
+                                // 忽略保存失败
+                            }
+                        }
+                    }
+                }
+
+                bot = newBot
+                userUin = newBot.sessionStore.uin
+                isLoggedIn = newBot.isLoggedIn
             } catch (e: Exception) {
                 loadingError = e.message ?: "未知错误"
             }
@@ -68,7 +88,22 @@ fun main() = application {
     }
 
     Window(
-        onCloseRequest = ::exitApplication,
+        onCloseRequest = {
+            // 如果已登录，先调用 offline
+            if (bot != null && isLoggedIn) {
+                runBlocking {
+                    try {
+                        bot?.offline()
+                    } catch (e: Exception) {
+                        // 忽略 offline 错误，继续退出
+                    }
+                }
+            }
+            // 取消 scope
+            scope.cancel()
+            // 退出应用
+            exitApplication()
+        },
         title = "Cecilia",
         state = rememberWindowState(
             width = 1200.dp,
@@ -79,7 +114,25 @@ fun main() = application {
         LaunchedEffect(Unit) {
             window.minimumSize = Dimension(800, 600)
         }
-        
-        App(bot = bot, loadingError = loadingError)
+
+        // 动态更新窗口标题
+        LaunchedEffect(bot, userUin, isLoggedIn) {
+            val title = when {
+                bot == null -> "Cecilia"
+                userUin == 0L -> "Cecilia - 未登录"
+                !isLoggedIn -> "Cecilia - $userUin (未登录)"
+                else -> "Cecilia - $userUin"
+            }
+            window.title = title
+        }
+
+        App(
+            bot = bot,
+            loadingError = loadingError,
+            onLoginStateChange = { loggedIn, uin ->
+                isLoggedIn = loggedIn
+                userUin = uin
+            }
+        )
     }
 }
