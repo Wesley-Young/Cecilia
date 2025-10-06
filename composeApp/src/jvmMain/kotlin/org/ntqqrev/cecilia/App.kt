@@ -81,16 +81,18 @@ fun App(
                     onLoginStateChange?.invoke(isLoggedIn, bot.sessionStore.uin)
                 }
 
-                if (isLoggedIn) {
-                    // 已登录，显示主界面
-                    MainContent(bot)
-                } else {
-                    // 未登录，显示登录界面
-                    LoginScreen(
-                        bot = bot,
-                        onLoginSuccess = { isLoggedIn = true },
-                        onLoginStateChange = onLoginStateChange
-                    )
+                // 提供 Bot 到子组件
+                CompositionLocalProvider(LocalBot provides bot) {
+                    if (isLoggedIn) {
+                        // 已登录，显示主界面
+                        MainContent()
+                    } else {
+                        // 未登录，显示登录界面
+                        LoginScreen(
+                            onLoginSuccess = { isLoggedIn = true },
+                            onLoginStateChange = onLoginStateChange
+                        )
+                    }
                 }
             }
         }
@@ -98,7 +100,7 @@ fun App(
 }
 
 @Composable
-private fun MainContent(bot: Bot) {
+private fun MainContent() {
     var selectedTab by remember { mutableStateOf(NavigationTab.MESSAGES) }
 
     Row(modifier = Modifier.fillMaxSize()) {
@@ -118,9 +120,9 @@ private fun MainContent(bot: Bot) {
 
         // 中间和右侧：根据选择的标签显示不同内容
         when (selectedTab) {
-            NavigationTab.MESSAGES -> MessagesPanel(bot)
-            NavigationTab.CONTACTS -> ContactsPanel(bot)
-            NavigationTab.SETTINGS -> SettingsPanel(bot)
+            NavigationTab.MESSAGES -> MessagesPanel()
+            NavigationTab.CONTACTS -> ContactsPanel()
+            NavigationTab.SETTINGS -> SettingsPanel()
         }
     }
 }

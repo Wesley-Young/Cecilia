@@ -15,22 +15,22 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
+import org.ntqqrev.cecilia.LocalBot
 
 @Composable
 fun AvatarImage(
-    httpClient: HttpClient,
     uin: Long,
     size: Dp = 48.dp,
     isGroup: Boolean = false,
     quality: Int = 100  // 100, 140, 640
 ) {
+    val bot = LocalBot.current
     var avatarBitmap by remember(uin, quality) { mutableStateOf<ImageBitmap?>(null) }
     var isLoading by remember(uin, quality) { mutableStateOf(true) }
 
@@ -43,7 +43,7 @@ fun AvatarImage(
                     } else {
                         "https://q1.qlogo.cn/g?b=qq&nk=$uin&s=$quality"
                     }
-                    val response = httpClient.get(url)
+                    val response = bot.httpClient.get(url)
                     val imageBytes = response.readRawBytes()
                     Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
                 }

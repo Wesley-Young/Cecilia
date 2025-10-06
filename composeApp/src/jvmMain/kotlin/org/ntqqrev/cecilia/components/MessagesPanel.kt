@@ -15,14 +15,15 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.Conversation
+import org.ntqqrev.cecilia.LocalBot
 import org.ntqqrev.cecilia.Message
 import java.awt.Cursor
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun MessagesPanel(bot: Bot, width: Dp = 320.dp) {
+fun MessagesPanel(width: Dp = 320.dp) {
+    val bot = LocalBot.current
     var selectedConversationId by remember { mutableStateOf<String?>(null) }
     var leftPanelWidth by remember { mutableStateOf(width) }
 

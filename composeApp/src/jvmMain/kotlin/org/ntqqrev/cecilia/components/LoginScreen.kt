@@ -10,8 +10,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -21,18 +21,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
-import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.event.QRCodeGeneratedEvent
 import org.ntqqrev.acidify.event.QRCodeStateQueryEvent
 import org.ntqqrev.acidify.struct.QRCodeState
+import org.ntqqrev.cecilia.LocalBot
 import qrcode.QRCode
 
 @Composable
 fun LoginScreen(
-    bot: Bot,
     onLoginSuccess: () -> Unit,
     onLoginStateChange: ((Boolean, Long) -> Unit)?
 ) {
+    val bot = LocalBot.current
     val hasSession = bot.sessionStore.uin != 0L
     val qrCodeColorArgb = MaterialTheme.colors.primary.toArgb()
     var qrCodeImage by remember { mutableStateOf<ImageBitmap?>(null) }

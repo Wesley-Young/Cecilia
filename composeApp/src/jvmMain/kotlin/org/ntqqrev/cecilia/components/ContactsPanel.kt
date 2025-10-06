@@ -19,9 +19,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.struct.BotFriendData
 import org.ntqqrev.acidify.struct.BotGroupData
+import org.ntqqrev.cecilia.LocalBot
 import java.awt.Cursor
 
 enum class ContactType {
@@ -31,7 +31,8 @@ enum class ContactType {
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun ContactsPanel(bot: Bot) {
+fun ContactsPanel() {
+    val bot = LocalBot.current
     var contactType by remember { mutableStateOf(ContactType.FRIENDS) }
     var friends by remember { mutableStateOf<List<BotFriendData>>(emptyList()) }
     var groups by remember { mutableStateOf<List<BotGroupData>>(emptyList()) }
@@ -60,7 +61,6 @@ fun ContactsPanel(bot: Bot) {
         // 左侧：好友/群列表
         Box(modifier = Modifier.width(leftPanelWidth)) {
             ContactListPanel(
-                bot = bot,
                 contactType = contactType,
                 friends = friends,
                 groups = groups,
@@ -68,16 +68,16 @@ fun ContactsPanel(bot: Bot) {
                 selectedFriend = selectedFriend,
                 selectedGroup = selectedGroup,
                 onContactTypeChange = {
-                    contactType = it
+                contactType = it
                     selectedFriend = null
                     selectedGroup = null
                 },
                 onFriendClick = {
-                    selectedFriend = it
+                selectedFriend = it
                     selectedGroup = null
                 },
                 onGroupClick = {
-                    selectedGroup = it
+                selectedGroup = it
                     selectedFriend = null
                 },
                 width = leftPanelWidth
@@ -119,8 +119,8 @@ fun ContactsPanel(bot: Bot) {
 
         // 右侧：详细信息
         when {
-            selectedFriend != null -> FriendDetailPanel(bot, selectedFriend!!)
-            selectedGroup != null -> GroupDetailPanel(bot, selectedGroup!!)
+            selectedFriend != null -> FriendDetailPanel(selectedFriend!!)
+            selectedGroup != null -> GroupDetailPanel(selectedGroup!!)
             else -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -139,7 +139,6 @@ fun ContactsPanel(bot: Bot) {
 
 @Composable
 private fun ContactListPanel(
-    bot: Bot,
     contactType: ContactType,
     friends: List<BotFriendData>,
     groups: List<BotGroupData>,
@@ -215,8 +214,8 @@ private fun ContactListPanel(
             }
         } else {
             when (contactType) {
-                ContactType.FRIENDS -> FriendsList(bot, friends, selectedFriend, onFriendClick)
-                ContactType.GROUPS -> GroupsList(bot, groups, selectedGroup, onGroupClick)
+                ContactType.FRIENDS -> FriendsList(friends, selectedFriend, onFriendClick)
+                ContactType.GROUPS -> GroupsList(groups, selectedGroup, onGroupClick)
             }
         }
     }
@@ -224,7 +223,6 @@ private fun ContactListPanel(
 
 @Composable
 private fun FriendsList(
-    bot: Bot,
     friends: List<BotFriendData>,
     selectedFriend: BotFriendData?,
     onFriendClick: (BotFriendData) -> Unit
@@ -261,7 +259,6 @@ private fun FriendsList(
             // 分组中的好友
             items(categoryFriends, key = { it.uin }) { friend ->
                 FriendItem(
-                    bot = bot,
                     friend = friend,
                     isSelected = selectedFriend?.uin == friend.uin,
                     onClick = { onFriendClick(friend) }
@@ -273,11 +270,12 @@ private fun FriendsList(
 
 @Composable
 private fun FriendItem(
-    bot: Bot,
     friend: BotFriendData,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val bot = LocalBot.current
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -292,7 +290,6 @@ private fun FriendItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AvatarImage(
-                httpClient = bot.httpClient,
                 uin = friend.uin,
                 size = 48.dp,
                 isGroup = false
@@ -324,7 +321,6 @@ private fun FriendItem(
 
 @Composable
 private fun GroupsList(
-    bot: Bot,
     groups: List<BotGroupData>,
     selectedGroup: BotGroupData?,
     onGroupClick: (BotGroupData) -> Unit
@@ -337,7 +333,6 @@ private fun GroupsList(
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(sortedGroups, key = { it.uin }) { group ->
             GroupItem(
-                bot = bot,
                 group = group,
                 isSelected = selectedGroup?.uin == group.uin,
                 onClick = { onGroupClick(group) }
@@ -348,11 +343,12 @@ private fun GroupsList(
 
 @Composable
 private fun GroupItem(
-    bot: Bot,
     group: BotGroupData,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val bot = LocalBot.current
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -367,7 +363,6 @@ private fun GroupItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AvatarImage(
-                httpClient = bot.httpClient,
                 uin = group.uin,
                 size = 48.dp,
                 isGroup = true
@@ -394,7 +389,9 @@ private fun GroupItem(
 }
 
 @Composable
-private fun FriendDetailPanel(bot: Bot, friend: BotFriendData) {
+private fun FriendDetailPanel(friend: BotFriendData) {
+    val bot = LocalBot.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -403,7 +400,6 @@ private fun FriendDetailPanel(bot: Bot, friend: BotFriendData) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AvatarImage(
-            httpClient = bot.httpClient,
             uin = friend.uin,
             size = 160.dp,
             isGroup = false,
@@ -471,7 +467,9 @@ private fun FriendDetailPanel(bot: Bot, friend: BotFriendData) {
 }
 
 @Composable
-private fun GroupDetailPanel(bot: Bot, group: BotGroupData) {
+private fun GroupDetailPanel(group: BotGroupData) {
+    val bot = LocalBot.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -480,7 +478,6 @@ private fun GroupDetailPanel(bot: Bot, group: BotGroupData) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AvatarImage(
-            httpClient = bot.httpClient,
             uin = group.uin,
             size = 160.dp,
             isGroup = true,
