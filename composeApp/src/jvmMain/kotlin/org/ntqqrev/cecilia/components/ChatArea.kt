@@ -163,8 +163,6 @@ fun ChatArea(conversation: Conversation) {
                     nextLoadSequence = historyMessages.nextStartSequence
 
                     // 滚动到之前最老的消息
-                    println(oldestMessageSeq)
-                    println(messages.firstOrNull()?.sequence)
                     if (oldestMessageSeq != null) {
                         scrollToSeq(oldestMessageSeq)
                     }
