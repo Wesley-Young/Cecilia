@@ -48,6 +48,24 @@ fun MessageBubble(
 
     // 是否显示昵称（群聊且不是自己发送的消息）
     val shouldShowNickname = message.scene == MessageScene.GROUP && !isSent
+
+    // if senderuin=0 是撤回的消息，显示一个小灰条
+    if (message.senderUin == 0L) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "撤回了一条消息",
+                style = MaterialTheme.typography.caption,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+        return
+    }
     
     Row(
         modifier = Modifier.fillMaxWidth(),
