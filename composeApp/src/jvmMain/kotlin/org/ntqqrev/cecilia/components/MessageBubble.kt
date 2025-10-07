@@ -17,8 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.acidify.message.BotIncomingMessage
-import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.acidify.message.BotIncomingSegment
+import org.ntqqrev.acidify.message.ImageSubType
+import org.ntqqrev.acidify.message.MessageScene
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -153,6 +154,18 @@ fun MessageBubble(
                                                 when (seg) {
                                                     is BotIncomingSegment.Text -> buffer.append(seg.text)
                                                     is BotIncomingSegment.Mention -> buffer.append(seg.name)
+                                                    is BotIncomingSegment.MarketFace -> {
+                                                        flush()
+                                                        add(
+                                                            BotIncomingSegment.Image(
+                                                                fileId = seg.url,
+                                                                width = 512,
+                                                                height = 512,
+                                                                subType = ImageSubType.STICKER,
+                                                                summary = seg.summary
+                                                            )
+                                                        )
+                                                    }
                                                     else -> {
                                                         flush()
                                                         add(seg)
