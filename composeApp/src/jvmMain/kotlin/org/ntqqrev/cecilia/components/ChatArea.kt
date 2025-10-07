@@ -35,8 +35,8 @@ fun ChatArea(
     // 记录上一次最后一条消息的序列号，用于判断是否有新消息
     var lastMessageSequence by remember { mutableStateOf<Long?>(null) }
     
-    // 标记是否是首次加载
-    var isInitialLoad by remember { mutableStateOf(true) }
+    // 标记是否是首次加载（只有从空列表变为非空时才是首次加载）
+    var hasLoadedInitialMessages by remember { mutableStateOf(false) }
 
     // 检查用户是否在底部（或接近底部）
     fun isUserAtBottom(): Boolean {
@@ -53,11 +53,10 @@ fun ChatArea(
         if (messages.isNotEmpty() && !isLoadingMore) {
             val currentLastSequence = messages.lastOrNull()?.sequence
 
-            // 首次加载：滚动到底部
-            if (isInitialLoad) {
+            if (!hasLoadedInitialMessages) {
                 listState.scrollToItem(messages.size - 1)
                 lastMessageSequence = currentLastSequence
-                isInitialLoad = false
+                hasLoadedInitialMessages = true
             }
             // 有新消息到达（最后一条消息的序列号变了）
             else if (currentLastSequence != null && currentLastSequence != lastMessageSequence) {

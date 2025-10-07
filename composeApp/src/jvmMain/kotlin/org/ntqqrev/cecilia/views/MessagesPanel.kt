@@ -92,14 +92,7 @@ fun MessagesPanel(
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-            }
-        }
-    }
 
-    // 监听新消息并更新当前会话的消息列表
-    LaunchedEffect(selectedConversationId, conversations.size) {
-        selectedConversationId?.let { conversationId ->
-            launch {
                 while (true) {
                     delay(100)
                     try {
