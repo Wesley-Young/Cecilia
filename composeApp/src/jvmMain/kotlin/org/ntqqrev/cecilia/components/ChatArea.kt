@@ -15,30 +15,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.launch
+import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.BotIncomingMessage
+import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.cecilia.ChatBackgroundColor
 import org.ntqqrev.cecilia.structs.Conversation
+import org.ntqqrev.cecilia.utils.LocalBot
 
 @Composable
-fun ChatArea(
-    conversation: Conversation,
-    messages: List<BotIncomingMessage>,
-    selfUin: Long,
-    isLoadingMore: Boolean,
-    scrollToMessageSequence: Long?,
-    onLoadMore: () -> Unit,
-    onSendMessage: (String) -> Unit
-) {
+fun ChatArea(conversation: Conversation) {
+    val bot = LocalBot.current
+
+    val coroutineScope = rememberCoroutineScope()
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-    
-    // 记录上一次最后一条消息的序列号，用于判断是否有新消息
-    var lastMessageSequence by remember { mutableStateOf<Long?>(null) }
-    
-    // 标记是否是首次加载（只有从空列表变为非空时才是首次加载）
-    var hasLoadedInitialMessages by remember { mutableStateOf(false) }
 
-    // 检查用户是否在底部（或接近底部）
+    val messages = remember { mutableStateListOf<BotIncomingMessage>() }
+    var isLoadingMore by remember { mutableStateOf(false) }
+    var nextLoadSequence by remember { mutableStateOf<Long?>(null) }
+    val pendingMessages = remember { mutableMapOf<Int, BotIncomingMessage>() }
+
     fun isUserAtBottom(): Boolean {
         val layoutInfo = listState.layoutInfo
         if (layoutInfo.totalItemsCount == 0) return true
@@ -49,44 +47,136 @@ fun ChatArea(
         return lastVisibleItem.index >= layoutInfo.totalItemsCount - 2
     }
 
-    LaunchedEffect(messages.size, isLoadingMore) {
-        if (messages.isNotEmpty() && !isLoadingMore) {
-            val currentLastSequence = messages.lastOrNull()?.sequence
-
-            if (!hasLoadedInitialMessages) {
-                listState.scrollToItem(messages.size - 1)
-                lastMessageSequence = currentLastSequence
-                hasLoadedInitialMessages = true
-            }
-            // 有新消息到达（最后一条消息的序列号变了）
-            else if (currentLastSequence != null && currentLastSequence != lastMessageSequence) {
-                // 只有用户在底部时才滚动
-                if (isUserAtBottom()) {
-                    listState.scrollToItem(messages.size - 1)
-                }
-                lastMessageSequence = currentLastSequence
-            }
-            // 否则是加载历史消息，不滚动
+    suspend fun scrollToSeq(seq: Long) {
+        val index = messages.indexOfFirst { it.sequence == seq }
+        if (index != -1) {
+            listState.scrollToItem(index)
         }
     }
-    
-    // 加载历史消息后，滚动到指定的消息位置
-    LaunchedEffect(scrollToMessageSequence) {
-        scrollToMessageSequence?.let { targetSeq ->
-            val targetIndex = messages.indexOfFirst { it.sequence == targetSeq }
-            if (targetIndex != -1) {
-                listState.scrollToItem(targetIndex)
+
+    suspend fun scrollToBottom() {
+        listState.scrollToItem(messages.size - 1)
+    }
+
+    // 初始化：加载历史消息
+    LaunchedEffect(conversation.id) {
+        messages.clear()
+        isLoadingMore = false
+
+        try {
+            val historyMessages = when (conversation.scene) {
+                org.ntqqrev.acidify.message.MessageScene.FRIEND -> {
+                    bot.getFriendHistoryMessages(
+                        friendUin = conversation.peerUin,
+                        limit = 30
+                    )
+                }
+
+                org.ntqqrev.acidify.message.MessageScene.GROUP -> {
+                    bot.getGroupHistoryMessages(
+                        groupUin = conversation.peerUin,
+                        limit = 30
+                    )
+                }
+
+                else -> return@LaunchedEffect
+            }
+
+            messages.addAll(historyMessages.messages)
+            messages.sortBy { it.sequence }
+            nextLoadSequence = historyMessages.nextStartSequence
+            scrollToBottom()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // 监听属于当前会话的消息
+    LaunchedEffect(conversation.id) {
+        bot.eventFlow.filterIsInstance<MessageReceiveEvent>().collect { event ->
+            val message = event.message
+
+            // 只处理属于当前会话的消息
+            if (message.peerUin == conversation.peerUin) {
+                // 检查是否是待确认的占位符消息
+                val placeholder = pendingMessages.remove(message.random)
+                if (placeholder != null) {
+                    // 删除占位符
+                    val index = messages.indexOfFirst {
+                        it.random == message.random && it.messageUid == -1L
+                    }
+                    if (index != -1) {
+                        messages.removeAt(index)
+                    }
+                }
+
+                // 添加真实消息（去重）
+                if (messages.none { it.sequence == message.sequence }) {
+                    messages.add(message)
+                    messages.sortBy { it.sequence }
+                }
+
+                if (isUserAtBottom()) {
+                    scrollToBottom()
+                }
             }
         }
     }
     
     // 检测滚动到顶部，触发加载更多
     LaunchedEffect(listState.canScrollBackward, listState.firstVisibleItemIndex) {
-        if (listState.firstVisibleItemIndex == 0 && 
+        if (
+            listState.firstVisibleItemIndex == 0 &&
             listState.firstVisibleItemScrollOffset < 100 && 
             !isLoadingMore &&
-            messages.isNotEmpty()) {
-            onLoadMore()
+            messages.isNotEmpty() &&
+            nextLoadSequence != null
+        ) {
+
+            // 加载更多历史消息
+            isLoadingMore = true
+            val oldestMessageSeq = messages.firstOrNull()?.sequence
+
+            try {
+                val historyMessages = when (conversation.scene) {
+                    org.ntqqrev.acidify.message.MessageScene.FRIEND -> {
+                        bot.getFriendHistoryMessages(
+                            friendUin = conversation.peerUin,
+                            limit = 30,
+                            startSequence = nextLoadSequence!!
+                        )
+                    }
+
+                    org.ntqqrev.acidify.message.MessageScene.GROUP -> {
+                        bot.getGroupHistoryMessages(
+                            groupUin = conversation.peerUin,
+                            limit = 30,
+                            startSequence = nextLoadSequence!!
+                        )
+                    }
+
+                    else -> null
+                }
+
+                if (historyMessages != null && historyMessages.messages.isNotEmpty()) {
+                    messages.addAll(0, historyMessages.messages)
+                    nextLoadSequence = historyMessages.nextStartSequence
+
+                    // 滚动到之前最老的消息
+                    println(oldestMessageSeq)
+                    println(messages.firstOrNull()?.sequence)
+                    if (oldestMessageSeq != null) {
+                        scrollToSeq(oldestMessageSeq)
+                    }
+                } else {
+                    nextLoadSequence = null
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoadingMore = false
+                kotlinx.coroutines.delay(100)
+            }
         }
     }
 
@@ -130,7 +220,7 @@ fun ChatArea(
             items(messages) { message ->
                 MessageBubble(
                     message = message,
-                    selfUin = selfUin
+                    selfUin = bot.uin
                 )
             }
         }
@@ -143,8 +233,93 @@ fun ChatArea(
             onMessageTextChange = { messageText = it },
             onSendMessage = {
                 if (messageText.isNotBlank()) {
-                    onSendMessage(messageText)
+                    val content = messageText
                     messageText = ""
+
+                    coroutineScope.launch {
+                        try {
+                            val clientSequence = kotlin.random.Random.nextLong()
+                            val random = kotlin.random.Random.nextInt()
+
+                            // 创建占位符消息
+                            val tempSequence = (messages.maxOfOrNull { it.sequence } ?: 0L) + 1
+                            val placeholder = BotIncomingMessage(
+                                scene = conversation.scene,
+                                peerUin = conversation.peerUin,
+                                peerUid = conversation.peerUin.toString(),
+                                sequence = tempSequence,
+                                timestamp = System.currentTimeMillis() / 1000,
+                                senderUin = bot.uin,
+                                senderUid = bot.uin.toString(),
+                                clientSequence = clientSequence,
+                                random = random,
+                                initSegments = listOf(BotIncomingSegment.Text(content)),
+                                messageUid = -1L
+                            )
+
+                            // 添加占位符消息
+                            messages.add(placeholder)
+                            scrollToBottom()
+                            pendingMessages[random] = placeholder
+
+                            // 发送真实消息
+                            when (conversation.scene) {
+                                org.ntqqrev.acidify.message.MessageScene.FRIEND -> {
+                                    val result = bot.sendFriendMessage(
+                                        friendUin = conversation.peerUin,
+                                        clientSequence = clientSequence,
+                                        random = random
+                                    ) {
+                                        text(content)
+                                    }
+
+                                    // 如果是给别人发的私聊消息（不是给自己），需要手动替换占位符
+                                    if (conversation.peerUin != bot.uin) {
+                                        pendingMessages.remove(random)
+                                        val index = messages.indexOfFirst {
+                                            it.random == random && it.messageUid == -1L
+                                        }
+                                        if (index != -1) {
+                                            messages.removeAt(index)
+                                        }
+
+                                        val realMessage = BotIncomingMessage(
+                                            scene = conversation.scene,
+                                            peerUin = conversation.peerUin,
+                                            peerUid = conversation.peerUin.toString(),
+                                            sequence = result.sequence,
+                                            timestamp = result.sendTime,
+                                            senderUin = bot.uin,
+                                            senderUid = bot.uin.toString(),
+                                            clientSequence = clientSequence,
+                                            random = random,
+                                            initSegments = listOf(BotIncomingSegment.Text(content)),
+                                            messageUid = 0L
+                                        )
+
+                                        messages.add(realMessage)
+                                        messages.sortBy { it.sequence }
+                                    }
+                                }
+
+                                org.ntqqrev.acidify.message.MessageScene.GROUP -> {
+                                    bot.sendGroupMessage(
+                                        groupUin = conversation.peerUin,
+                                        clientSequence = clientSequence,
+                                        random = random
+                                    ) {
+                                        text(content)
+                                    }
+                                }
+
+                                else -> {
+                                    // 其他类型暂不支持
+                                }
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
                 }
             }
         )
