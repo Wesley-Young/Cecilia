@@ -185,8 +185,8 @@ private fun formatMessageTime(timestamp: Long): String {
             SimpleDateFormat("HH:mm", Locale.getDefault()).format(messageTime)
         }
         else -> {
-            // 其他：显示完整日期时间
-            SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(messageTime)
+            // 其他：显示日期
+            SimpleDateFormat("MM/dd", Locale.getDefault()).format(messageTime)
         }
     }
 }
