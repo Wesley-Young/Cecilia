@@ -110,8 +110,12 @@ fun ChatArea(conversation: Conversation) {
                     }
                 }
 
-                // 添加真实消息（去重）
-                if (messages.none { it.sequence == message.sequence }) {
+                if (
+                    messages.none {
+                        it.clientSequence == message.clientSequence &&
+                                it.random == message.random
+                    }
+                ) {
                     messages.add(message)
                     messages.sortBy { it.sequence }
                 }
