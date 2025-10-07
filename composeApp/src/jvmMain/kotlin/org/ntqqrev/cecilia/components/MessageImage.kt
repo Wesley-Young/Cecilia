@@ -2,6 +2,7 @@ package org.ntqqrev.cecilia.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
@@ -12,7 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.rememberWindowState
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +26,8 @@ import org.jetbrains.skia.Image as SkiaImage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.views.ImagePreviewWindow
+import kotlin.math.min
 
 @Composable
 fun MessageImage(
@@ -32,6 +38,7 @@ fun MessageImage(
     var imageBitmap by remember(imageSegment.fileId) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     var isLoading by remember(imageSegment.fileId) { mutableStateOf(true) }
     var hasError by remember(imageSegment.fileId) { mutableStateOf(false) }
+    var showPreview by remember { mutableStateOf(false) }
 
     LaunchedEffect(imageSegment.fileId) {
         launch {
@@ -121,11 +128,21 @@ fun MessageImage(
                 Image(
                     bitmap = imageBitmap!!,
                     contentDescription = imageSegment.summary,
-                    modifier = modifier,
+                    modifier = modifier.clickable { showPreview = true },
                     contentScale = ContentScale.Fit
                 )
             }
         }
     }
+    
+    // 图片预览窗口
+    if (showPreview && imageBitmap != null) {
+        ImagePreviewWindow(
+            imageBitmap = imageBitmap!!,
+            imageWidth = imageSegment.width,
+            imageHeight = imageSegment.height,
+            title = "预览 - ${imageSegment.summary}",
+            onCloseRequest = { showPreview = false }
+        )
+    }
 }
-
