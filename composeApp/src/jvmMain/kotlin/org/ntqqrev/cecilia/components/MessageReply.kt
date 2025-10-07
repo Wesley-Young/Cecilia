@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
+import org.ntqqrev.cecilia.utils.segmentsToPreviewString
 
 @Composable
 fun MessageReply(
@@ -66,7 +67,7 @@ fun MessageReply(
                 )
 
                 // 第二行：消息内容预览
-                val preview = referencedMessage.toPreviewString()
+                val preview = referencedMessage.segmentsToPreviewString()
                 Text(
                     text = preview,
                     style = MaterialTheme.typography.body2,
@@ -93,23 +94,3 @@ fun MessageReply(
         }
     }
 }
-
-/**
- * 将消息转换为预览字符串
- */
-private fun BotIncomingMessage.toPreviewString(): String {
-    return segments.joinToString("") { segment ->
-        when (segment) {
-            is BotIncomingSegment.Text -> segment.text
-            is BotIncomingSegment.Image -> "[图片]"
-            is BotIncomingSegment.Record -> "[语音]"
-            is BotIncomingSegment.Video -> "[视频]"
-            is BotIncomingSegment.Face -> segment.summary
-            is BotIncomingSegment.MarketFace -> "[表情]"
-            is BotIncomingSegment.Mention -> segment.name
-            is BotIncomingSegment.Reply -> "" // Reply 不显示在预览中
-            else -> ""
-        }
-    }.take(100) // 限制预览长度
-}
-

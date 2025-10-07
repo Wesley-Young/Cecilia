@@ -67,9 +67,7 @@ class ConversationManager(
         val conversationId = message.peerUin.toString()
 
         // 提取消息内容文本
-        val messageContent = message.segments.joinToString("") { segment ->
-            segment.toString()
-        }
+        val messageContent = message.segmentsToPreviewString()
 
         // 构建消息预览文本
         val messagePreview = when (message.scene) {

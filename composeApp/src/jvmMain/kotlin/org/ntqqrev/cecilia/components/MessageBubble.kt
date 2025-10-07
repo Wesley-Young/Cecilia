@@ -39,9 +39,6 @@ fun MessageBubble(
     // 检测是否为占位消息（messageUid == -1L 表示占位符）
     val isPlaceholder = message.messageUid == -1L
 
-    // 提取消息内容（使用 segment.toString()）
-    val content = message.segments.joinToString("") { it.toString() }
-
     // 获取发送者名称
     val senderName = when (message.scene) {
         MessageScene.GROUP -> {
@@ -270,10 +267,13 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplayEl
                     DisplayElem.Image(
                         BotIncomingSegment.Image(
                             fileId = seg.url,
-                            width = 512,
-                            height = 512,
+                            width = 300,
+                            height = 300,
                             subType = ImageSubType.STICKER,
-                            summary = seg.summary
+                            summary = if (seg.url == "https://gxh.vip.qq.com/club/item/parcel/item/a3/a322b9f5bf8e2f0f2370d933f6fd4239/raw300.gif")
+                                "[逼？！]" // easter egg
+                            else
+                                seg.summary
                         )
                     )
                 )
