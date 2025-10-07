@@ -54,7 +54,7 @@ fun main() = application {
                     emptySessionStore
                 }
 
-                val signProvider = UrlSignProvider(config.signApiUrl)
+                val signProvider = UrlSignProvider(config.signApiUrl, config.signApiHttpProxy)
                 val appInfo = signProvider.getAppInfo()!!
 
                 val newBot = Bot(
