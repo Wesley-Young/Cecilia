@@ -246,12 +246,28 @@ fun MessagesPanel(
                                     // 发送真实消息
                                     when (conversation.scene) {
                                         MessageScene.FRIEND -> {
-                                            bot.sendFriendMessage(
+                                            val result = bot.sendFriendMessage(
                                                 friendUin = conversation.peerUin,
                                                 clientSequence = clientSequence,
                                                 random = random
                                             ) {
                                                 text(content)
+                                            }
+                                            
+                                            // 如果是给别人发的私聊消息（不是给自己），需要手动替换占位符
+                                            // 因为不会收到 incoming message 推送
+                                            if (conversation.peerUin != bot.uin) {
+                                                conversationManager.confirmPlaceholderMessage(
+                                                    conversationId = selectedConversationId!!,
+                                                    clientSequence = clientSequence,
+                                                    random = random,
+                                                    sequence = result.sequence,
+                                                    timestamp = result.sendTime,
+                                                    content = content,
+                                                    scene = conversation.scene,
+                                                    peerUin = conversation.peerUin,
+                                                    senderUin = bot.uin
+                                                )
                                             }
                                         }
                                         MessageScene.GROUP -> {

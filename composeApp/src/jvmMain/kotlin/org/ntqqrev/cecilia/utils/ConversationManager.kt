@@ -369,6 +369,63 @@ class ConversationManager(
     }
 
     /**
+     * 手动确认并替换占位消息（用于不会收到推送的场景，如给别人发私聊消息）
+     * @param conversationId 会话 ID
+     * @param clientSequence 客户端序列号
+     * @param random 随机数
+     * @param sequence 真实的消息序列号
+     * @param timestamp 真实的消息时间戳
+     * @param content 消息内容
+     */
+    fun confirmPlaceholderMessage(
+        conversationId: String,
+        clientSequence: Long,
+        random: Int,
+        sequence: Long,
+        timestamp: Long,
+        content: String,
+        scene: MessageScene,
+        peerUin: Long,
+        senderUin: Long
+    ) {
+        val cachedMessages = messageCache.getOrPut(conversationId) { mutableListOf() }
+        
+        // 找到并删除占位消息
+        val index = cachedMessages.indexOfFirst { 
+            it.random == random && it.messageUid == -1L
+        }
+        
+        if (index != -1) {
+            cachedMessages.removeAt(index)
+        }
+        
+        // 创建真实消息
+        val realMessage = BotIncomingMessage(
+            scene = scene,
+            peerUin = peerUin,
+            peerUid = peerUin.toString(),
+            sequence = sequence,
+            timestamp = timestamp,
+            senderUin = senderUin,
+            senderUid = senderUin.toString(),
+            clientSequence = clientSequence,
+            random = random,
+            initSegments = listOf(BotIncomingSegment.Text(content)),
+            messageUid = 0L // 手动创建的消息没有真实的 messageUid，使用 0L
+        )
+        
+        // 添加真实消息
+        cachedMessages.add(realMessage)
+        
+        // 按 sequence 重新排序
+        cachedMessages.sortBy { it.sequence }
+        
+        // 清理待确认消息记录
+        val pendingKey = "$conversationId-$random"
+        pendingMessages.remove(pendingKey)
+    }
+
+    /**
      * 获取指定会话的消息列表
      */
     fun getMessages(conversationId: String): List<BotIncomingMessage> {
