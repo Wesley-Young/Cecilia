@@ -11,12 +11,14 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.MessageScene
+import org.ntqqrev.acidify.message.BotIncomingSegment
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -119,12 +121,7 @@ fun MessageBubble(
                     elevation = 1.dp
                 ) {
                     Box(
-                        modifier = Modifier.padding(
-                            top = 8.dp,
-                            bottom = 12.dp,
-                            start = 12.dp,
-                            end = 12.dp
-                        )
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
                     ) {
                         // 消息内容（为时间留出空间）
                         // 为自己发送的消息使用自定义选中颜色
@@ -141,15 +138,90 @@ fun MessageBubble(
                             LocalTextSelectionColors provides customTextSelectionColors
                         ) {
                             SelectionContainer {
-                                Text(
-                                    text = content,
-                                    modifier = Modifier.padding(end = 40.dp, bottom = 0.dp),
-                                    style = MaterialTheme.typography.body1,
-                                    color = if (isSent)
-                                        MaterialTheme.colors.onPrimary
-                                    else
-                                        MaterialTheme.colors.onSurface
-                                )
+                                Column(modifier = Modifier.padding(end = 40.dp)) {
+                                    // 合并相邻的 Text 与 Mention 段为单个文本
+                                    val mergedItems = remember(message.segments) {
+                                        buildList<Any> {
+                                            var buffer = StringBuilder()
+                                            fun flush() {
+                                                if (buffer.isNotEmpty()) {
+                                                    add(buffer.toString())
+                                                    buffer = StringBuilder()
+                                                }
+                                            }
+                                            for (seg in message.segments) {
+                                                when (seg) {
+                                                    is BotIncomingSegment.Text -> buffer.append(seg.text)
+                                                    is BotIncomingSegment.Mention -> buffer.append(seg.name)
+                                                    else -> {
+                                                        flush()
+                                                        add(seg)
+                                                    }
+                                                }
+                                            }
+                                            flush()
+                                        }
+                                    }
+
+                                    mergedItems.forEach { item ->
+                                        when (item) {
+                                            is String -> {
+                                                if (item.isNotEmpty()) {
+                                                    Text(
+                                                        text = item,
+                                                        style = MaterialTheme.typography.body1,
+                                                        color = if (isSent)
+                                                            MaterialTheme.colors.onPrimary
+                                                        else
+                                                            MaterialTheme.colors.onSurface
+                                                    )
+                                                    Spacer(modifier = Modifier.height(6.dp))
+                                                }
+                                            }
+                                            is BotIncomingSegment.Image -> {
+                                                MessageImage(imageSegment = item, isSent = isSent)
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                            }
+                                            is BotIncomingSegment.Record -> {
+                                                Text(
+                                                    text = item.toString(),
+                                                    style = MaterialTheme.typography.body2,
+                                                    color = if (isSent)
+                                                        MaterialTheme.colors.onPrimary
+                                                    else
+                                                        MaterialTheme.colors.onSurface.copy(alpha = 0.9f)
+                                                )
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                            }
+                                            is BotIncomingSegment.Video -> {
+                                                Text(
+                                                    text = item.toString(),
+                                                    style = MaterialTheme.typography.body2,
+                                                    color = if (isSent)
+                                                        MaterialTheme.colors.onPrimary
+                                                    else
+                                                        MaterialTheme.colors.onSurface.copy(alpha = 0.9f)
+                                                )
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                            }
+                                            is BotIncomingSegment -> {
+                                                // 其他段落以 toString 文本显示
+                                                val text = item.toString()
+                                                if (text.isNotEmpty()) {
+                                                    Text(
+                                                        text = text,
+                                                        style = MaterialTheme.typography.body1,
+                                                        color = if (isSent)
+                                                            MaterialTheme.colors.onPrimary
+                                                        else
+                                                            MaterialTheme.colors.onSurface
+                                                    )
+                                                    Spacer(modifier = Modifier.height(6.dp))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
 
