@@ -7,10 +7,12 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.event.MessageReceiveEvent
+import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.Conversation
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 会话管理器
@@ -18,6 +20,7 @@ import java.util.*
  * 负责管理所有会话的状态，包括：
  * - 后台监听消息并更新会话列表
  * - 在内存中维护会话列表
+ * - 缓存每个会话的消息
  * - 提供会话列表给 UI
  */
 class ConversationManager(
@@ -34,6 +37,18 @@ class ConversationManager(
      * 当前选中的会话 ID
      */
     private var currentSelectedConversationId: String? = null
+
+    /**
+     * 每个会话的消息缓存
+     * Key: conversationId, Value: 该会话的消息列表
+     */
+    private val messageCache = ConcurrentHashMap<String, MutableList<BotIncomingMessage>>()
+
+    /**
+     * 每个会话的下一次加载起始序列号
+     * Key: conversationId, Value: 下一次加载的起始序列号
+     */
+    private val nextLoadSequence = ConcurrentHashMap<String, Long?>()
 
     init {
         // 启动后台消息监听
@@ -64,6 +79,9 @@ class ConversationManager(
     private suspend fun handleIncomingMessage(event: MessageReceiveEvent) {
         val message = event.message
         val conversationId = message.peerUin.toString()
+
+        // 将消息添加到缓存
+        messageCache.getOrPut(conversationId) { mutableListOf() }.add(message)
 
         // 提取消息内容文本
         val messageContent = message.segments.joinToString("") { segment ->
@@ -200,6 +218,109 @@ class ConversationManager(
             if (conversation.unreadCount > 0) {
                 conversations[index] = conversation.copy(unreadCount = 0)
             }
+        }
+    }
+
+    /**
+     * 获取指定会话的消息列表
+     */
+    fun getMessages(conversationId: String): List<BotIncomingMessage> {
+        return messageCache[conversationId]?.toList() ?: emptyList()
+    }
+
+    /**
+     * 加载指定会话的历史消息（首次加载）
+     * @param conversationId 会话 ID
+     * @param limit 最多获取的消息数量（最大30）
+     */
+    suspend fun loadHistoryMessages(conversationId: String, limit: Int = 30) {
+        val conversation = conversations.find { it.id == conversationId } ?: return
+
+        try {
+            val historyMessages = when (conversation.scene) {
+                MessageScene.FRIEND -> {
+                    bot.getFriendHistoryMessages(
+                        friendUin = conversation.peerUin,
+                        limit = limit.coerceIn(1, 30)
+                    )
+                }
+                MessageScene.GROUP -> {
+                    bot.getGroupHistoryMessages(
+                        groupUin = conversation.peerUin,
+                        limit = limit.coerceIn(1, 30)
+                    )
+                }
+                else -> return
+            }
+
+            // 将历史消息添加到缓存（去重）
+            val cachedMessages = messageCache.getOrPut(conversationId) { mutableListOf() }
+            val existingSeqs = cachedMessages.map { it.sequence }.toSet()
+            
+            val newMessages = historyMessages.messages.filter { it.sequence !in existingSeqs }
+            cachedMessages.addAll(0, newMessages)
+            
+            // 按序列号排序
+            cachedMessages.sortBy { it.sequence }
+            
+            // 保存下一次加载的起始序列号
+            nextLoadSequence[conversationId] = historyMessages.nextStartSequence
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * 加载更多历史消息（上拉加载）
+     * @param conversationId 会话 ID
+     * @param limit 最多获取的消息数量（最大30）
+     * @return 是否还有更多消息
+     */
+    suspend fun loadMoreMessages(conversationId: String, limit: Int = 30): Boolean {
+        val conversation = conversations.find { it.id == conversationId } ?: return false
+        val startSeq = nextLoadSequence[conversationId] ?: return false // 没有更多消息了
+
+        try {
+            val historyMessages = when (conversation.scene) {
+                MessageScene.FRIEND -> {
+                    bot.getFriendHistoryMessages(
+                        friendUin = conversation.peerUin,
+                        limit = limit.coerceIn(1, 30),
+                        startSequence = startSeq
+                    )
+                }
+                MessageScene.GROUP -> {
+                    bot.getGroupHistoryMessages(
+                        groupUin = conversation.peerUin,
+                        limit = limit.coerceIn(1, 30),
+                        startSequence = startSeq
+                    )
+                }
+                else -> return false
+            }
+
+            if (historyMessages.messages.isEmpty()) {
+                nextLoadSequence[conversationId] = null
+                return false
+            }
+
+            // 将历史消息添加到缓存（去重）
+            val cachedMessages = messageCache.getOrPut(conversationId) { mutableListOf() }
+            val existingSeqs = cachedMessages.map { it.sequence }.toSet()
+            
+            val newMessages = historyMessages.messages.filter { it.sequence !in existingSeqs }
+            cachedMessages.addAll(0, newMessages)
+            
+            // 按序列号排序
+            cachedMessages.sortBy { it.sequence }
+            
+            // 更新下一次加载的起始序列号
+            nextLoadSequence[conversationId] = historyMessages.nextStartSequence
+            
+            return historyMessages.nextStartSequence != null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
         }
     }
 

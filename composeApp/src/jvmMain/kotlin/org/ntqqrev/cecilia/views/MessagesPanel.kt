@@ -13,8 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.Message
 import org.ntqqrev.cecilia.components.ChatArea
 import org.ntqqrev.cecilia.components.ConversationList
 import org.ntqqrev.cecilia.components.DraggableDivider
@@ -35,6 +35,15 @@ fun MessagesPanel(width: Dp = 320.dp) {
     // 使用 ConversationManager 中的会话列表
     val conversations = conversationManager.conversations
 
+    // 当前会话的消息列表（直接使用 BotIncomingMessage）
+    val messages = remember { mutableStateListOf<BotIncomingMessage>() }
+    
+    // 加载状态
+    var isLoadingMore by remember { mutableStateOf(false) }
+    
+    // 用于触发滚动到指定消息的序列号
+    var scrollToMessageSequence by remember { mutableStateOf<Long?>(null) }
+
     // 初始化缓存
     LaunchedEffect(cacheManager) {
         launch {
@@ -47,16 +56,58 @@ fun MessagesPanel(width: Dp = 320.dp) {
         }
     }
 
-    // 示例消息数据
-    val messages = remember {
-        mutableStateListOf(
-            Message("1", "你好！", false, "14:20", "张三"),
-            Message("2", "你好，有什么可以帮你的吗？", true, "14:21"),
-            Message("3", "我想问一下关于项目的事情", false, "14:25", "张三"),
-            Message("4", "请说", true, "14:26"),
-            Message("5", "最新的功能什么时候上线？", false, "14:28", "张三"),
-            Message("6", "预计下周三上线", true, "14:30"),
-        )
+    // 当选择会话改变时，加载历史消息
+    LaunchedEffect(selectedConversationId) {
+        // 清空之前会话的消息
+        messages.clear()
+        
+        // 重置加载状态和滚动目标
+        isLoadingMore = false
+        scrollToMessageSequence = null
+        
+        selectedConversationId?.let { conversationId ->
+            launch {
+                try {
+                    // 加载历史消息（最多30条）
+                    conversationManager.loadHistoryMessages(conversationId, 30)
+                    
+                    // 获取消息（直接使用 BotIncomingMessage）
+                    val botMessages = conversationManager.getMessages(conversationId)
+                    messages.addAll(botMessages)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    // 监听新消息并更新当前会话的消息列表
+    LaunchedEffect(selectedConversationId, conversations.size) {
+        selectedConversationId?.let { conversationId ->
+            launch {
+                // 定期检查新消息（每500毫秒检查一次）
+                while (true) {
+                    kotlinx.coroutines.delay(500)
+                    try {
+                        val botMessages = conversationManager.getMessages(conversationId)
+                        if (botMessages.size != messages.size) {
+                            // 只更新新增的消息，不清空整个列表
+                            val newMessagesCount = botMessages.size - messages.size
+                            if (newMessagesCount > 0) {
+                                val newBotMessages = botMessages.takeLast(newMessagesCount)
+                                messages.addAll(newBotMessages)
+                            } else if (newMessagesCount < 0) {
+                                // 如果消息数变少了（不应该发生），重新加载
+                                messages.clear()
+                                messages.addAll(botMessages)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
     }
 
     Row(modifier = Modifier.fillMaxSize()) {
@@ -122,20 +173,71 @@ fun MessagesPanel(width: Dp = 320.dp) {
         if (selectedConversationId != null) {
             val selectedConversation = conversations.find { it.id == selectedConversationId }
             selectedConversation?.let { conversation ->
-                ChatArea(
-                    conversation = conversation,
-                    messages = messages,
+                // 使用 key 确保切换会话时重新创建 ChatArea，重置滚动状态
+                key(selectedConversationId) {
+                    ChatArea(
+                        conversation = conversation,
+                        messages = messages,
+                        selfUin = bot.uin,
+                        isLoadingMore = isLoadingMore,
+                        scrollToMessageSequence = scrollToMessageSequence,
+                        onLoadMore = {
+                        // 加载更多历史消息
+                        if (!isLoadingMore) {
+                            coroutineScope.launch {
+                                isLoadingMore = true
+                                // 记录加载前最老的消息序列号
+                                val oldestMessageSeq = messages.firstOrNull()?.sequence
+                                
+                                try {
+                                    val hasMore = conversationManager.loadMoreMessages(selectedConversationId!!, 30)
+                                    
+                                    // 更新消息列表
+                                    val botMessages = conversationManager.getMessages(selectedConversationId!!)
+                                    messages.clear()
+                                    messages.addAll(botMessages)
+                                    
+                                    // 加载完成后，触发滚动到之前最老的消息
+                                    scrollToMessageSequence = oldestMessageSeq
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    // 即使失败也尝试滚动到之前的位置
+                                    scrollToMessageSequence = oldestMessageSeq
+                                } finally {
+                                    isLoadingMore = false
+                                    // 重置滚动目标
+                                    kotlinx.coroutines.delay(100)
+                                    scrollToMessageSequence = null
+                                }
+                            }
+                        }
+                    },
                     onSendMessage = { content ->
-                        messages.add(
-                            Message(
-                                id = (messages.size + 1).toString(),
-                                content = content,
-                                isSent = true,
-                                time = "刚刚"
-                            )
-                        )
+                        // 发送消息
+                        coroutineScope.launch {
+                            try {
+                                when (conversation.scene) {
+                                    MessageScene.FRIEND -> {
+                                        bot.sendFriendMessage(conversation.peerUin) {
+                                            text(content)
+                                        }
+                                    }
+                                    MessageScene.GROUP -> {
+                                        bot.sendGroupMessage(conversation.peerUin) {
+                                            text(content)
+                                        }
+                                    }
+                                    else -> {
+                                        // 其他类型暂不支持
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
                     }
-                )
+                    )
+                }
             }
         } else {
             // 未选择会话时的占位界面

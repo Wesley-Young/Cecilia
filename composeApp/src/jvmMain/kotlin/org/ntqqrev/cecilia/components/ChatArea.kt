@@ -15,22 +15,79 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.cecilia.ChatBackgroundColor
 import org.ntqqrev.cecilia.Conversation
-import org.ntqqrev.cecilia.Message
 
 @Composable
 fun ChatArea(
     conversation: Conversation,
-    messages: List<Message>,
+    messages: List<BotIncomingMessage>,
+    selfUin: Long,
+    isLoadingMore: Boolean,
+    scrollToMessageSequence: Long?,
+    onLoadMore: () -> Unit,
     onSendMessage: (String) -> Unit
 ) {
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    
+    // 记录上一次最后一条消息的序列号，用于判断是否有新消息
+    var lastMessageSequence by remember { mutableStateOf<Long?>(null) }
+    
+    // 标记是否是首次加载
+    var isInitialLoad by remember { mutableStateOf(true) }
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+    // 检查用户是否在底部（或接近底部）
+    fun isUserAtBottom(): Boolean {
+        val layoutInfo = listState.layoutInfo
+        if (layoutInfo.totalItemsCount == 0) return true
+        
+        val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull() ?: return false
+        
+        // 检查最后一个可见项是否是列表中的最后一项（或倒数第二项）
+        return lastVisibleItem.index >= layoutInfo.totalItemsCount - 2
+    }
+
+    LaunchedEffect(messages.size, isLoadingMore) {
+        if (messages.isNotEmpty() && !isLoadingMore) {
+            val currentLastSequence = messages.lastOrNull()?.sequence
+
+            // 首次加载：滚动到底部
+            if (isInitialLoad) {
+                listState.scrollToItem(messages.size - 1)
+                lastMessageSequence = currentLastSequence
+                isInitialLoad = false
+            }
+            // 有新消息到达（最后一条消息的序列号变了）
+            else if (currentLastSequence != null && currentLastSequence != lastMessageSequence) {
+                // 只有用户在底部时才滚动
+                if (isUserAtBottom()) {
+                    listState.scrollToItem(messages.size - 1)
+                }
+                lastMessageSequence = currentLastSequence
+            }
+            // 否则是加载历史消息，不滚动
+        }
+    }
+    
+    // 加载历史消息后，滚动到指定的消息位置
+    LaunchedEffect(scrollToMessageSequence) {
+        scrollToMessageSequence?.let { targetSeq ->
+            val targetIndex = messages.indexOfFirst { it.sequence == targetSeq }
+            if (targetIndex != -1) {
+                listState.scrollToItem(targetIndex)
+            }
+        }
+    }
+    
+    // 检测滚动到顶部，触发加载更多
+    LaunchedEffect(listState.canScrollBackward, listState.firstVisibleItemIndex) {
+        if (listState.firstVisibleItemIndex == 0 && 
+            listState.firstVisibleItemScrollOffset < 100 && 
+            !isLoadingMore &&
+            messages.isNotEmpty()) {
+            onLoadMore()
         }
     }
 
@@ -50,11 +107,32 @@ fun ChatArea(
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            state = listState
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Bottom),
+            contentPadding = PaddingValues(top = 48.dp, bottom = 16.dp)
         ) {
+            // 加载指示器
+            if (isLoadingMore) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                }
+            }
+            
             items(messages) { message ->
-                MessageBubble(message)
-                Spacer(modifier = Modifier.height(12.dp))
+                MessageBubble(
+                    message = message,
+                    selfUin = selfUin
+                )
             }
         }
 

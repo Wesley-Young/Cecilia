@@ -35,22 +35,3 @@ data class Conversation(
     // 状态信息
     val unreadCount: Int = 0
 )
-
-/**
- * 消息数据类
- *
- * 表示聊天界面中的一条消息
- *
- * @property id 消息唯一标识符
- * @property content 消息文本内容
- * @property isSent 是否为发送的消息（true: 自己发送, false: 对方发送）
- * @property time 格式化后的时间显示字符串
- * @property senderName 发送者名称（仅在群聊或接收的消息中使用）
- */
-data class Message(
-    val id: String,
-    val content: String,
-    val isSent: Boolean,
-    val time: String,
-    val senderName: String = ""
-)
