@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.cecilia.ChatBackgroundColor
-import org.ntqqrev.cecilia.Conversation
+import org.ntqqrev.cecilia.structs.Conversation
 
 @Composable
 fun ChatArea(

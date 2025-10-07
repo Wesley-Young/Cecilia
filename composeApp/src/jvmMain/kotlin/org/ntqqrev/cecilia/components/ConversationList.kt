@@ -19,7 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.Conversation
+import org.ntqqrev.cecilia.structs.Conversation
 
 @Composable
 fun ConversationList(

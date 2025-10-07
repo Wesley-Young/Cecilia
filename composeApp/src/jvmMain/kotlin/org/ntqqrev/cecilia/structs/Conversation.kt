@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia
+package org.ntqqrev.cecilia.structs
 
 import org.ntqqrev.acidify.message.MessageScene
 
