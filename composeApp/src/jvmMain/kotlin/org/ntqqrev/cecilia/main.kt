@@ -2,7 +2,6 @@
 
 package org.ntqqrev.cecilia
 
-// import org.ntqqrev.cecilia.utils.AvatarCache
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -14,7 +13,6 @@ import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.common.SessionStore
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.util.UrlSignProvider
-import org.ntqqrev.acidify.util.log.LogLevel
 import org.ntqqrev.acidify.util.log.SimpleColoredLogHandler
 import org.ntqqrev.cecilia.structs.CeciliaConfig
 import java.awt.Dimension
@@ -64,7 +62,7 @@ fun main() = application {
                     sessionStore = sessionStore,
                     signProvider = signProvider,
                     scope = scope,
-                    minLogLevel = LogLevel.DEBUG,
+                    minLogLevel = config.minLogLevel,
                     logHandler = SimpleColoredLogHandler
                 )
 
