@@ -16,6 +16,18 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import kotlin.math.min
 
+/**
+ * 获取当前操作系统的标题栏高度
+ */
+private fun getTitleBarHeight(): Int {
+    val osName = System.getProperty("os.name").lowercase()
+    return when {
+        osName.contains("mac") -> 28 // macOS
+        osName.contains("win") -> 32 // Windows
+        else -> 30 // Linux 或其他系统
+    }
+}
+
 @Composable
 fun ImagePreviewWindow(
     imageBitmap: androidx.compose.ui.graphics.ImageBitmap,
@@ -32,9 +44,12 @@ fun ImagePreviewWindow(
             maxDimension.toFloat() / imageHeight
         ).coerceAtMost(1f) // 如果图片小于800x800，不放大
 
+        // 标题栏高度补偿（根据操作系统自动适配）
+        val titleBarHeight = getTitleBarHeight().dp
+        
         DpSize(
             width = (imageWidth * scale).dp,
-            height = (imageHeight * scale).dp
+            height = (imageHeight * scale).dp + titleBarHeight
         )
     }
 
