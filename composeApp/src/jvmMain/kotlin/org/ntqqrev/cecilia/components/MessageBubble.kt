@@ -172,7 +172,10 @@ fun MessageBubble(
                             LocalTextSelectionColors provides customTextSelectionColors
                         ) {
                             SelectionContainer {
-                                Column(modifier = Modifier.padding(end = 40.dp)) {
+                                Column(
+                                    modifier = Modifier.padding(end = 40.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
                                     val mergedItems = remember(message.segments) {
                                         buildDisplayList(message.segments)
                                     }
