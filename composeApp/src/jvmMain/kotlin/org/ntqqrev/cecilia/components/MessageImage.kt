@@ -2,7 +2,7 @@ package org.ntqqrev.cecilia.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
@@ -128,7 +128,10 @@ fun MessageImage(
                 Image(
                     bitmap = imageBitmap!!,
                     contentDescription = imageSegment.summary,
-                    modifier = modifier.clickable { showPreview = true },
+                    modifier = modifier.combinedClickable(
+                        onDoubleClick = { showPreview = true },
+                        onClick = { /* 单击不做任何操作 */ }
+                    ),
                     contentScale = ContentScale.Fit
                 )
             }
