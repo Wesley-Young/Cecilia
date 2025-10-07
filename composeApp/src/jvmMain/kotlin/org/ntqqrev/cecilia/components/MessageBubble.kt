@@ -9,13 +9,15 @@ import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
@@ -23,6 +25,7 @@ import org.ntqqrev.acidify.message.MessageScene
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun MessageBubble(
     message: BotIncomingMessage,
@@ -51,8 +54,29 @@ fun MessageBubble(
     // 格式化时间
     val timeStr = formatMessageTime(message.timestamp)
 
-    // 是否显示昵称（群聊且不是自己发送的消息）
+    // 是否原本应该显示昵称
     val shouldShowNickname = message.scene == MessageScene.GROUP && !isSent
+    
+    // 鼠标悬停状态
+    var isHovering by remember { mutableStateOf(false) }
+    var showSeq by remember { mutableStateOf(false) }
+    
+    // 当前显示的文本
+    val displayText = when {
+        showSeq -> if (shouldShowNickname) "$senderName #${message.sequence}" else "#${message.sequence}"
+        shouldShowNickname -> senderName
+        else -> null
+    }
+    
+    // 悬停延迟逻辑
+    LaunchedEffect(isHovering) {
+        if (isHovering) {
+            delay(1000) // 悬停 1 秒后
+            showSeq = true
+        } else {
+            showSeq = false
+        }
+    }
 
     // if senderuin=0 是撤回的消息，显示一个小灰条
     if (message.senderUin == 0L) {
@@ -73,7 +97,14 @@ fun MessageBubble(
     }
     
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onPointerEvent(PointerEventType.Enter) {
+                isHovering = true
+            }
+            .onPointerEvent(PointerEventType.Exit) {
+                isHovering = false
+            },
         horizontalArrangement = if (isSent) Arrangement.End else Arrangement.Start,
     ) {
         if (!isSent) {
@@ -90,10 +121,10 @@ fun MessageBubble(
             horizontalAlignment = if (isSent) Alignment.End else Alignment.Start,
             modifier = Modifier.widthIn(max = 400.dp)
         ) {
-            // 显示群昵称
-            if (shouldShowNickname) {
+            // 显示群昵称或消息序列号
+            if (displayText != null) {
                 Text(
-                    text = senderName,
+                    text = displayText,
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier.padding(bottom = 4.dp, start = 4.dp, end = 4.dp)
