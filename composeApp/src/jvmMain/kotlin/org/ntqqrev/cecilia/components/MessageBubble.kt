@@ -22,6 +22,7 @@ import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.acidify.message.MessageScene
+import org.ntqqrev.cecilia.structs.DisplayElem
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -247,11 +248,11 @@ private fun formatMessageTime(timestamp: Long): String {
     }
 }
 
-private fun buildDisplayList(segments: List<BotIncomingSegment>): List<Any> = buildList {
+private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplayElem> = buildList {
     var buffer = StringBuilder()
     fun flush() {
         if (buffer.isNotEmpty()) {
-            add(buffer.toString())
+            add(DisplayElem.Text(buffer.toString()))
             buffer = StringBuilder()
         }
     }
@@ -259,22 +260,42 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<Any> = bu
         when (seg) {
             is BotIncomingSegment.Text -> buffer.append(seg.text)
             is BotIncomingSegment.Mention -> buffer.append(seg.name)
+            is BotIncomingSegment.Reply -> {
+                flush()
+                add(DisplayElem.Reply(seg))
+            }
             is BotIncomingSegment.MarketFace -> {
                 flush()
                 add(
-                    BotIncomingSegment.Image(
-                        fileId = seg.url,
-                        width = 512,
-                        height = 512,
-                        subType = ImageSubType.STICKER,
-                        summary = seg.summary
+                    DisplayElem.Image(
+                        BotIncomingSegment.Image(
+                            fileId = seg.url,
+                            width = 512,
+                            height = 512,
+                            subType = ImageSubType.STICKER,
+                            summary = seg.summary
+                        )
                     )
                 )
             }
 
+            is BotIncomingSegment.Image -> {
+                flush()
+                add(DisplayElem.Image(seg))
+            }
+
+            is BotIncomingSegment.Record -> {
+                flush()
+                add(DisplayElem.Record(seg))
+            }
+
+            is BotIncomingSegment.Video -> {
+                flush()
+                add(DisplayElem.Video(seg))
+            }
             else -> {
                 flush()
-                add(seg)
+                add(DisplayElem.Other(seg))
             }
         }
     }
@@ -283,16 +304,16 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<Any> = bu
 
 @Composable
 private fun DisplayElement(
-    item: Any,
+    item: DisplayElem,
     isSent: Boolean,
     allMessages: List<BotIncomingMessage>,
     onScrollToMessage: ((Long) -> Unit)?
 ) {
     when (item) {
-        is String -> {
-            if (item.isNotEmpty()) {
+        is DisplayElem.Text -> {
+            if (item.text.isNotEmpty()) {
                 Text(
-                    text = item,
+                    text = item.text,
                     style = MaterialTheme.typography.body1,
                     color = if (isSent)
                         MaterialTheme.colors.onPrimary
@@ -302,27 +323,27 @@ private fun DisplayElement(
             }
         }
 
-        is BotIncomingSegment.Reply -> {
+        is DisplayElem.Reply -> {
             // 查找被引用的消息
-            val referencedMessage = allMessages.find { it.sequence == item.sequence }
+            val referencedMessage = allMessages.find { it.sequence == item.segment.sequence }
 
             MessageReply(
-                replySegment = item,
+                replySegment = item.segment,
                 referencedMessage = referencedMessage,
                 isSent = isSent,
                 onReplyClick = if (referencedMessage != null && onScrollToMessage != null) {
-                    { onScrollToMessage(item.sequence) }
+                    { onScrollToMessage(item.segment.sequence) }
                 } else null
             )
         }
 
-        is BotIncomingSegment.Image -> {
-            MessageImage(imageSegment = item, isSent = isSent)
+        is DisplayElem.Image -> {
+            MessageImage(imageSegment = item.segment, isSent = isSent)
         }
 
-        is BotIncomingSegment.Record -> {
+        is DisplayElem.Record -> {
             Text(
-                text = item.toString(),
+                text = item.segment.toString(),
                 style = MaterialTheme.typography.body2,
                 color = if (isSent)
                     MaterialTheme.colors.onPrimary
@@ -331,9 +352,9 @@ private fun DisplayElement(
             )
         }
 
-        is BotIncomingSegment.Video -> {
+        is DisplayElem.Video -> {
             Text(
-                text = item.toString(),
+                text = item.segment.toString(),
                 style = MaterialTheme.typography.body2,
                 color = if (isSent)
                     MaterialTheme.colors.onPrimary
@@ -342,9 +363,9 @@ private fun DisplayElement(
             )
         }
 
-        is BotIncomingSegment -> {
+        is DisplayElem.Other -> {
             // 其他段落以 toString 文本显示
-            val text = item.toString()
+            val text = item.segment.toString()
             if (text.isNotEmpty()) {
                 Text(
                     text = text,
