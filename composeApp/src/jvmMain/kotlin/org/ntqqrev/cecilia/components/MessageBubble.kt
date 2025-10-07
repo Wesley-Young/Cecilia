@@ -26,7 +26,9 @@ import java.util.*
 @Composable
 fun MessageBubble(
     message: BotIncomingMessage,
-    selfUin: Long
+    selfUin: Long,
+    allMessages: List<BotIncomingMessage> = emptyList(),
+    onScrollToMessage: ((Long) -> Unit)? = null
 ) {
     val isSent = message.senderUin == selfUin
 
@@ -143,7 +145,14 @@ fun MessageBubble(
                                     val mergedItems = remember(message.segments) {
                                         buildDisplayList(message.segments)
                                     }
-                                    mergedItems.forEach { item -> DisplayElement(item, isSent) }
+                                    mergedItems.forEach { item ->
+                                        DisplayElement(
+                                            item = item,
+                                            isSent = isSent,
+                                            allMessages = allMessages,
+                                            onScrollToMessage = onScrollToMessage
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -239,7 +248,12 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<Any> = bu
 }
 
 @Composable
-private fun DisplayElement(item: Any, isSent: Boolean) {
+private fun DisplayElement(
+    item: Any,
+    isSent: Boolean,
+    allMessages: List<BotIncomingMessage>,
+    onScrollToMessage: ((Long) -> Unit)?
+) {
     when (item) {
         is String -> {
             if (item.isNotEmpty()) {
@@ -252,6 +266,20 @@ private fun DisplayElement(item: Any, isSent: Boolean) {
                         MaterialTheme.colors.onSurface
                 )
             }
+        }
+
+        is BotIncomingSegment.Reply -> {
+            // 查找被引用的消息
+            val referencedMessage = allMessages.find { it.sequence == item.sequence }
+
+            MessageReply(
+                replySegment = item,
+                referencedMessage = referencedMessage,
+                isSent = isSent,
+                onReplyClick = if (referencedMessage != null && onScrollToMessage != null) {
+                    { onScrollToMessage(item.sequence) }
+                } else null
+            )
         }
 
         is BotIncomingSegment.Image -> {

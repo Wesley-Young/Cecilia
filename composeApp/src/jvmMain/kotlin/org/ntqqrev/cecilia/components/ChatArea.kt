@@ -222,7 +222,13 @@ fun ChatArea(conversation: Conversation) {
             items(messages) { message ->
                 MessageBubble(
                     message = message,
-                    selfUin = bot.uin
+                    selfUin = bot.uin,
+                    allMessages = messages,
+                    onScrollToMessage = { seq ->
+                        coroutineScope.launch {
+                            scrollToSeq(seq)
+                        }
+                    }
                 )
             }
         }
