@@ -140,100 +140,10 @@ fun MessageBubble(
                         ) {
                             SelectionContainer {
                                 Column(modifier = Modifier.padding(end = 40.dp)) {
-                                    // 合并相邻的 Text 与 Mention 段为单个文本
                                     val mergedItems = remember(message.segments) {
-                                        buildList<Any> {
-                                            var buffer = StringBuilder()
-                                            fun flush() {
-                                                if (buffer.isNotEmpty()) {
-                                                    add(buffer.toString())
-                                                    buffer = StringBuilder()
-                                                }
-                                            }
-                                            for (seg in message.segments) {
-                                                when (seg) {
-                                                    is BotIncomingSegment.Text -> buffer.append(seg.text)
-                                                    is BotIncomingSegment.Mention -> buffer.append(seg.name)
-                                                    is BotIncomingSegment.MarketFace -> {
-                                                        flush()
-                                                        add(
-                                                            BotIncomingSegment.Image(
-                                                                fileId = seg.url,
-                                                                width = 512,
-                                                                height = 512,
-                                                                subType = ImageSubType.STICKER,
-                                                                summary = seg.summary
-                                                            )
-                                                        )
-                                                    }
-                                                    else -> {
-                                                        flush()
-                                                        add(seg)
-                                                    }
-                                                }
-                                            }
-                                            flush()
-                                        }
+                                        buildDisplayList(message.segments)
                                     }
-
-                                    mergedItems.forEach { item ->
-                                        when (item) {
-                                            is String -> {
-                                                if (item.isNotEmpty()) {
-                                                    Text(
-                                                        text = item,
-                                                        style = MaterialTheme.typography.body1,
-                                                        color = if (isSent)
-                                                            MaterialTheme.colors.onPrimary
-                                                        else
-                                                            MaterialTheme.colors.onSurface
-                                                    )
-                                                    Spacer(modifier = Modifier.height(6.dp))
-                                                }
-                                            }
-                                            is BotIncomingSegment.Image -> {
-                                                MessageImage(imageSegment = item, isSent = isSent)
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                            }
-                                            is BotIncomingSegment.Record -> {
-                                                Text(
-                                                    text = item.toString(),
-                                                    style = MaterialTheme.typography.body2,
-                                                    color = if (isSent)
-                                                        MaterialTheme.colors.onPrimary
-                                                    else
-                                                        MaterialTheme.colors.onSurface.copy(alpha = 0.9f)
-                                                )
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                            }
-                                            is BotIncomingSegment.Video -> {
-                                                Text(
-                                                    text = item.toString(),
-                                                    style = MaterialTheme.typography.body2,
-                                                    color = if (isSent)
-                                                        MaterialTheme.colors.onPrimary
-                                                    else
-                                                        MaterialTheme.colors.onSurface.copy(alpha = 0.9f)
-                                                )
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                            }
-                                            is BotIncomingSegment -> {
-                                                // 其他段落以 toString 文本显示
-                                                val text = item.toString()
-                                                if (text.isNotEmpty()) {
-                                                    Text(
-                                                        text = text,
-                                                        style = MaterialTheme.typography.body1,
-                                                        color = if (isSent)
-                                                            MaterialTheme.colors.onPrimary
-                                                        else
-                                                            MaterialTheme.colors.onSurface
-                                                    )
-                                                    Spacer(modifier = Modifier.height(6.dp))
-                                                }
-                                            }
-                                        }
-                                    }
+                                    mergedItems.forEach { item -> DisplayElement(item, isSent) }
                                 }
                             }
                         }
@@ -294,3 +204,95 @@ private fun formatMessageTime(timestamp: Long): String {
     }
 }
 
+private fun buildDisplayList(segments: List<BotIncomingSegment>): List<Any> = buildList {
+    var buffer = StringBuilder()
+    fun flush() {
+        if (buffer.isNotEmpty()) {
+            add(buffer.toString())
+            buffer = StringBuilder()
+        }
+    }
+    for (seg in segments) {
+        when (seg) {
+            is BotIncomingSegment.Text -> buffer.append(seg.text)
+            is BotIncomingSegment.Mention -> buffer.append(seg.name)
+            is BotIncomingSegment.MarketFace -> {
+                flush()
+                add(
+                    BotIncomingSegment.Image(
+                        fileId = seg.url,
+                        width = 512,
+                        height = 512,
+                        subType = ImageSubType.STICKER,
+                        summary = seg.summary
+                    )
+                )
+            }
+
+            else -> {
+                flush()
+                add(seg)
+            }
+        }
+    }
+    flush()
+}
+
+@Composable
+private fun DisplayElement(item: Any, isSent: Boolean) {
+    when (item) {
+        is String -> {
+            if (item.isNotEmpty()) {
+                Text(
+                    text = item,
+                    style = MaterialTheme.typography.body1,
+                    color = if (isSent)
+                        MaterialTheme.colors.onPrimary
+                    else
+                        MaterialTheme.colors.onSurface
+                )
+            }
+        }
+
+        is BotIncomingSegment.Image -> {
+            MessageImage(imageSegment = item, isSent = isSent)
+        }
+
+        is BotIncomingSegment.Record -> {
+            Text(
+                text = item.toString(),
+                style = MaterialTheme.typography.body2,
+                color = if (isSent)
+                    MaterialTheme.colors.onPrimary
+                else
+                    MaterialTheme.colors.onSurface.copy(alpha = 0.9f)
+            )
+        }
+
+        is BotIncomingSegment.Video -> {
+            Text(
+                text = item.toString(),
+                style = MaterialTheme.typography.body2,
+                color = if (isSent)
+                    MaterialTheme.colors.onPrimary
+                else
+                    MaterialTheme.colors.onSurface.copy(alpha = 0.9f)
+            )
+        }
+
+        is BotIncomingSegment -> {
+            // 其他段落以 toString 文本显示
+            val text = item.toString()
+            if (text.isNotEmpty()) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.body1,
+                    color = if (isSent)
+                        MaterialTheme.colors.onPrimary
+                    else
+                        MaterialTheme.colors.onSurface
+                )
+            }
+        }
+    }
+}
