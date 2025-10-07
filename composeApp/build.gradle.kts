@@ -24,6 +24,14 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.qrcode.kotlin)
             implementation("acidify:acidify-core")
+
+            // Compose Desktop Native Binaries
+            implementation(compose.desktop.windows_x64)
+            implementation(compose.desktop.windows_arm64)
+            implementation(compose.desktop.macos_x64)
+            implementation(compose.desktop.macos_arm64)
+            implementation(compose.desktop.linux_x64)
+            implementation(compose.desktop.linux_arm64)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
