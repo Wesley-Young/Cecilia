@@ -3,6 +3,7 @@ package org.ntqqrev.cecilia.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -21,7 +22,10 @@ fun MessageBubble(
     selfUin: Long
 ) {
     val isSent = message.senderUin == selfUin
-    
+
+    // 检测是否为占位消息（messageUid == -1L 表示占位符）
+    val isPlaceholder = message.messageUid == -1L
+
     // 提取消息内容（使用 segment.toString()）
     val content = message.segments.joinToString("") { it.toString() }
     
@@ -93,12 +97,27 @@ fun MessageBubble(
 
         if (isSent) {
             Spacer(modifier = Modifier.width(8.dp))
-            AvatarImage(
-                uin = message.senderUin,
-                size = 44.dp,
-                isGroup = false,
-                quality = 100
-            )
+
+            // 如果是占位消息，显示加载动画；否则显示头像
+            if (isPlaceholder) {
+                Box(
+                    modifier = Modifier.size(44.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colors.primary
+                    )
+                }
+            } else {
+                AvatarImage(
+                    uin = message.senderUin,
+                    size = 44.dp,
+                    isGroup = false,
+                    quality = 100
+                )
+            }
         }
     }
 }

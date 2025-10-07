@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.BotIncomingMessage
+import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.structs.Conversation
 import java.text.SimpleDateFormat
@@ -50,6 +51,18 @@ class ConversationManager(
      */
     private val nextLoadSequence = ConcurrentHashMap<String, Long?>()
 
+    /**
+     * 待确认消息映射（用于匹配占位消息）
+     * 为了简化，我们只用 random 和 conversationId 来匹配占位消息
+     */
+    private data class PendingMessageInfo(
+        val conversationId: String,
+        val clientSequence: Long,
+        val random: Int
+    )
+
+    private val pendingMessages = ConcurrentHashMap<String, PendingMessageInfo>()
+
     init {
         // 启动后台消息监听
         startMessageListener()
@@ -80,8 +93,27 @@ class ConversationManager(
         val message = event.message
         val conversationId = message.peerUin.toString()
 
-        // 将消息添加到缓存
-        messageCache.getOrPut(conversationId) { mutableListOf() }.add(message)
+        // 检查是否是待确认的消息（匹配占位符）
+        // 使用 conversationId 和 random 来匹配（random 在好友和群消息中都可靠）
+        val pendingKey = "$conversationId-${message.random}"
+        val pendingInfo = pendingMessages.remove(pendingKey)
+
+        val cachedMessages = messageCache.getOrPut(conversationId) { mutableListOf() }
+
+        if (pendingInfo != null) {
+            // 找到并删除占位消息（messageUid == -1L）
+            val index = cachedMessages.indexOfFirst {
+                it.random == message.random && it.messageUid == -1L
+            }
+            if (index != -1) {
+                cachedMessages.removeAt(index)
+            }
+            cachedMessages.add(message)
+            cachedMessages.sortBy { it.sequence }
+        } else {
+            cachedMessages.add(message)
+            cachedMessages.sortBy { it.sequence }
+        }
 
         // 提取消息内容文本
         val messageContent = message.segments.joinToString("") { segment ->
@@ -144,28 +176,24 @@ class ConversationManager(
             // 会话不存在，需要获取会话信息并创建新条目
             try {
                 // 根据消息场景获取名称和头像
-                val (name, avatar) = when (message.scene) {
+                val name = when (message.scene) {
                     MessageScene.FRIEND -> {
                         // 从缓存获取好友信息
                         val friend = cacheManager.friendCache[message.peerUin]
-                        val displayName = friend?.remark?.takeIf { it.isNotEmpty() }
+                        friend?.remark?.takeIf { it.isNotEmpty() }
                             ?: friend?.nickname
                             ?: message.peerUin.toString()
-                        val avatarStr = displayName.firstOrNull()?.toString() ?: "?"
-                        displayName to avatarStr
                     }
 
                     MessageScene.GROUP -> {
                         // 从缓存获取群信息
                         val group = cacheManager.groupCache[message.peerUin]
-                        val groupName = group?.name ?: message.peerUin.toString()
-                        val avatarStr = groupName.firstOrNull()?.toString() ?: "?"
-                        groupName to avatarStr
+                        group?.name ?: message.peerUin.toString()
                     }
 
                     else -> {
                         // 临时会话等其他类型
-                        message.peerUin.toString() to "?"
+                        message.peerUin.toString()
                     }
                 }
 
@@ -288,6 +316,56 @@ class ConversationManager(
             conversations.add(newConversation)
             return conversationId
         }
+    }
+
+    /**
+     * 添加占位消息（发送时立即显示）
+     * @param conversationId 会话 ID
+     * @param scene 消息场景
+     * @param peerUin 对端 UIN
+     * @param senderUin 发送者 UIN
+     * @param clientSequence 客户端序列号
+     * @param random 随机数
+     * @param content 消息内容
+     * @return 创建的占位消息
+     */
+    fun addPlaceholderMessage(
+        conversationId: String,
+        scene: MessageScene,
+        peerUin: Long,
+        senderUin: Long,
+        clientSequence: Long,
+        random: Int,
+        content: String
+    ): BotIncomingMessage {
+        val cachedMessages = messageCache.getOrPut(conversationId) { mutableListOf() }
+
+        // 计算临时 sequence（当前最新 seq + 1）
+        val tempSequence = (cachedMessages.maxOfOrNull { it.sequence } ?: 0L) + 1
+
+        // 创建占位消息（messageUid = -1L 标识为占位符）
+        val placeholder = BotIncomingMessage(
+            scene = scene,
+            peerUin = peerUin,
+            peerUid = peerUin.toString(),
+            sequence = tempSequence,
+            timestamp = System.currentTimeMillis() / 1000,
+            senderUin = senderUin,
+            senderUid = senderUin.toString(),
+            clientSequence = clientSequence,
+            random = random,
+            initSegments = listOf(BotIncomingSegment.Text(content)),
+            messageUid = -1L
+        )
+
+        // 添加到缓存
+        cachedMessages.add(placeholder)
+
+        // 记录为待确认消息（使用 conversationId 和 random 作为 key）
+        val pendingKey = "$conversationId-$random"
+        pendingMessages[pendingKey] = PendingMessageInfo(conversationId, clientSequence, random)
+
+        return placeholder
     }
 
     /**
