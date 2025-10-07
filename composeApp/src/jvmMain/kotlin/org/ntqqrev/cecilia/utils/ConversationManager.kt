@@ -222,6 +222,75 @@ class ConversationManager(
     }
 
     /**
+     * 查找或创建会话
+     * @param peerUin 对端的 UIN（QQ号或群号）
+     * @param scene 消息场景
+     * @return 会话 ID
+     */
+    suspend fun findOrCreateConversation(peerUin: Long, scene: MessageScene): String {
+        val conversationId = peerUin.toString()
+
+        // 检查会话是否已存在
+        val existing = conversations.find { it.id == conversationId }
+        if (existing != null) {
+            return conversationId
+        }
+
+        // 会话不存在，创建新会话
+        try {
+            val (name, _) = when (scene) {
+                MessageScene.FRIEND -> {
+                    val friend = cacheManager.friendCache[peerUin]
+                    val displayName = friend?.remark?.takeIf { it.isNotEmpty() }
+                        ?: friend?.nickname
+                        ?: peerUin.toString()
+                    displayName to ""
+                }
+
+                MessageScene.GROUP -> {
+                    val group = cacheManager.groupCache[peerUin]
+                    val groupName = group?.name ?: peerUin.toString()
+                    groupName to ""
+                }
+
+                else -> peerUin.toString() to ""
+            }
+
+            // 创建新会话并添加到列表末尾
+            val newConversation = Conversation(
+                id = conversationId,
+                peerUin = peerUin,
+                scene = scene,
+                name = name,
+                lastMessage = "",
+                lastMessageSeq = 0,
+                lastMessageTimestamp = System.currentTimeMillis() / 1000,
+                time = "",
+                unreadCount = 0
+            )
+            conversations.add(newConversation)
+
+            return conversationId
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // 如果获取失败，仍然创建基本会话
+            val newConversation = Conversation(
+                id = conversationId,
+                peerUin = peerUin,
+                scene = scene,
+                name = peerUin.toString(),
+                lastMessage = "",
+                lastMessageSeq = 0,
+                lastMessageTimestamp = System.currentTimeMillis() / 1000,
+                time = "",
+                unreadCount = 0
+            )
+            conversations.add(newConversation)
+            return conversationId
+        }
+    }
+
+    /**
      * 获取指定会话的消息列表
      */
     fun getMessages(conversationId: String): List<BotIncomingMessage> {

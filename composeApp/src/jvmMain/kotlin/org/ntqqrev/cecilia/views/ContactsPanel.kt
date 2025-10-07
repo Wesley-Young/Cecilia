@@ -3,6 +3,7 @@ package org.ntqqrev.cecilia.views
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +25,7 @@ import org.ntqqrev.acidify.struct.BotGroupData
 import org.ntqqrev.cecilia.components.AvatarImage
 import org.ntqqrev.cecilia.components.DraggableDivider
 import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.utils.LocalConversationManager
 
 enum class ContactType {
     FRIENDS,
@@ -32,8 +34,9 @@ enum class ContactType {
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun ContactsPanel() {
+fun ContactsPanel(onOpenConversation: (String) -> Unit = {}) {
     val bot = LocalBot.current
+    val conversationManager = LocalConversationManager.current
     var contactType by remember { mutableStateOf(ContactType.FRIENDS) }
     var friends by remember { mutableStateOf<List<BotFriendData>>(emptyList()) }
     var groups by remember { mutableStateOf<List<BotGroupData>>(emptyList()) }
@@ -81,6 +84,24 @@ fun ContactsPanel() {
                     selectedGroup = it
                     selectedFriend = null
                 },
+                onFriendDoubleClick = { friend ->
+                    scope.launch {
+                        val conversationId = conversationManager.findOrCreateConversation(
+                            peerUin = friend.uin,
+                            scene = org.ntqqrev.acidify.message.MessageScene.FRIEND
+                        )
+                        onOpenConversation(conversationId)
+                    }
+                },
+                onGroupDoubleClick = { group ->
+                    scope.launch {
+                        val conversationId = conversationManager.findOrCreateConversation(
+                            peerUin = group.uin,
+                            scene = org.ntqqrev.acidify.message.MessageScene.GROUP
+                        )
+                        onOpenConversation(conversationId)
+                    }
+                },
                 width = leftPanelWidth
             )
         }
@@ -122,6 +143,8 @@ private fun ContactListPanel(
     onContactTypeChange: (ContactType) -> Unit,
     onFriendClick: (BotFriendData) -> Unit,
     onGroupClick: (BotGroupData) -> Unit,
+    onFriendDoubleClick: (BotFriendData) -> Unit,
+    onGroupDoubleClick: (BotGroupData) -> Unit,
     width: Dp
 ) {
     var searchText by remember { mutableStateOf("") }
@@ -246,8 +269,8 @@ private fun ContactListPanel(
             }
         } else {
             when (contactType) {
-                ContactType.FRIENDS -> FriendsList(filteredFriends, selectedFriend, onFriendClick)
-                ContactType.GROUPS -> GroupsList(filteredGroups, selectedGroup, onGroupClick)
+                ContactType.FRIENDS -> FriendsList(filteredFriends, selectedFriend, onFriendClick, onFriendDoubleClick)
+                ContactType.GROUPS -> GroupsList(filteredGroups, selectedGroup, onGroupClick, onGroupDoubleClick)
             }
         }
     }
@@ -257,7 +280,8 @@ private fun ContactListPanel(
 private fun FriendsList(
     friends: List<BotFriendData>,
     selectedFriend: BotFriendData?,
-    onFriendClick: (BotFriendData) -> Unit
+    onFriendClick: (BotFriendData) -> Unit,
+    onFriendDoubleClick: (BotFriendData) -> Unit
 ) {
     // 按分组归类并排序
     val friendsByCategory = remember(friends) {
@@ -328,7 +352,8 @@ private fun FriendsList(
                     FriendItem(
                         friend = friend,
                         isSelected = selectedFriend?.uin == friend.uin,
-                        onClick = { onFriendClick(friend) }
+                        onClick = { onFriendClick(friend) },
+                        onDoubleClick = { onFriendDoubleClick(friend) }
                     )
                 }
             }
@@ -340,14 +365,18 @@ private fun FriendsList(
 private fun FriendItem(
     friend: BotFriendData,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDoubleClick: () -> Unit
 ) {
     val bot = LocalBot.current
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onDoubleClick = onDoubleClick
+            ),
         color = if (isSelected) MaterialTheme.colors.primary.copy(alpha = 0.12f)
         else MaterialTheme.colors.surface
     ) {
@@ -391,7 +420,8 @@ private fun FriendItem(
 private fun GroupsList(
     groups: List<BotGroupData>,
     selectedGroup: BotGroupData?,
-    onGroupClick: (BotGroupData) -> Unit
+    onGroupClick: (BotGroupData) -> Unit,
+    onGroupDoubleClick: (BotGroupData) -> Unit
 ) {
     // 按 uin 升序排序
     val sortedGroups = remember(groups) {
@@ -403,7 +433,8 @@ private fun GroupsList(
             GroupItem(
                 group = group,
                 isSelected = selectedGroup?.uin == group.uin,
-                onClick = { onGroupClick(group) }
+                onClick = { onGroupClick(group) },
+                onDoubleClick = { onGroupDoubleClick(group) }
             )
         }
     }
@@ -413,14 +444,18 @@ private fun GroupsList(
 private fun GroupItem(
     group: BotGroupData,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDoubleClick: () -> Unit
 ) {
     val bot = LocalBot.current
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onDoubleClick = onDoubleClick
+            ),
         color = if (isSelected) MaterialTheme.colors.primary.copy(alpha = 0.12f)
         else MaterialTheme.colors.surface
     ) {

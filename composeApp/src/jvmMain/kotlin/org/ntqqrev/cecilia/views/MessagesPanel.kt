@@ -24,13 +24,26 @@ import org.ntqqrev.cecilia.utils.LocalConversationManager
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun MessagesPanel(width: Dp = 320.dp) {
+fun MessagesPanel(
+    width: Dp = 320.dp,
+    initialSelectedConversationId: String? = null,
+    onConversationSelected: () -> Unit = {}
+) {
     val bot = LocalBot.current
     val cacheManager = LocalCacheManager.current
     val conversationManager = LocalConversationManager.current
     val coroutineScope = rememberCoroutineScope()
     var selectedConversationId by remember { mutableStateOf<String?>(null) }
     var leftPanelWidth by remember { mutableStateOf(width) }
+
+    // 处理外部传入的初始选中会话
+    LaunchedEffect(initialSelectedConversationId) {
+        initialSelectedConversationId?.let {
+            selectedConversationId = it
+            conversationManager.setSelectedConversation(it)
+            onConversationSelected()
+        }
+    }
 
     // 使用 ConversationManager 中的会话列表
     val conversations = conversationManager.conversations

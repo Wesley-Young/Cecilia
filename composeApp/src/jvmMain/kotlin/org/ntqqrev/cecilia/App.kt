@@ -11,11 +11,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.components.NavigationRail
 import org.ntqqrev.cecilia.components.NavigationTab
-import org.ntqqrev.cecilia.utils.CacheManager
-import org.ntqqrev.cecilia.utils.ConversationManager
-import org.ntqqrev.cecilia.utils.LocalBot
-import org.ntqqrev.cecilia.utils.LocalCacheManager
-import org.ntqqrev.cecilia.utils.LocalConversationManager
+import org.ntqqrev.cecilia.utils.*
 import org.ntqqrev.cecilia.views.ContactsPanel
 import org.ntqqrev.cecilia.views.LoginScreen
 import org.ntqqrev.cecilia.views.MessagesPanel
@@ -128,6 +124,7 @@ fun App(
 @Composable
 private fun MainContent() {
     var selectedTab by remember { mutableStateOf(NavigationTab.MESSAGES) }
+    var targetConversationId by remember { mutableStateOf<String?>(null) }
 
     Row(modifier = Modifier.fillMaxSize()) {
         // 最左侧：导航栏
@@ -146,8 +143,17 @@ private fun MainContent() {
 
         // 中间和右侧：根据选择的标签显示不同内容
         when (selectedTab) {
-            NavigationTab.MESSAGES -> MessagesPanel()
-            NavigationTab.CONTACTS -> ContactsPanel()
+            NavigationTab.MESSAGES -> MessagesPanel(
+                initialSelectedConversationId = targetConversationId,
+                onConversationSelected = { targetConversationId = null }
+            )
+
+            NavigationTab.CONTACTS -> ContactsPanel(
+                onOpenConversation = { conversationId ->
+                    targetConversationId = conversationId
+                    selectedTab = NavigationTab.MESSAGES
+                }
+            )
             NavigationTab.SETTINGS -> SettingsPanel()
         }
     }
