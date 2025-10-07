@@ -38,19 +38,19 @@ fun main() = application {
             try {
                 val configPath = Path("config.json")
                 val config: CeciliaConfig = if (configPath.exists()) {
-                    Json.decodeFromString(configPath.readText())
+                    CeciliaConfig.jsonModule.decodeFromString(configPath.readText())
                 } else {
                     val defaultConfig = CeciliaConfig()
-                    configPath.writeText(Json.encodeToString(defaultConfig))
+                    configPath.writeText(CeciliaConfig.jsonModule.encodeToString(defaultConfig))
                     defaultConfig
                 }
 
                 val sessionStorePath = Path("session-store.json")
                 val sessionStore: SessionStore = if (sessionStorePath.exists()) {
-                    Json.decodeFromString(SessionStore.serializer(), sessionStorePath.readText())
+                    Json.decodeFromString(sessionStorePath.readText())
                 } else {
                     val emptySessionStore = SessionStore.empty()
-                    sessionStorePath.writeText(Json.encodeToString(SessionStore.serializer(), emptySessionStore))
+                    sessionStorePath.writeText(Json.encodeToString(emptySessionStore))
                     emptySessionStore
                 }
 
