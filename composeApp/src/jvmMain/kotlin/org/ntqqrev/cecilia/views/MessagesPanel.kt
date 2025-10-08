@@ -29,6 +29,8 @@ fun MessagesPanel(
     onConversationSelected: () -> Unit = {}
 ) {
     val bot = LocalBot.current
+    val logger = remember { bot.createLogger("MessagesPanel") }
+
     val cacheManager = LocalCacheManager.current
     val conversationManager = LocalConversationManager.current
     val coroutineScope = rememberCoroutineScope()
@@ -53,8 +55,7 @@ fun MessagesPanel(
             try {
                 cacheManager.initialize()
             } catch (e: Exception) {
-                // 初始化失败，记录错误但不影响运行
-                e.printStackTrace()
+                logger.e(e) { "缓存初始化失败" }
             }
         }
     }
@@ -96,8 +97,7 @@ fun MessagesPanel(
                                     }
                                 }
                             } catch (e: Exception) {
-                                // 标记已读失败，记录错误但不影响UI
-                                e.printStackTrace()
+                                // 标记已读失败
                             }
                         }
                     }

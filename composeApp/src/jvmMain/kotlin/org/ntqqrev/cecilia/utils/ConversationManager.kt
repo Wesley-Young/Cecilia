@@ -36,6 +36,8 @@ class ConversationManager(
      */
     private var currentSelectedConversationId: String? = null
 
+    private val logger = bot.createLogger(this)
+
     init {
         // 启动后台消息监听
         startMessageListener()
@@ -249,8 +251,7 @@ class ConversationManager(
 
             return conversationId
         } catch (e: Exception) {
-            e.printStackTrace()
-            // 如果获取失败，仍然创建基本会话
+            logger.e(e) { "消息创建失败" }
             val newConversation = Conversation(
                 id = conversationId,
                 peerUin = peerUin,

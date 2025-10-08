@@ -26,6 +26,7 @@ import org.jetbrains.skia.Image as SkiaImage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.utils.MediaCache
 import org.ntqqrev.cecilia.views.ImagePreviewWindow
 import kotlin.math.min
 
@@ -44,9 +45,16 @@ fun MessageImage(
         launch {
             try {
                 val bitmap = withContext(Dispatchers.IO) {
-                    val url = bot.getDownloadUrl(imageSegment.fileId)
-                    val response = bot.httpClient.get(url)
-                    val imageBytes = response.readRawBytes()
+                    val cachedContent = MediaCache.getContentByFileId(imageSegment.fileId)
+                    val imageBytes = if (cachedContent != null) {
+                        cachedContent
+                    } else {
+                        val url = bot.getDownloadUrl(imageSegment.fileId)
+                        val response = bot.httpClient.get(url)
+                        val bytes = response.readRawBytes()
+                        MediaCache.putFileIdAndContent(imageSegment.fileId, url, bytes)
+                        bytes
+                    }
                     SkiaImage.makeFromEncoded(imageBytes).toComposeImageBitmap()
                 }
                 imageBitmap = bitmap

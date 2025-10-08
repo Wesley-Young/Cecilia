@@ -15,11 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
+import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.ChatBackgroundColor
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.LocalBot
@@ -27,6 +29,7 @@ import org.ntqqrev.cecilia.utils.LocalBot
 @Composable
 fun ChatArea(conversation: Conversation) {
     val bot = LocalBot.current
+    val logger = remember { bot.createLogger("ChatArea") }
 
     val coroutineScope = rememberCoroutineScope()
     var messageText by remember { mutableStateOf("") }
@@ -87,7 +90,7 @@ fun ChatArea(conversation: Conversation) {
             nextLoadSequence = historyMessages.nextStartSequence
             scrollToBottom()
         } catch (e: Exception) {
-            e.printStackTrace()
+            logger.e(e) { "消息初始化失败" }
         }
     }
 
@@ -143,7 +146,7 @@ fun ChatArea(conversation: Conversation) {
 
             try {
                 val historyMessages = when (conversation.scene) {
-                    org.ntqqrev.acidify.message.MessageScene.FRIEND -> {
+                    MessageScene.FRIEND -> {
                         bot.getFriendHistoryMessages(
                             friendUin = conversation.peerUin,
                             limit = 30,
@@ -151,7 +154,7 @@ fun ChatArea(conversation: Conversation) {
                         )
                     }
 
-                    org.ntqqrev.acidify.message.MessageScene.GROUP -> {
+                    MessageScene.GROUP -> {
                         bot.getGroupHistoryMessages(
                             groupUin = conversation.peerUin,
                             limit = 30,
@@ -174,10 +177,11 @@ fun ChatArea(conversation: Conversation) {
                     nextLoadSequence = null
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                if (e::class.qualifiedName != "androidx.compose.runtime.LeftCompositionCancellationException")
+                    logger.e(e) { "消息拉取失败" }
             } finally {
                 isLoadingMore = false
-                kotlinx.coroutines.delay(100)
+                delay(100)
             }
         }
     }
@@ -325,7 +329,7 @@ fun ChatArea(conversation: Conversation) {
                                 }
                             }
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            logger.e(e) { "消息发送失败" }
                         }
                     }
                 }

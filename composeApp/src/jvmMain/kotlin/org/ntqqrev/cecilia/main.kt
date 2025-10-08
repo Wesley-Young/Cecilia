@@ -90,7 +90,7 @@ fun main() = application {
                 userUin = newBot.sessionStore.uin
                 isLoggedIn = newBot.isLoggedIn
             } catch (e: Exception) {
-                loadingError = e.message ?: "未知错误"
+                loadingError = e.message ?: e::class.qualifiedName
             }
         }
     }
