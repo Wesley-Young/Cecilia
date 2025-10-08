@@ -506,7 +506,7 @@ private fun ChatInputArea(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.Bottom
         ) {
             OutlinedTextField(
@@ -514,7 +514,7 @@ private fun ChatInputArea(
                 onValueChange = onMessageTextChange,
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 56.dp, max = 120.dp)
+                    .heightIn(min = 40.dp, max = 100.dp)
                     .onPreviewKeyEvent { event ->
                         if (event.type == KeyEventType.KeyDown && event.key == Key.Enter) {
                             if (useCtrlEnterToSend) {
@@ -529,7 +529,7 @@ private fun ChatInputArea(
                                     // 在光标位置插入换行符
                                     val currentText = messageText.text
                                     val cursorPos = messageText.selection.start
-                                    val newText = currentText.substring(0, cursorPos) + "\n" +
+                                    val newText = currentText.take(cursorPos) + "\n" +
                                             currentText.substring(cursorPos)
                                     val newCursorPos = cursorPos + 1
                                     onMessageTextChange(
@@ -559,7 +559,7 @@ private fun ChatInputArea(
                     focusedBorderColor = MaterialTheme.colors.primary.copy(alpha = 0.5f),
                     unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
                 ),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(20.dp),
                 maxLines = 4
             )
 
@@ -567,7 +567,7 @@ private fun ChatInputArea(
 
             FloatingActionButton(
                 onClick = onSendMessage,
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(40.dp),
                 backgroundColor = MaterialTheme.colors.primary
             ) {
                 Icon(
