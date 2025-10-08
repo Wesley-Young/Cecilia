@@ -225,7 +225,7 @@ fun LoginPanel(
                                 style = MaterialTheme.typography.body1
                             )
                             Text(
-                                text = "请使用手机QQ扫码登录",
+                                text = "请使用手机 QQ 扫码登录",
                                 style = MaterialTheme.typography.body2,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                             )

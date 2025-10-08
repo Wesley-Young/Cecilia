@@ -526,7 +526,7 @@ private fun FriendDetailPanel(friend: BotFriendData) {
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            InfoRow("QQ号", friend.uin.toString())
+            InfoRow("QQ 号", friend.uin.toString())
             InfoRow("UID", friend.uid)
             if (friend.qid.isNotEmpty()) {
                 InfoRow("QID", friend.qid)

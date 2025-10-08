@@ -129,9 +129,9 @@ fun SettingsPanel(
                         ValidatedTextField(
                             value = signApiUrl,
                             onValueChange = { signApiUrl = it },
-                            label = "签名API地址",
+                            label = "签名 API 地址",
                             isValid = isSignApiUrlValid,
-                            errorMessage = "请输入有效的URL地址",
+                            errorMessage = "请输入有效的 URL 地址",
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -140,10 +140,10 @@ fun SettingsPanel(
                         ValidatedTextField(
                             value = signApiHttpProxy,
                             onValueChange = { signApiHttpProxy = it },
-                            label = "HTTP代理（可选）",
+                            label = "HTTP 代理（可选）",
                             placeholder = "例如: http://127.0.0.1:7890",
                             isValid = isSignApiHttpProxyValid,
-                            errorMessage = "请输入有效的代理URL地址",
+                            errorMessage = "请输入有效的代理 URL 地址",
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
