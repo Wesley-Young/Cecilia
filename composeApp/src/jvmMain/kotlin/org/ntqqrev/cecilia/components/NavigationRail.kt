@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import org.ntqqrev.cecilia.utils.LocalBot
 
 enum class NavigationTab {
     MESSAGES,
@@ -27,6 +28,8 @@ fun NavigationRail(
     selectedTab: NavigationTab,
     onTabSelected: (NavigationTab) -> Unit
 ) {
+    val bot = LocalBot.current
+    
     Column(
         modifier = Modifier
             .width(72.dp)
@@ -35,6 +38,16 @@ fun NavigationRail(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // 用户头像
+        AvatarImage(
+            uin = bot.sessionStore.uin,
+            size = 48.dp,
+            isGroup = false,
+            quality = 100
+        )
+        
         Spacer(modifier = Modifier.height(16.dp))
 
         NavigationRailItem(
