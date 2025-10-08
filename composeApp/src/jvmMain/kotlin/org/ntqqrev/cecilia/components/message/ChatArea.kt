@@ -28,6 +28,7 @@ import org.ntqqrev.cecilia.ChatBackgroundColor
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.LocalConfig
+import org.ntqqrev.cecilia.utils.segmentsToPreviewString
 import kotlin.random.Random
 
 @Composable
@@ -44,6 +45,8 @@ fun ChatArea(conversation: Conversation) {
     var isLoadingMore by remember { mutableStateOf(false) }
     var nextLoadSequence by remember { mutableStateOf<Long?>(null) }
     val pendingMessages = remember { mutableMapOf<Int, BotIncomingMessage>() }
+    
+    var replyToMessage by remember { mutableStateOf<BotIncomingMessage?>(null) }
 
     fun isUserAtBottom(): Boolean {
         val layoutInfo = listState.layoutInfo
@@ -63,7 +66,7 @@ fun ChatArea(conversation: Conversation) {
     }
 
     suspend fun scrollToBottom() {
-        listState.scrollToItem(messages.size - 1)
+        listState.scrollToItem((messages.size - 1).coerceAtLeast(0))
     }
 
     // 初始化：加载历史消息
@@ -237,12 +240,28 @@ fun ChatArea(conversation: Conversation) {
                         coroutineScope.launch {
                             scrollToSeq(seq)
                         }
-                    }
+                    },
+                    onReplyToMessage = { replyToMessage = it }
                 )
+            }
+        }
+        
+        // 当回复预览显示/隐藏时，如果用户在底部，保持滚动到底部
+        LaunchedEffect(replyToMessage) {
+            if (isUserAtBottom()) {
+                scrollToBottom()
             }
         }
 
         Divider()
+
+        // 回复预览区域
+        if (replyToMessage != null) {
+            ReplyPreview(
+                replyToMessage = replyToMessage!!,
+                onCancelReply = { replyToMessage = null }
+            )
+        }
 
         // 输入框区域
         ChatInputArea(
@@ -252,7 +271,10 @@ fun ChatArea(conversation: Conversation) {
             onSendMessage = {
                 if (messageText.text.isNotBlank()) {
                     val content = messageText.text
+                    val replySeq = replyToMessage?.sequence
+                    
                     messageText = TextFieldValue("")
+                    replyToMessage = null  // 立即隐藏回复UI
 
                     coroutineScope.launch {
                         try {
@@ -261,6 +283,7 @@ fun ChatArea(conversation: Conversation) {
 
                             // 创建占位符消息
                             val tempSequence = (messages.maxOfOrNull { it.sequence } ?: 0L) + 1
+
                             val placeholder = BotIncomingMessage(
                                 scene = conversation.scene,
                                 peerUin = conversation.peerUin,
@@ -271,7 +294,16 @@ fun ChatArea(conversation: Conversation) {
                                 senderUid = bot.uin.toString(),
                                 clientSequence = clientSequence,
                                 random = random,
-                                initSegments = listOf(BotIncomingSegment.Text(content)),
+                                initSegments = buildList {
+                                    if (replySeq != null) {
+                                        add(
+                                            BotIncomingSegment.Reply(
+                                                sequence = replySeq
+                                            )
+                                        )
+                                    }
+                                    add(BotIncomingSegment.Text(content))
+                                },
                                 messageUid = -1L
                             )
 
@@ -288,6 +320,8 @@ fun ChatArea(conversation: Conversation) {
                                         clientSequence = clientSequence,
                                         random = random
                                     ) {
+                                        // 如果有回复消息，先添加 reply segment
+                                        replySeq?.let { reply(it) }
                                         text(content)
                                     }
 
@@ -301,6 +335,17 @@ fun ChatArea(conversation: Conversation) {
                                             messages.removeAt(index)
                                         }
 
+                                        val realSegments = buildList {
+                                            // 如果有回复，先添加回复 segment
+                                            if (replySeq != null) {
+                                                add(BotIncomingSegment.Reply(
+                                                    sequence = replySeq,
+                                                ))
+                                            }
+                                            // 添加文本内容
+                                            add(BotIncomingSegment.Text(content))
+                                        }
+                                        
                                         val realMessage = BotIncomingMessage(
                                             scene = conversation.scene,
                                             peerUin = conversation.peerUin,
@@ -311,7 +356,7 @@ fun ChatArea(conversation: Conversation) {
                                             senderUid = bot.uin.toString(),
                                             clientSequence = clientSequence,
                                             random = random,
-                                            initSegments = listOf(BotIncomingSegment.Text(content)),
+                                            initSegments = realSegments,
                                             messageUid = 0L
                                         )
 
@@ -326,6 +371,8 @@ fun ChatArea(conversation: Conversation) {
                                         clientSequence = clientSequence,
                                         random = random
                                     ) {
+                                        // 如果有回复消息，先添加 reply segment
+                                        replySeq?.let { reply(it) }
                                         text(content)
                                     }
                                 }
@@ -341,6 +388,84 @@ fun ChatArea(conversation: Conversation) {
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun ReplyPreview(
+    replyToMessage: BotIncomingMessage,
+    onCancelReply: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colors.surface.copy(alpha = 0.9f),
+        elevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 左侧竖线
+            Surface(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(40.dp),
+                color = MaterialTheme.colors.primary,
+                shape = RoundedCornerShape(2.dp)
+            ) {}
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // 回复内容
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // 发送者名称
+                val senderName = when (replyToMessage.scene) {
+                    MessageScene.GROUP -> {
+                        replyToMessage.extraInfo?.let { info ->
+                            info.groupCard.takeIf { it.isNotEmpty() } ?: info.nick
+                        } ?: replyToMessage.senderUin.toString()
+                    }
+                    else -> replyToMessage.senderUin.toString()
+                }
+                
+                Text(
+                    text = senderName,
+                    style = MaterialTheme.typography.caption,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colors.primary
+                )
+                
+                Spacer(modifier = Modifier.height(2.dp))
+                
+                // 消息预览
+                val previewText = remember(replyToMessage) {
+                    replyToMessage.segmentsToPreviewString()
+                }
+                
+                Text(
+                    text = previewText,
+                    style = MaterialTheme.typography.body2,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    maxLines = 1
+                )
+            }
+            
+            // 取消按钮
+            IconButton(
+                onClick = onCancelReply,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Text(
+                    text = "✕",
+                    style = MaterialTheme.typography.h6,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
     }
 }
 

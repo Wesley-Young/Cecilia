@@ -1,5 +1,6 @@
 package org.ntqqrev.cecilia.components.message
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import org.ntqqrev.acidify.message.BotIncomingMessage
@@ -33,7 +35,8 @@ fun MessageBubble(
     message: BotIncomingMessage,
     selfUin: Long,
     allMessages: List<BotIncomingMessage> = emptyList(),
-    onScrollToMessage: ((Long) -> Unit)? = null
+    onScrollToMessage: ((Long) -> Unit)? = null,
+    onReplyToMessage: ((BotIncomingMessage) -> Unit)? = null
 ) {
     val isSent = message.senderUin == selfUin
 
@@ -103,6 +106,13 @@ fun MessageBubble(
             }
             .onPointerEvent(PointerEventType.Exit) {
                 isHovering = false
+            }
+            .pointerInput(message.sequence) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        onReplyToMessage?.invoke(message)
+                    }
+                )
             },
         horizontalArrangement = if (isSent) Arrangement.End else Arrangement.Start,
     ) {
