@@ -25,7 +25,7 @@ val GreenColors = lightColors(
 // 聊天区域背景色
 val ChatBackgroundColor = Color(0xFFEDF3EE)
 
-val FontFamily = FontFamily(
+val NotoFontFamily = FontFamily(
     Font("fonts/NotoSansSC-Regular.ttf"),
     Font("fonts/NotoSansSC-Bold.ttf", FontWeight.Bold),
 )

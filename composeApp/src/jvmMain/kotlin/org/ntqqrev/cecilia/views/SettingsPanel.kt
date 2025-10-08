@@ -7,6 +7,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.acidify.util.log.LogLevel
 import org.ntqqrev.cecilia.components.DropdownTextField
@@ -31,6 +32,7 @@ fun SettingsPanel(
     var signApiHttpProxy by remember { mutableStateOf(config.signApiHttpProxy) }
     var minLogLevel by remember { mutableStateOf(config.minLogLevel) }
     var displayScale by remember { mutableStateOf(config.displayScale.toString()) }
+    var macUseNotoSansSC by remember { mutableStateOf(config.macUseNotoSansSC) }
     var useCtrlEnterToSend by remember { mutableStateOf(config.useCtrlEnterToSend) }
 
     // 校验状态
@@ -46,6 +48,7 @@ fun SettingsPanel(
             signApiHttpProxy != config.signApiHttpProxy ||
             minLogLevel != config.minLogLevel ||
             displayScaleFloat != config.displayScale ||
+            macUseNotoSansSC != config.macUseNotoSansSC ||
             useCtrlEnterToSend != config.useCtrlEnterToSend
 
     // 保存配置的函数
@@ -57,6 +60,7 @@ fun SettingsPanel(
                     signApiHttpProxy = signApiHttpProxy,
                     minLogLevel = minLogLevel,
                     displayScale = displayScaleFloat,
+                    macUseNotoSansSC = macUseNotoSansSC,
                     useCtrlEnterToSend = useCtrlEnterToSend
                 )
             )
@@ -108,6 +112,7 @@ fun SettingsPanel(
                     Text(
                         text = "设置",
                         style = MaterialTheme.typography.h5,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colors.onSurface
                     )
 
@@ -165,6 +170,20 @@ fun SettingsPanel(
                             helperText = "修改界面缩放比例（例如：1.0, 1.25, 1.5）",
                             modifier = Modifier.fillMaxWidth()
                         )
+
+                        if (System.getProperty("os.name").lowercase().contains("mac")) {
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            LabeledToggle(
+                                checked = macUseNotoSansSC,
+                                onCheckedChange = { macUseNotoSansSC = it },
+                                label = "Noto Sans 爱好者模式",
+                                checkedText = "使用 Noto Sans SC 字体",
+                                uncheckedText = "使用 Mac 系统默认字体",
+                                helperText = "照顾使用 Mac 的 Noto Sans 爱好者",
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
 
                     Divider()
@@ -174,7 +193,7 @@ fun SettingsPanel(
                         LabeledToggle(
                             checked = useCtrlEnterToSend,
                             onCheckedChange = { useCtrlEnterToSend = it },
-                            label = "发送消息快捷键",
+                            label = "使用 ⌘/Ctrl + Enter 发送消息",
                             checkedText = "使用 ⌘/Ctrl + Enter 发送消息，Enter 换行",
                             uncheckedText = "使用 Enter 发送消息，⌘/Ctrl + Enter 换行",
                             modifier = Modifier.fillMaxWidth()

@@ -5,6 +5,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -30,7 +31,13 @@ fun App(
     MaterialTheme(
         colors = GreenColors,
         typography = Typography(
-            defaultFontFamily = FontFamily
+            defaultFontFamily = if (
+                System.getProperty("os.name").lowercase().contains("mac") &&
+                !config.macUseNotoSansSC
+            )
+                FontFamily.Default
+            else
+                NotoFontFamily
         )
     ) {
         when {

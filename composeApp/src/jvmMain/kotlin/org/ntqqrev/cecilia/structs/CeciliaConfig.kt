@@ -14,6 +14,7 @@ data class CeciliaConfig(
     val signApiHttpProxy: String = "",
     val minLogLevel: LogLevel = LogLevel.DEBUG,
     val displayScale: Float = 1.0f,
+    val macUseNotoSansSC: Boolean = false,
     val useCtrlEnterToSend: Boolean = true,
 ) {
     companion object {
