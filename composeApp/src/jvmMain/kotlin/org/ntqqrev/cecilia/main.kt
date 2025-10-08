@@ -27,7 +27,8 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 fun main() = application {
-    val config = CeciliaConfig.fromPath(Path("config.json"))
+    val configPath = Path("config.json")
+    val config = CeciliaConfig.fromPath(configPath)
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     var bot by remember { mutableStateOf<Bot?>(null) }
@@ -134,6 +135,8 @@ fun main() = application {
 
         CompositionLocalProvider(LocalDensity provides scaledDensity) {
             App(
+                config = config,
+                setConfig = { it.writeToPath(configPath) },
                 bot = bot,
                 cacheManager = cacheManager,
                 conversationManager = conversationManager,

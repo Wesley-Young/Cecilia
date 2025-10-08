@@ -11,6 +11,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.components.NavigationRail
 import org.ntqqrev.cecilia.components.NavigationTab
+import org.ntqqrev.cecilia.structs.CeciliaConfig
 import org.ntqqrev.cecilia.utils.*
 import org.ntqqrev.cecilia.views.ContactsPanel
 import org.ntqqrev.cecilia.views.LoginScreen
@@ -20,6 +21,8 @@ import org.ntqqrev.cecilia.views.SettingsPanel
 @Composable
 @Preview
 fun App(
+    config: CeciliaConfig,
+    setConfig: (CeciliaConfig) -> Unit,
     bot: Bot?,
     cacheManager: CacheManager? = null,
     conversationManager: ConversationManager? = null,
@@ -92,6 +95,8 @@ fun App(
                 // 提供 Bot、CacheManager 和 ConversationManager 到子组件
                 if (cacheManager != null && conversationManager != null) {
                     CompositionLocalProvider(
+                        LocalConfig provides config,
+                        LocalSetConfig provides setConfig,
                         LocalBot provides bot,
                         LocalCacheManager provides cacheManager,
                         LocalConversationManager provides conversationManager
