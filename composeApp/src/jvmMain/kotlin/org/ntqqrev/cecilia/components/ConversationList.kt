@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.ntqqrev.acidify.message.MessageScene
@@ -26,7 +27,7 @@ fun ConversationList(
     conversations: List<Conversation>,
     selectedId: String?,
     onConversationClick: (String) -> Unit,
-    width: androidx.compose.ui.unit.Dp = 320.dp,
+    width: Dp = 320.dp,
     showMenuButton: Boolean = true
 ) {
     var showMenu by remember { mutableStateOf(false) }

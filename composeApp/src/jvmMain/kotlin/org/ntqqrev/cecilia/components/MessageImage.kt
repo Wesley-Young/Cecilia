@@ -3,32 +3,33 @@ package org.ntqqrev.cecilia.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.rememberWindowState
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.jetbrains.skia.Image as SkiaImage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.MediaCache
 import org.ntqqrev.cecilia.views.ImagePreviewWindow
-import kotlin.math.min
+import org.jetbrains.skia.Image as SkiaImage
 
 @Composable
 fun MessageImage(
@@ -36,7 +37,7 @@ fun MessageImage(
     isSent: Boolean
 ) {
     val bot = LocalBot.current
-    var imageBitmap by remember(imageSegment.fileId) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    var imageBitmap by remember(imageSegment.fileId) { mutableStateOf<ImageBitmap?>(null) }
     var isLoading by remember(imageSegment.fileId) { mutableStateOf(true) }
     var hasError by remember(imageSegment.fileId) { mutableStateOf(false) }
     var showPreview by remember { mutableStateOf(false) }
@@ -122,7 +123,7 @@ fun MessageImage(
                     modifier = modifier,
                     contentAlignment = Alignment.Center
                 ) {
-                    androidx.compose.material.Text(
+                    Text(
                         text = "[图片加载失败]",
                         style = MaterialTheme.typography.caption,
                         color = if (isSent)

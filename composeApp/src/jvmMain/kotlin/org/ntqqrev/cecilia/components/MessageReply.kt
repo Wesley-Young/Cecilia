@@ -9,6 +9,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.acidify.message.BotIncomingMessage
@@ -57,7 +58,7 @@ fun MessageReply(
                 Text(
                     text = senderName,
                     style = MaterialTheme.typography.caption,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                    fontWeight = FontWeight.Medium,
                     color = if (isSent)
                         MaterialTheme.colors.onPrimary.copy(alpha = 0.8f)
                     else

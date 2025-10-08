@@ -25,6 +25,7 @@ import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.ChatBackgroundColor
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.LocalBot
+import kotlin.random.Random
 
 @Composable
 fun ChatArea(conversation: Conversation) {
@@ -68,14 +69,14 @@ fun ChatArea(conversation: Conversation) {
 
         try {
             val historyMessages = when (conversation.scene) {
-                org.ntqqrev.acidify.message.MessageScene.FRIEND -> {
+                MessageScene.FRIEND -> {
                     bot.getFriendHistoryMessages(
                         friendUin = conversation.peerUin,
                         limit = 30
                     )
                 }
 
-                org.ntqqrev.acidify.message.MessageScene.GROUP -> {
+                MessageScene.GROUP -> {
                     bot.getGroupHistoryMessages(
                         groupUin = conversation.peerUin,
                         limit = 30
@@ -250,8 +251,8 @@ fun ChatArea(conversation: Conversation) {
 
                     coroutineScope.launch {
                         try {
-                            val clientSequence = kotlin.random.Random.nextLong()
-                            val random = kotlin.random.Random.nextInt()
+                            val clientSequence = Random.nextLong()
+                            val random = Random.nextInt()
 
                             // 创建占位符消息
                             val tempSequence = (messages.maxOfOrNull { it.sequence } ?: 0L) + 1
@@ -276,7 +277,7 @@ fun ChatArea(conversation: Conversation) {
 
                             // 发送真实消息
                             when (conversation.scene) {
-                                org.ntqqrev.acidify.message.MessageScene.FRIEND -> {
+                                MessageScene.FRIEND -> {
                                     val result = bot.sendFriendMessage(
                                         friendUin = conversation.peerUin,
                                         clientSequence = clientSequence,
@@ -314,7 +315,7 @@ fun ChatArea(conversation: Conversation) {
                                     }
                                 }
 
-                                org.ntqqrev.acidify.message.MessageScene.GROUP -> {
+                                MessageScene.GROUP -> {
                                     bot.sendGroupMessage(
                                         groupUin = conversation.peerUin,
                                         clientSequence = clientSequence,

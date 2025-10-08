@@ -18,6 +18,8 @@ import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.util.UrlSignProvider
 import org.ntqqrev.acidify.util.log.SimpleColoredLogHandler
 import org.ntqqrev.cecilia.structs.CeciliaConfig
+import org.ntqqrev.cecilia.utils.CacheManager
+import org.ntqqrev.cecilia.utils.ConversationManager
 import java.awt.Dimension
 import kotlin.io.path.Path
 import kotlin.io.path.exists
@@ -36,8 +38,8 @@ fun main() = application {
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     var bot by remember { mutableStateOf<Bot?>(null) }
-    var cacheManager by remember { mutableStateOf<org.ntqqrev.cecilia.utils.CacheManager?>(null) }
-    var conversationManager by remember { mutableStateOf<org.ntqqrev.cecilia.utils.ConversationManager?>(null) }
+    var cacheManager by remember { mutableStateOf<CacheManager?>(null) }
+    var conversationManager by remember { mutableStateOf<ConversationManager?>(null) }
     var loadingError by remember { mutableStateOf<String?>(null) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var userUin by remember { mutableStateOf(0L) }
@@ -84,10 +86,10 @@ fun main() = application {
 
                 bot = newBot
                 // 创建缓存管理器
-                val newCacheManager = org.ntqqrev.cecilia.utils.CacheManager(newBot, scope)
+                val newCacheManager = CacheManager(newBot, scope)
                 cacheManager = newCacheManager
                 // 创建会话管理器（在 CacheManager 之后）
-                conversationManager = org.ntqqrev.cecilia.utils.ConversationManager(newBot, newCacheManager, scope)
+                conversationManager = ConversationManager(newBot, newCacheManager, scope)
                 userUin = newBot.sessionStore.uin
                 isLoggedIn = newBot.isLoggedIn
             } catch (e: Exception) {
