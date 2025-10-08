@@ -29,7 +29,7 @@ fun App(
     onLoginStateChange: ((Boolean, Long) -> Unit)? = null
 ) {
     MaterialTheme(
-        colors = GreenColors,
+        colors = config.theme.colorScheme,
         typography = Typography(
             defaultFontFamily = if (
                 System.getProperty("os.name").lowercase().contains("mac") &&

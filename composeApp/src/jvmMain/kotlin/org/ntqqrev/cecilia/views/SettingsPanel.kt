@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.acidify.util.log.LogLevel
+import org.ntqqrev.cecilia.ThemeType
 import org.ntqqrev.cecilia.components.DropdownTextField
 import org.ntqqrev.cecilia.components.LabeledToggle
 import org.ntqqrev.cecilia.components.ValidatedTextField
@@ -34,6 +35,7 @@ fun SettingsPanel(
     var displayScale by remember { mutableStateOf(config.displayScale.toString()) }
     var macUseNotoSansSC by remember { mutableStateOf(config.macUseNotoSansSC) }
     var useCtrlEnterToSend by remember { mutableStateOf(config.useCtrlEnterToSend) }
+    var theme by remember { mutableStateOf(config.theme) }
 
     // 校验状态
     val isSignApiUrlValid = signApiUrl.isNotBlank() && isValidUrl(signApiUrl)
@@ -49,7 +51,8 @@ fun SettingsPanel(
             minLogLevel != config.minLogLevel ||
             displayScaleFloat != config.displayScale ||
             macUseNotoSansSC != config.macUseNotoSansSC ||
-            useCtrlEnterToSend != config.useCtrlEnterToSend
+            useCtrlEnterToSend != config.useCtrlEnterToSend ||
+            theme != config.theme
 
     // 保存配置的函数
     val saveConfig = {
@@ -61,7 +64,8 @@ fun SettingsPanel(
                     minLogLevel = minLogLevel,
                     displayScale = displayScaleFloat,
                     macUseNotoSansSC = macUseNotoSansSC,
-                    useCtrlEnterToSend = useCtrlEnterToSend
+                    useCtrlEnterToSend = useCtrlEnterToSend,
+                    theme = theme
                 )
             )
         }
@@ -73,7 +77,9 @@ fun SettingsPanel(
         signApiHttpProxy = config.signApiHttpProxy
         minLogLevel = config.minLogLevel
         displayScale = config.displayScale.toString()
+        macUseNotoSansSC = config.macUseNotoSansSC
         useCtrlEnterToSend = config.useCtrlEnterToSend
+        theme = config.theme
     }
 
     // 通知父组件是否有未保存的更改以及操作
@@ -161,6 +167,18 @@ fun SettingsPanel(
 
                     // 显示缩放
                     SettingSection(title = "界面设置") {
+                        DropdownTextField(
+                            value = theme,
+                            onValueChange = { theme = it },
+                            options = ThemeType.entries,
+                            label = "界面主题",
+                            helperText = "选择应用的配色主题",
+                            displayText = { it.displayName },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         ValidatedTextField(
                             value = displayScale,
                             onValueChange = { displayScale = it },

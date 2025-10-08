@@ -3,6 +3,7 @@ package org.ntqqrev.cecilia.structs
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.ntqqrev.acidify.util.log.LogLevel
+import org.ntqqrev.cecilia.ThemeType
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.readText
@@ -13,6 +14,7 @@ data class CeciliaConfig(
     val signApiUrl: String = "https://sign.lagrangecore.org/api/sign/39038",
     val signApiHttpProxy: String = "",
     val minLogLevel: LogLevel = LogLevel.DEBUG,
+    val theme: ThemeType = ThemeType.GREEN,
     val displayScale: Float = 1.0f,
     val macUseNotoSansSC: Boolean = false,
     val useCtrlEnterToSend: Boolean = true,

@@ -26,7 +26,6 @@ import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.ChatBackgroundColor
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.LocalConfig
@@ -284,7 +283,7 @@ fun ChatArea(conversation: Conversation) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(ChatBackgroundColor)
+            .background(config.theme.chatBackgroundColor)
     ) {
         // 顶部标题栏
         ChatHeader(conversation)
