@@ -170,7 +170,10 @@ fun ChatArea(conversation: Conversation) {
                 else -> return@LaunchedEffect
             }
 
-            messages.addAll(0, historyMessages.messages.map { DisplayMessage(real = it) })
+            messages.addAll(
+                0,
+                historyMessages.messages.map(BotIncomingMessage::toDisplayMessage)
+            )
             nextLoadSequence = historyMessages.nextStartSequence
             scrollToBottom()
         } catch (e: Exception) {
@@ -240,7 +243,10 @@ fun ChatArea(conversation: Conversation) {
                 }
 
                 if (historyMessages != null && historyMessages.messages.isNotEmpty()) {
-                    messages.addAll(0, historyMessages.messages.map { DisplayMessage(real = it) })
+                    messages.addAll(
+                        0,
+                        historyMessages.messages.map(BotIncomingMessage::toDisplayMessage)
+                    )
                     nextLoadSequence = historyMessages.nextStartSequence
 
                     // 滚动到之前最老的消息
@@ -314,6 +320,10 @@ fun ChatArea(conversation: Conversation) {
                         message = message.placeholder,
                         allMessages = messages
                     )
+
+                    message.greyTip != null -> GreyTip(
+                        text = message.greyTip
+                    )
                 }
             }
         }
@@ -364,6 +374,16 @@ fun ChatArea(conversation: Conversation) {
             }
         )
     }
+}
+
+fun BotIncomingMessage.toDisplayMessage() = when {
+    this.senderUin == 0L -> DisplayMessage(
+        greyTip = "该消息已被撤回"
+    )
+
+    else -> DisplayMessage(
+        real = this
+    )
 }
 
 @Composable
