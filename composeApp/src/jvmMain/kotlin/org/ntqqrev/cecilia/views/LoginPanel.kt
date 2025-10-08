@@ -29,7 +29,7 @@ import org.ntqqrev.cecilia.utils.LocalBot
 import qrcode.QRCode
 
 @Composable
-fun LoginScreen(
+fun LoginPanel(
     onLoginSuccess: () -> Unit,
     onLoginStateChange: ((Boolean, Long) -> Unit)?
 ) {

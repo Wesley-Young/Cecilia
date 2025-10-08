@@ -14,7 +14,7 @@ import org.ntqqrev.cecilia.components.NavigationTab
 import org.ntqqrev.cecilia.structs.CeciliaConfig
 import org.ntqqrev.cecilia.utils.*
 import org.ntqqrev.cecilia.views.ContactsPanel
-import org.ntqqrev.cecilia.views.LoginScreen
+import org.ntqqrev.cecilia.views.LoginPanel
 import org.ntqqrev.cecilia.views.MessagesPanel
 import org.ntqqrev.cecilia.views.SettingsPanel
 
@@ -106,7 +106,7 @@ fun App(
                             MainContent()
                         } else {
                             // 未登录，显示登录界面
-                            LoginScreen(
+                            LoginPanel(
                                 onLoginSuccess = { isLoggedIn = true },
                                 onLoginStateChange = onLoginStateChange
                             )
