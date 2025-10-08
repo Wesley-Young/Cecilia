@@ -11,12 +11,10 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.components.NavigationRail
 import org.ntqqrev.cecilia.components.NavigationTab
+import org.ntqqrev.cecilia.components.UnsavedChangesDialog
 import org.ntqqrev.cecilia.structs.CeciliaConfig
 import org.ntqqrev.cecilia.utils.*
-import org.ntqqrev.cecilia.views.ContactsPanel
-import org.ntqqrev.cecilia.views.LoginPanel
-import org.ntqqrev.cecilia.views.MessagesPanel
-import org.ntqqrev.cecilia.views.SettingsPanel
+import org.ntqqrev.cecilia.views.*
 
 @Composable
 @Preview
@@ -131,11 +129,49 @@ private fun MainContent() {
     var selectedTab by remember { mutableStateOf(NavigationTab.MESSAGES) }
     var targetConversationId by remember { mutableStateOf<String?>(null) }
 
+    // 设置页面的状态
+    var hasUnsavedChanges by remember { mutableStateOf(false) }
+    var settingsActions by remember { mutableStateOf(SettingsActions()) }
+
+    // 对话框状态
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+    var pendingTab by remember { mutableStateOf<NavigationTab?>(null) }
+
+    // 显示未保存更改对话框
+    if (showUnsavedChangesDialog && pendingTab != null) {
+        UnsavedChangesDialog(
+            onSave = {
+                settingsActions.save()
+                selectedTab = pendingTab!!
+                showUnsavedChangesDialog = false
+                pendingTab = null
+            },
+            onDiscard = {
+                settingsActions.discard()
+                selectedTab = pendingTab!!
+                showUnsavedChangesDialog = false
+                pendingTab = null
+            },
+            onCancel = {
+                showUnsavedChangesDialog = false
+                pendingTab = null
+            }
+        )
+    }
+
     Row(modifier = Modifier.fillMaxSize()) {
         // 最左侧：导航栏
         NavigationRail(
             selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it }
+            onTabSelected = { newTab ->
+                // 如果当前在设置页面且有未保存的更改，显示对话框
+                if (selectedTab == NavigationTab.SETTINGS && hasUnsavedChanges && newTab != selectedTab) {
+                    pendingTab = newTab
+                    showUnsavedChangesDialog = true
+                } else {
+                    selectedTab = newTab
+                }
+            }
         )
 
         // 分界线
@@ -159,7 +195,12 @@ private fun MainContent() {
                     selectedTab = NavigationTab.MESSAGES
                 }
             )
-            NavigationTab.SETTINGS -> SettingsPanel()
+            NavigationTab.SETTINGS -> SettingsPanel(
+                onUnsavedChangesUpdate = { hasChanges, actions ->
+                    hasUnsavedChanges = hasChanges
+                    settingsActions = actions
+                }
+            )
         }
     }
 }

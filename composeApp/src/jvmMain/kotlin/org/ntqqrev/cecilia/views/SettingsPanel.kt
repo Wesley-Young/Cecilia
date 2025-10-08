@@ -15,8 +15,15 @@ import org.ntqqrev.cecilia.components.ValidatedTextField
 import org.ntqqrev.cecilia.utils.LocalConfig
 import org.ntqqrev.cecilia.utils.LocalSetConfig
 
+data class SettingsActions(
+    val save: () -> Unit = {},
+    val discard: () -> Unit = {}
+)
+
 @Composable
-fun SettingsPanel() {
+fun SettingsPanel(
+    onUnsavedChangesUpdate: (hasChanges: Boolean, actions: SettingsActions) -> Unit = { _, _ -> }
+) {
     val config = LocalConfig.current
     val setConfig = LocalSetConfig.current
 
@@ -33,6 +40,48 @@ fun SettingsPanel() {
     val isDisplayScaleValid = displayScaleFloat != null && displayScaleFloat in 0.5f..3.0f
 
     val isFormValid = isSignApiUrlValid && isSignApiHttpProxyValid && isDisplayScaleValid
+
+    // 检测是否有未保存的更改
+    val hasUnsavedChanges = signApiUrl != config.signApiUrl ||
+            signApiHttpProxy != config.signApiHttpProxy ||
+            minLogLevel != config.minLogLevel ||
+            displayScaleFloat != config.displayScale ||
+            useCtrlEnterToSend != config.useCtrlEnterToSend
+
+    // 保存配置的函数
+    val saveConfig = {
+        if (isFormValid) {
+            setConfig(
+                config.copy(
+                    signApiUrl = signApiUrl,
+                    signApiHttpProxy = signApiHttpProxy,
+                    minLogLevel = minLogLevel,
+                    displayScale = displayScaleFloat,
+                    useCtrlEnterToSend = useCtrlEnterToSend
+                )
+            )
+        }
+    }
+
+    // 丢弃更改的函数
+    val discardChanges = {
+        signApiUrl = config.signApiUrl
+        signApiHttpProxy = config.signApiHttpProxy
+        minLogLevel = config.minLogLevel
+        displayScale = config.displayScale.toString()
+        useCtrlEnterToSend = config.useCtrlEnterToSend
+    }
+
+    // 通知父组件是否有未保存的更改以及操作
+    LaunchedEffect(hasUnsavedChanges, isFormValid) {
+        onUnsavedChangesUpdate(
+            hasUnsavedChanges && isFormValid,
+            SettingsActions(
+                save = saveConfig,
+                discard = discardChanges
+            )
+        )
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -113,7 +162,7 @@ fun SettingsPanel() {
                             label = "显示缩放比例",
                             isValid = isDisplayScaleValid,
                             errorMessage = "请输入有效的数字（范围：0.5 到 3.0）",
-                            helperText = "修改界面缩放比例（例如：1.0, 1.25, 1.5）。修改后需要重启应用生效。",
+                            helperText = "修改界面缩放比例（例如：1.0, 1.25, 1.5）",
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -140,18 +189,8 @@ fun SettingsPanel() {
                         horizontalArrangement = Arrangement.End
                     ) {
                         Button(
-                            onClick = {
-                                setConfig(
-                                    config.copy(
-                                        signApiUrl = signApiUrl,
-                                        signApiHttpProxy = signApiHttpProxy,
-                                        minLogLevel = minLogLevel,
-                                        displayScale = displayScaleFloat!!,
-                                        useCtrlEnterToSend = useCtrlEnterToSend
-                                    )
-                                )
-                            },
-                            enabled = isFormValid,
+                            onClick = saveConfig,
+                            enabled = isFormValid && hasUnsavedChanges,
                             colors = ButtonDefaults.buttonColors(
                                 backgroundColor = MaterialTheme.colors.primary,
                                 disabledBackgroundColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
@@ -164,7 +203,7 @@ fun SettingsPanel() {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "注意：某些设置（如显示缩放）需要重启应用后才能生效。",
+                        text = "注意：某些设置需要重启应用后才能生效。",
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
                         modifier = Modifier.fillMaxWidth()
