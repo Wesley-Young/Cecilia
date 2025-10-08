@@ -27,14 +27,7 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 fun main() = application {
-    val configPath = Path("config.json")
-    val config: CeciliaConfig = if (configPath.exists()) {
-        CeciliaConfig.jsonModule.decodeFromString(configPath.readText())
-    } else {
-        val defaultConfig = CeciliaConfig()
-        configPath.writeText(CeciliaConfig.jsonModule.encodeToString(defaultConfig))
-        defaultConfig
-    }
+    val config = CeciliaConfig.fromPath(Path("config.json"))
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     var bot by remember { mutableStateOf<Bot?>(null) }
