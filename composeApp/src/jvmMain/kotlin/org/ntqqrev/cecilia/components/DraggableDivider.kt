@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.Divider
 import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -42,6 +43,9 @@ fun DraggableDivider(
     dividerLineWidth: Dp = 1.dp,
     modifier: Modifier = Modifier
 ) {
+    // 使用 rememberUpdatedState 确保闭包中始终能获取到最新的 currentWidth
+    val currentWidthState = rememberUpdatedState(currentWidth)
+    
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -52,7 +56,8 @@ fun DraggableDivider(
                 var totalDrag = 0f
                 detectDragGestures(
                     onDragStart = {
-                        dragStartWidth = currentWidth
+                        // 每次拖拽开始时获取最新的宽度
+                        dragStartWidth = currentWidthState.value
                         totalDrag = 0f
                     },
                     onDrag = { change, dragAmount ->
