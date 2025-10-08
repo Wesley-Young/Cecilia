@@ -69,6 +69,90 @@ fun ChatArea(conversation: Conversation) {
         listState.scrollToItem((messages.size - 1).coerceAtLeast(0))
     }
 
+    suspend fun sendMessage(
+        content: String,
+        replySeq: Long?,
+    ) {
+        val clientSequence = Random.nextLong()
+        val random = Random.nextInt()
+
+        // 创建占位符消息
+        val tempSequence = (messages.maxOfOrNull { it.sequence } ?: 0L) + 1
+
+        val placeholder = BotIncomingMessage(
+            scene = conversation.scene,
+            peerUin = conversation.peerUin,
+            peerUid = conversation.peerUin.toString(),
+            sequence = tempSequence,
+            timestamp = System.currentTimeMillis() / 1000,
+            senderUin = bot.uin,
+            senderUid = bot.uin.toString(),
+            clientSequence = clientSequence,
+            random = random,
+            initSegments = buildList {
+                if (replySeq != null) {
+                    add(
+                        BotIncomingSegment.Reply(
+                            sequence = replySeq
+                        )
+                    )
+                }
+                add(BotIncomingSegment.Text(content))
+            },
+            messageUid = -1L
+        )
+
+        messages.add(placeholder)
+        scrollToBottom()
+        pendingMessages[random] = placeholder
+
+        // 发送真实消息
+        when (conversation.scene) {
+            MessageScene.FRIEND -> {
+                val result = bot.sendFriendMessage(
+                    friendUin = conversation.peerUin,
+                    clientSequence = clientSequence,
+                    random = random
+                ) {
+                    replySeq?.let { reply(it) }
+                    text(content)
+                }
+
+                if (conversation.peerUin != bot.uin) {
+                    val realMessage = bot.getFriendHistoryMessages(
+                        friendUin = conversation.peerUin,
+                        limit = 1,
+                        startSequence = result.sequence
+                    ).messages.firstOrNull()
+                    realMessage?.let {
+                        pendingMessages.remove(random)
+                        val index = messages.indexOfFirst {
+                            it.random == random && it.messageUid == -1L
+                        }
+                        if (index != -1) {
+                            messages.removeAt(index)
+                        }
+                        messages.add(realMessage)
+                        messages.sortBy { it.sequence }
+                    }
+                }
+            }
+
+            MessageScene.GROUP -> {
+                bot.sendGroupMessage(
+                    groupUin = conversation.peerUin,
+                    clientSequence = clientSequence,
+                    random = random
+                ) {
+                    replySeq?.let { reply(it) }
+                    text(content)
+                }
+            }
+
+            else -> {}
+        }
+    }
+
     // 初始化：加载历史消息
     LaunchedEffect(conversation.id) {
         messages.clear()
@@ -272,115 +356,13 @@ fun ChatArea(conversation: Conversation) {
                 if (messageText.text.isNotBlank()) {
                     val content = messageText.text
                     val replySeq = replyToMessage?.sequence
-                    
+
                     messageText = TextFieldValue("")
                     replyToMessage = null  // 立即隐藏回复UI
 
                     coroutineScope.launch {
                         try {
-                            val clientSequence = Random.nextLong()
-                            val random = Random.nextInt()
-
-                            // 创建占位符消息
-                            val tempSequence = (messages.maxOfOrNull { it.sequence } ?: 0L) + 1
-
-                            val placeholder = BotIncomingMessage(
-                                scene = conversation.scene,
-                                peerUin = conversation.peerUin,
-                                peerUid = conversation.peerUin.toString(),
-                                sequence = tempSequence,
-                                timestamp = System.currentTimeMillis() / 1000,
-                                senderUin = bot.uin,
-                                senderUid = bot.uin.toString(),
-                                clientSequence = clientSequence,
-                                random = random,
-                                initSegments = buildList {
-                                    if (replySeq != null) {
-                                        add(
-                                            BotIncomingSegment.Reply(
-                                                sequence = replySeq
-                                            )
-                                        )
-                                    }
-                                    add(BotIncomingSegment.Text(content))
-                                },
-                                messageUid = -1L
-                            )
-
-                            // 添加占位符消息
-                            messages.add(placeholder)
-                            scrollToBottom()
-                            pendingMessages[random] = placeholder
-
-                            // 发送真实消息
-                            when (conversation.scene) {
-                                MessageScene.FRIEND -> {
-                                    val result = bot.sendFriendMessage(
-                                        friendUin = conversation.peerUin,
-                                        clientSequence = clientSequence,
-                                        random = random
-                                    ) {
-                                        // 如果有回复消息，先添加 reply segment
-                                        replySeq?.let { reply(it) }
-                                        text(content)
-                                    }
-
-                                    // 如果是给别人发的私聊消息（不是给自己），需要手动替换占位符
-                                    if (conversation.peerUin != bot.uin) {
-                                        pendingMessages.remove(random)
-                                        val index = messages.indexOfFirst {
-                                            it.random == random && it.messageUid == -1L
-                                        }
-                                        if (index != -1) {
-                                            messages.removeAt(index)
-                                        }
-
-                                        val realSegments = buildList {
-                                            // 如果有回复，先添加回复 segment
-                                            if (replySeq != null) {
-                                                add(BotIncomingSegment.Reply(
-                                                    sequence = replySeq,
-                                                ))
-                                            }
-                                            // 添加文本内容
-                                            add(BotIncomingSegment.Text(content))
-                                        }
-                                        
-                                        val realMessage = BotIncomingMessage(
-                                            scene = conversation.scene,
-                                            peerUin = conversation.peerUin,
-                                            peerUid = conversation.peerUin.toString(),
-                                            sequence = result.sequence,
-                                            timestamp = result.sendTime,
-                                            senderUin = bot.uin,
-                                            senderUid = bot.uin.toString(),
-                                            clientSequence = clientSequence,
-                                            random = random,
-                                            initSegments = realSegments,
-                                            messageUid = 0L
-                                        )
-
-                                        messages.add(realMessage)
-                                        messages.sortBy { it.sequence }
-                                    }
-                                }
-
-                                MessageScene.GROUP -> {
-                                    bot.sendGroupMessage(
-                                        groupUin = conversation.peerUin,
-                                        clientSequence = clientSequence,
-                                        random = random
-                                    ) {
-                                        // 如果有回复消息，先添加 reply segment
-                                        replySeq?.let { reply(it) }
-                                        text(content)
-                                    }
-                                }
-
-                                else -> {
-                                    // 其他类型暂不支持
-                                }
-                            }
+                            sendMessage(content, replySeq)
                         } catch (e: Exception) {
                             logger.e(e) { "消息发送失败" }
                         }
