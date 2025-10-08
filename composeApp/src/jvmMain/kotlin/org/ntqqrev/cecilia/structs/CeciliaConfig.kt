@@ -1,7 +1,6 @@
 package org.ntqqrev.cecilia.structs
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 import org.ntqqrev.acidify.util.log.LogLevel
 import java.nio.file.Path
@@ -15,6 +14,7 @@ data class CeciliaConfig(
     val signApiHttpProxy: String = "",
     val minLogLevel: LogLevel = LogLevel.DEBUG,
     val displayScale: Float = 1.0f,
+    val useCtrlEnterToSend: Boolean = true,
 ) {
     companion object {
         val jsonModule = Json {

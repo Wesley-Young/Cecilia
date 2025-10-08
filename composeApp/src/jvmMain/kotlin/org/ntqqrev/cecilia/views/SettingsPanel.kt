@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.acidify.util.log.LogLevel
 import org.ntqqrev.cecilia.components.DropdownTextField
+import org.ntqqrev.cecilia.components.LabeledToggle
 import org.ntqqrev.cecilia.components.ValidatedTextField
 import org.ntqqrev.cecilia.utils.LocalConfig
 import org.ntqqrev.cecilia.utils.LocalSetConfig
@@ -23,6 +24,7 @@ fun SettingsPanel() {
     var signApiHttpProxy by remember { mutableStateOf(config.signApiHttpProxy) }
     var minLogLevel by remember { mutableStateOf(config.minLogLevel) }
     var displayScale by remember { mutableStateOf(config.displayScale.toString()) }
+    var useCtrlEnterToSend by remember { mutableStateOf(config.useCtrlEnterToSend) }
 
     // 校验状态
     val isSignApiUrlValid = signApiUrl.isNotBlank() && isValidUrl(signApiUrl)
@@ -118,6 +120,20 @@ fun SettingsPanel() {
 
                     Divider()
 
+                    // 消息发送设置
+                    SettingSection(title = "消息设置") {
+                        LabeledToggle(
+                            checked = useCtrlEnterToSend,
+                            onCheckedChange = { useCtrlEnterToSend = it },
+                            label = "发送消息快捷键",
+                            checkedText = "使用 ⌘/Ctrl + Enter 发送消息，Enter 换行",
+                            uncheckedText = "使用 Enter 发送消息，⌘/Ctrl + Enter 换行",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Divider()
+
                     // 保存按钮
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -130,7 +146,8 @@ fun SettingsPanel() {
                                         signApiUrl = signApiUrl,
                                         signApiHttpProxy = signApiHttpProxy,
                                         minLogLevel = minLogLevel,
-                                        displayScale = displayScaleFloat!!
+                                        displayScale = displayScaleFloat!!,
+                                        useCtrlEnterToSend = useCtrlEnterToSend
                                     )
                                 )
                             },

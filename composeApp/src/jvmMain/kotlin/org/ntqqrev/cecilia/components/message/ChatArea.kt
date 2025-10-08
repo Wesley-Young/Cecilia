@@ -13,7 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterIsInstance
@@ -25,15 +27,17 @@ import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.ChatBackgroundColor
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.utils.LocalConfig
 import kotlin.random.Random
 
 @Composable
 fun ChatArea(conversation: Conversation) {
     val bot = LocalBot.current
+    val config = LocalConfig.current
     val logger = remember { bot.createLogger("ChatArea") }
 
     val coroutineScope = rememberCoroutineScope()
-    var messageText by remember { mutableStateOf("") }
+    var messageText by remember { mutableStateOf(TextFieldValue("")) }
     val listState = rememberLazyListState()
 
     val messages = remember { mutableStateListOf<BotIncomingMessage>() }
@@ -244,10 +248,11 @@ fun ChatArea(conversation: Conversation) {
         ChatInputArea(
             messageText = messageText,
             onMessageTextChange = { messageText = it },
+            useCtrlEnterToSend = config.useCtrlEnterToSend,
             onSendMessage = {
-                if (messageText.isNotBlank()) {
-                    val content = messageText
-                    messageText = ""
+                if (messageText.text.isNotBlank()) {
+                    val content = messageText.text
+                    messageText = TextFieldValue("")
 
                     coroutineScope.launch {
                         try {
@@ -364,8 +369,9 @@ private fun ChatHeader(conversation: Conversation) {
 
 @Composable
 private fun ChatInputArea(
-    messageText: String,
-    onMessageTextChange: (String) -> Unit,
+    messageText: TextFieldValue,
+    onMessageTextChange: (TextFieldValue) -> Unit,
+    useCtrlEnterToSend: Boolean,
     onSendMessage: () -> Unit
 ) {
     Surface(
@@ -384,18 +390,45 @@ private fun ChatInputArea(
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = 56.dp, max = 120.dp)
-                    .onKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown &&
-                            event.key == Key.Enter &&
-                            (event.isMetaPressed || event.isCtrlPressed)
-                        ) {
-                            onSendMessage()
-                            true
+                    .onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown && event.key == Key.Enter) {
+                            if (useCtrlEnterToSend) {
+                                if (event.isMetaPressed || event.isCtrlPressed) {
+                                    onSendMessage()
+                                    true
+                                } else {
+                                    false
+                                }
+                            } else {
+                                if (event.isMetaPressed || event.isCtrlPressed) {
+                                    // 在光标位置插入换行符
+                                    val currentText = messageText.text
+                                    val cursorPos = messageText.selection.start
+                                    val newText = currentText.substring(0, cursorPos) + "\n" +
+                                            currentText.substring(cursorPos)
+                                    val newCursorPos = cursorPos + 1
+                                    onMessageTextChange(
+                                        TextFieldValue(
+                                            text = newText,
+                                            selection = TextRange(newCursorPos)
+                                        )
+                                    )
+                                    true
+                                } else {
+                                    onSendMessage()
+                                    true
+                                }
+                            }
                         } else {
                             false
                         }
                     },
-                placeholder = { Text("输入消息... (⌘/Ctrl+Enter 发送)") },
+                placeholder = {
+                    Text(
+                        if (useCtrlEnterToSend) "输入消息... (⌘/Ctrl+Enter 发送)"
+                        else "输入消息... (Enter 发送)"
+                    )
+                },
                 colors = TextFieldDefaults.outlinedTextFieldColors(
                     backgroundColor = MaterialTheme.colors.surface,
                     focusedBorderColor = MaterialTheme.colors.primary.copy(alpha = 0.5f),
