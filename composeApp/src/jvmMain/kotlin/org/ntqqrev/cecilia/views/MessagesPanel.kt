@@ -107,8 +107,7 @@ fun MessagesPanel(
                     // 通知 ConversationManager 当前选中的会话
                     conversationManager.setSelectedConversation(conversationId)
                 },
-                width = leftPanelWidth,
-                showMenuButton = false
+                width = leftPanelWidth
             )
         }
 
