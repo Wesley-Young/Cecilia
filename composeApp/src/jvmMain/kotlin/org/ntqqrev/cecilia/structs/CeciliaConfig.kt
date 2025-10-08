@@ -5,10 +5,10 @@ import kotlinx.serialization.json.Json
 import org.ntqqrev.acidify.util.log.LogLevel
 
 @Serializable
-class CeciliaConfig(
-    var signApiUrl: String = "https://sign.lagrangecore.org/api/sign/39038",
-    var signApiHttpProxy: String = "",
-    var minLogLevel: LogLevel = LogLevel.DEBUG,
+data class CeciliaConfig(
+    val signApiUrl: String = "https://sign.lagrangecore.org/api/sign/39038",
+    val signApiHttpProxy: String = "",
+    val minLogLevel: LogLevel = LogLevel.DEBUG,
 ) {
     companion object {
         val jsonModule = Json {
