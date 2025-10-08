@@ -25,7 +25,10 @@ import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.components.AvatarImage
-import org.ntqqrev.cecilia.structs.DisplayElem
+import org.ntqqrev.cecilia.structs.DisplayMessage
+import org.ntqqrev.cecilia.structs.DisplaySegment
+import org.ntqqrev.cecilia.structs.PlaceholderMessage
+import org.ntqqrev.cecilia.utils.LocalBot
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -35,15 +38,11 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun MessageBubble(
     message: BotIncomingMessage,
-    selfUin: Long,
-    allMessages: List<BotIncomingMessage> = emptyList(),
+    allMessages: List<DisplayMessage> = emptyList(),
     onScrollToMessage: ((Long) -> Unit)? = null,
     onReplyToMessage: ((BotIncomingMessage) -> Unit)? = null
 ) {
-    val isSent = message.senderUin == selfUin
-
-    // 检测是否为占位消息（messageUid == -1L 表示占位符）
-    val isPlaceholder = message.messageUid == -1L
+    val isSent = message.senderUin == LocalBot.current.uin
 
     // 获取发送者名称
     val senderName = when (message.scene) {
@@ -148,16 +147,6 @@ fun MessageBubble(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = if (isSent) Arrangement.End else Arrangement.Start
             ) {
-                // 如果是占位消息且是自己发送的，在气泡左侧显示加载动画
-                if (isSent && isPlaceholder) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colors.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = if (isSent)
@@ -232,9 +221,76 @@ fun MessageBubble(
     }
 }
 
-/**
- * 格式化消息时间戳
- */
+
+@Composable
+fun PlaceholderMessageBubble(
+    message: PlaceholderMessage,
+    allMessages: List<DisplayMessage>,
+) {
+    // 格式化时间
+    val timeStr = formatMessageTime(message.timestamp)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(16.dp),
+            color = MaterialTheme.colors.primary.copy(alpha = 0.6f),
+            strokeWidth = 2.dp
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Column(
+            horizontalAlignment = Alignment.End,
+            modifier = Modifier.widthIn(max = 400.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colors.primary,
+                elevation = 1.dp
+            ) {
+                Box(
+                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(end = 40.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        message.displaySegments.forEach { item ->
+                            DisplayElement(
+                                item = item,
+                                isSent = true,
+                                allMessages = allMessages,
+                                onScrollToMessage = null
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = timeStr,
+                        modifier = Modifier.align(Alignment.BottomEnd),
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onPrimary.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        AvatarImage(
+            uin = LocalBot.current.uin,
+            size = 44.dp,
+            isGroup = false,
+            quality = 100,
+            clickable = true
+        )
+    }
+}
+
 @Suppress("IDENTITY_SENSITIVE_OPERATIONS_WITH_VALUE_TYPE")
 private fun formatMessageTime(timestamp: Long): String {
     val zoneId = ZoneId.systemDefault()
@@ -254,26 +310,29 @@ private fun formatMessageTime(timestamp: Long): String {
     }
 }
 
-private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplayElem> = buildList {
+private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplaySegment> = buildList {
     var buffer = StringBuilder()
     fun flush() {
         if (buffer.isNotEmpty()) {
-            add(DisplayElem.Text(buffer.toString()))
+            add(DisplaySegment.Text(buffer.toString()))
             buffer = StringBuilder()
         }
     }
     for (seg in segments) {
         when (seg) {
             is BotIncomingSegment.Text -> buffer.append(seg.text)
+
             is BotIncomingSegment.Mention -> buffer.append(seg.name)
+
             is BotIncomingSegment.Reply -> {
                 flush()
-                add(DisplayElem.Reply(seg))
+                add(DisplaySegment.Reply(seg))
             }
+
             is BotIncomingSegment.MarketFace -> {
                 flush()
                 add(
-                    DisplayElem.Image(
+                    DisplaySegment.Image(
                         BotIncomingSegment.Image(
                             fileId = seg.url,
                             width = 300,
@@ -290,21 +349,21 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplayEl
 
             is BotIncomingSegment.Image -> {
                 flush()
-                add(DisplayElem.Image(seg))
+                add(DisplaySegment.Image(seg))
             }
 
             is BotIncomingSegment.Record -> {
                 flush()
-                add(DisplayElem.Record(seg))
+                add(DisplaySegment.Record(seg))
             }
 
             is BotIncomingSegment.Video -> {
                 flush()
-                add(DisplayElem.Video(seg))
+                add(DisplaySegment.Video(seg))
             }
             else -> {
                 flush()
-                add(DisplayElem.Other(seg))
+                add(DisplaySegment.Text(seg.toString()))
             }
         }
     }
@@ -313,13 +372,12 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplayEl
 
 @Composable
 private fun DisplayElement(
-    item: DisplayElem,
-    isSent: Boolean,
-    allMessages: List<BotIncomingMessage>,
+    item: DisplaySegment,
+    isSent: Boolean, allMessages: List<DisplayMessage>,
     onScrollToMessage: ((Long) -> Unit)?
 ) {
     when (item) {
-        is DisplayElem.Text -> {
+        is DisplaySegment.Text -> {
             if (item.text.isNotEmpty()) {
                 Text(
                     text = item.text,
@@ -332,13 +390,12 @@ private fun DisplayElement(
             }
         }
 
-        is DisplayElem.Reply -> {
+        is DisplaySegment.Reply -> {
             // 查找被引用的消息
-            val referencedMessage = allMessages.find { it.sequence == item.segment.sequence }
+            val referencedMessage = allMessages.find { it.real?.sequence == item.segment.sequence }
 
             MessageReply(
-                replySegment = item.segment,
-                referencedMessage = referencedMessage,
+                replySegment = item.segment, referencedMessage = referencedMessage?.real,
                 isSent = isSent,
                 onReplyClick = if (referencedMessage != null && onScrollToMessage != null) {
                     { onScrollToMessage(item.segment.sequence) }
@@ -346,11 +403,11 @@ private fun DisplayElement(
             )
         }
 
-        is DisplayElem.Image -> {
+        is DisplaySegment.Image -> {
             MessageImage(imageSegment = item.segment, isSent = isSent)
         }
 
-        is DisplayElem.Record -> {
+        is DisplaySegment.Record -> {
             Text(
                 text = item.segment.toString(),
                 style = MaterialTheme.typography.body2,
@@ -361,7 +418,7 @@ private fun DisplayElement(
             )
         }
 
-        is DisplayElem.Video -> {
+        is DisplaySegment.Video -> {
             Text(
                 text = item.segment.toString(),
                 style = MaterialTheme.typography.body2,
@@ -370,21 +427,6 @@ private fun DisplayElement(
                 else
                     MaterialTheme.colors.onSurface.copy(alpha = 0.9f)
             )
-        }
-
-        is DisplayElem.Other -> {
-            // 其他段落以 toString 文本显示
-            val text = item.segment.toString()
-            if (text.isNotEmpty()) {
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.body1,
-                    color = if (isSent)
-                        MaterialTheme.colors.onPrimary
-                    else
-                        MaterialTheme.colors.onSurface
-                )
-            }
         }
     }
 }

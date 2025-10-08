@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.event.MessageReceiveEvent
@@ -27,6 +28,9 @@ import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.structs.Conversation
+import org.ntqqrev.cecilia.structs.DisplaySegment
+import org.ntqqrev.cecilia.structs.DisplayMessage
+import org.ntqqrev.cecilia.structs.PlaceholderMessage
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.LocalConfig
 import org.ntqqrev.cecilia.utils.segmentsToPreviewString
@@ -43,10 +47,10 @@ fun ChatArea(conversation: Conversation) {
     val listState = rememberLazyListState()
     val inputFocusRequester = remember { FocusRequester() }
 
-    val messages = remember { mutableStateListOf<BotIncomingMessage>() }
+    val messages = remember { mutableStateListOf<DisplayMessage>() }
     var isLoadingMore by remember { mutableStateOf(false) }
     var nextLoadSequence by remember { mutableStateOf<Long?>(null) }
-    val pendingMessages = remember { mutableMapOf<Int, BotIncomingMessage>() }
+    val pendingMessages = remember { mutableMapOf<Int, PlaceholderMessage>() }
     
     var replyToMessage by remember { mutableStateOf<BotIncomingMessage?>(null) }
 
@@ -61,7 +65,7 @@ fun ChatArea(conversation: Conversation) {
     }
 
     suspend fun scrollToSeq(seq: Long) {
-        val index = messages.indexOfFirst { it.sequence == seq }
+        val index = messages.indexOfFirst { it.real?.sequence == seq }
         if (index != -1) {
             listState.scrollToItem(index)
         }
@@ -78,33 +82,19 @@ fun ChatArea(conversation: Conversation) {
         val clientSequence = Random.nextLong()
         val random = Random.nextInt()
 
-        // 创建占位符消息
-        val tempSequence = (messages.maxOfOrNull { it.sequence } ?: 0L) + 1
-
-        val placeholder = BotIncomingMessage(
-            scene = conversation.scene,
-            peerUin = conversation.peerUin,
-            peerUid = conversation.peerUin.toString(),
-            sequence = tempSequence,
-            timestamp = System.currentTimeMillis() / 1000,
-            senderUin = bot.uin,
-            senderUid = bot.uin.toString(),
+        val placeholder = PlaceholderMessage(
             clientSequence = clientSequence,
             random = random,
-            initSegments = buildList {
+            timestamp = System.currentTimeMillis() / 1000,
+            displaySegments = buildList {
                 if (replySeq != null) {
-                    add(
-                        BotIncomingSegment.Reply(
-                            sequence = replySeq
-                        )
-                    )
+                    add(DisplaySegment.Reply(BotIncomingSegment.Reply(replySeq)))
                 }
-                add(BotIncomingSegment.Text(content))
-            },
-            messageUid = -1L
+                add(DisplaySegment.Text(content))
+            }
         )
 
-        messages.add(placeholder)
+        messages.add(DisplayMessage(placeholder = placeholder))
         scrollToBottom()
         pendingMessages[random] = placeholder
 
@@ -127,15 +117,16 @@ fun ChatArea(conversation: Conversation) {
                         startSequence = result.sequence
                     ).messages.firstOrNull()
                     realMessage?.let {
-                        pendingMessages.remove(random)
+                        val placeholder = pendingMessages.remove(random)
                         val index = messages.indexOfFirst {
-                            it.random == random && it.messageUid == -1L
+                            it.placeholder == placeholder
                         }
                         if (index != -1) {
-                            messages.removeAt(index)
+                            messages[index] = DisplayMessage(real = realMessage)
+                        } else {
+                            messages.add(DisplayMessage(real = realMessage))
+                            messages.sortBy { it.real?.sequence ?: Long.MAX_VALUE }
                         }
-                        messages.add(realMessage)
-                        messages.sortBy { it.sequence }
                     }
                 }
             }
@@ -179,8 +170,7 @@ fun ChatArea(conversation: Conversation) {
                 else -> return@LaunchedEffect
             }
 
-            messages.addAll(historyMessages.messages)
-            messages.sortBy { it.sequence }
+            messages.addAll(0, historyMessages.messages.map { DisplayMessage(real = it) })
             nextLoadSequence = historyMessages.nextStartSequence
             scrollToBottom()
         } catch (e: Exception) {
@@ -190,38 +180,28 @@ fun ChatArea(conversation: Conversation) {
 
     // 监听属于当前会话的消息
     LaunchedEffect(conversation.id) {
-        bot.eventFlow.filterIsInstance<MessageReceiveEvent>().collect { event ->
-            val message = event.message
-
-            // 只处理属于当前会话的消息
-            if (message.peerUin == conversation.peerUin) {
+        bot.eventFlow.filterIsInstance<MessageReceiveEvent>()
+            .filter {
+                it.message.let {
+                    it.scene == conversation.scene && it.peerUin == conversation.peerUin
+                }
+            }
+            .collect { event ->
+                val message = event.message
                 // 检查是否是待确认的占位符消息
                 val placeholder = pendingMessages.remove(message.random)
                 if (placeholder != null) {
                     // 删除占位符
-                    val index = messages.indexOfFirst {
-                        it.random == message.random && it.messageUid == -1L
-                    }
+                    val index = messages.indexOfFirst { it.placeholder == placeholder }
                     if (index != -1) {
-                        messages.removeAt(index)
+                        messages[index] = DisplayMessage(real = message)
                     }
-                }
-
-                if (
-                    messages.none {
-                        it.clientSequence == message.clientSequence &&
-                                it.random == message.random
-                    }
-                ) {
-                    messages.add(message)
-                    messages.sortBy { it.sequence }
                 }
 
                 if (isUserAtBottom()) {
                     scrollToBottom()
                 }
             }
-        }
     }
     
     // 检测滚动到顶部，触发加载更多
@@ -236,7 +216,7 @@ fun ChatArea(conversation: Conversation) {
 
             // 加载更多历史消息
             isLoadingMore = true
-            val oldestMessageSeq = messages.firstOrNull()?.sequence
+            val oldestMessageSeq = messages.firstOrNull()?.real?.sequence
 
             try {
                 val historyMessages = when (conversation.scene) {
@@ -260,7 +240,7 @@ fun ChatArea(conversation: Conversation) {
                 }
 
                 if (historyMessages != null && historyMessages.messages.isNotEmpty()) {
-                    messages.addAll(0, historyMessages.messages)
+                    messages.addAll(0, historyMessages.messages.map { DisplayMessage(real = it) })
                     nextLoadSequence = historyMessages.nextStartSequence
 
                     // 滚动到之前最老的消息
@@ -318,17 +298,23 @@ fun ChatArea(conversation: Conversation) {
             }
             
             items(messages) { message ->
-                MessageBubble(
-                    message = message,
-                    selfUin = bot.uin,
-                    allMessages = messages,
-                    onScrollToMessage = { seq ->
-                        coroutineScope.launch {
-                            scrollToSeq(seq)
-                        }
-                    },
-                    onReplyToMessage = { replyToMessage = it }
-                )
+                when {
+                    message.real != null -> MessageBubble(
+                        message = message.real,
+                        allMessages = messages,
+                        onScrollToMessage = { seq ->
+                            coroutineScope.launch {
+                                scrollToSeq(seq)
+                            }
+                        },
+                        onReplyToMessage = { replyToMessage = it }
+                    )
+
+                    message.placeholder != null -> PlaceholderMessageBubble(
+                        message = message.placeholder,
+                        allMessages = messages
+                    )
+                }
             }
         }
         
