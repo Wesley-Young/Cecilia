@@ -110,7 +110,8 @@ fun MessageBubble(
                 uin = message.senderUin,
                 size = 44.dp,
                 isGroup = false,
-                quality = 100
+                quality = 100,
+                clickable = true
             )
             Spacer(modifier = Modifier.width(8.dp))
         }
@@ -211,7 +212,8 @@ fun MessageBubble(
                 uin = message.senderUin,
                 size = 44.dp,
                 isGroup = false,
-                quality = 100
+                quality = 100,
+                clickable = true
             )
         }
     }
