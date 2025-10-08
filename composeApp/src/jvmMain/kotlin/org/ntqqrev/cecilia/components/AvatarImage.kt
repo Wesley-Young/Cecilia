@@ -15,7 +15,10 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -43,6 +46,7 @@ fun AvatarImage(
     val bot = LocalBot.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
+    val windowInfo = LocalWindowInfo.current
 
     // 先从缓存中获取
     val cachedBitmap = remember(uin, isGroup, quality) {
@@ -60,6 +64,10 @@ fun AvatarImage(
     var showUserInfo by remember { mutableStateOf(false) }
     var userInfo by remember { mutableStateOf<BotUserInfo?>(null) }
     var isLoadingUserInfo by remember { mutableStateOf(false) }
+
+    // 头像位置信息，用于智能定位
+    var avatarPosition by remember { mutableStateOf(IntOffset.Zero) }
+    var avatarSizePx by remember { mutableStateOf(0) }
 
     LaunchedEffect(uin, isGroup, quality) {
         // 如果缓存中已有，不需要重新加载
@@ -96,6 +104,12 @@ fun AvatarImage(
                 .size(size)
                 .clip(CircleShape)
                 .background(MaterialTheme.colors.primary.copy(alpha = 0.2f))
+                .onGloballyPositioned { coordinates ->
+                    // 记录头像的位置和大小
+                    val position = coordinates.positionInWindow()
+                    avatarPosition = IntOffset(position.x.toInt(), position.y.toInt())
+                    avatarSizePx = coordinates.size.width
+                }
                 .then(
                     if (clickable && !isGroup) {
                         Modifier.clickable(
@@ -141,18 +155,42 @@ fun AvatarImage(
             }
         }
 
-        // 用户信息悬浮窗 - 使用相对于头像的定位
+        // 用户信息悬浮窗 - 智能定位显示
         if (clickable && showUserInfo && !isGroup) {
-            val popupOffset = with(density) {
-                IntOffset(
-                    x = size.toPx().toInt() + 440,
-                    y = 156
-                )
+            // 获取窗口尺寸
+            val windowWidth = windowInfo.containerSize.width
+            val windowHeight = windowInfo.containerSize.height
+
+            // UserInfoCard 的尺寸（需要与 UserInfoCard.kt 中定义的一致）
+            val cardWidth = with(density) { 280.dp.toPx().toInt() }
+            val cardHeight = with(density) { 280.dp.toPx().toInt() }  // 预估高度
+            val spacing = with(density) { 8.dp.toPx().toInt() }
+
+            // 计算各个方向是否有足够空间
+            val rightSpace = windowWidth - (avatarPosition.x + avatarSizePx)
+            val leftSpace = avatarPosition.x
+            val bottomSpace = windowHeight - (avatarPosition.y + avatarSizePx)
+            val topSpace = avatarPosition.y
+            println("Avatar position: $avatarPosition, window size: ${windowWidth}x${windowHeight}, spaces - right: $rightSpace, left: $leftSpace, bottom: $bottomSpace, top: $topSpace")
+
+            // 智能选择显示位置
+            val (alignment, offset) = if (rightSpace >= cardWidth + spacing) {
+                if (bottomSpace >= cardHeight + spacing) {
+                    Alignment.TopStart to IntOffset(avatarSizePx + spacing, 0)
+                } else {
+                    Alignment.BottomStart to IntOffset(avatarSizePx + spacing, 0)
+                }
+            } else {
+                if (bottomSpace >= cardHeight + spacing) {
+                    Alignment.TopEnd to IntOffset(-(avatarSizePx + spacing), 0)
+                } else {
+                    Alignment.BottomEnd to IntOffset(-(avatarSizePx + spacing), 0)
+                }
             }
 
             Popup(
-                alignment = Alignment.CenterEnd,
-                offset = popupOffset,
+                alignment = alignment,
+                offset = offset,
                 onDismissRequest = { showUserInfo = false },
                 properties = PopupProperties(
                     focusable = true,
