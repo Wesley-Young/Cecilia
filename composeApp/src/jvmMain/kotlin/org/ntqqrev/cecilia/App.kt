@@ -202,6 +202,7 @@ private fun MainContent() {
                     selectedTab = NavigationTab.MESSAGES
                 }
             )
+
             NavigationTab.SETTINGS -> SettingsPanel(
                 onUnsavedChangesUpdate = { hasChanges, actions ->
                     hasUnsavedChanges = hasChanges

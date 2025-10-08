@@ -18,7 +18,7 @@ import java.time.temporal.TemporalAdjusters
 
 /**
  * 会话管理器
- * 
+ *
  * 负责管理所有会话的状态，包括：
  * - 后台监听消息并更新会话列表
  * - 在内存中维护会话列表
@@ -87,6 +87,7 @@ class ConversationManager(
                     if (it.length >= 30) "$it..." else it
                 }
             }
+
             else -> {
                 // 好友消息或其他：只显示消息内容
                 messageContent.take(30).let {
@@ -173,7 +174,7 @@ class ConversationManager(
                 // 如果获取失败，使用默认信息
                 val isCurrentlySelected = conversationId == currentSelectedConversationId
                 val unreadCount = if (isCurrentlySelected) 0 else 1
-                
+
                 conversations.add(
                     0, Conversation(
                         id = conversationId,

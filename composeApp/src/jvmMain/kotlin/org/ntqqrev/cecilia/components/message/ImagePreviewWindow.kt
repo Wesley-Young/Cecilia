@@ -47,7 +47,7 @@ fun ImagePreviewWindow(
 
         // 标题栏高度补偿（根据操作系统自动适配）
         val titleBarHeight = getTitleBarHeight().dp
-        
+
         DpSize(
             width = (imageWidth * scale).dp,
             height = (imageHeight * scale).dp + titleBarHeight

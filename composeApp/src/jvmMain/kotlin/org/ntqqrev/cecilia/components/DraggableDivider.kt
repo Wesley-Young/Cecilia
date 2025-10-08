@@ -45,7 +45,7 @@ fun DraggableDivider(
 ) {
     // 使用 rememberUpdatedState 确保闭包中始终能获取到最新的 currentWidth
     val currentWidthState = rememberUpdatedState(currentWidth)
-    
+
     Box(
         modifier = modifier
             .fillMaxHeight()

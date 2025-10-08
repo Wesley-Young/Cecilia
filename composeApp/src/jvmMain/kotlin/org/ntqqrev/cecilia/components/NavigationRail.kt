@@ -7,7 +7,6 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
-import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
@@ -29,7 +28,7 @@ fun NavigationRail(
     onTabSelected: (NavigationTab) -> Unit
 ) {
     val bot = LocalBot.current
-    
+
     Column(
         modifier = Modifier
             .width(72.dp)
@@ -39,7 +38,7 @@ fun NavigationRail(
         verticalArrangement = Arrangement.Top
     ) {
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         // 用户头像
         AvatarImage(
             uin = bot.sessionStore.uin,
@@ -47,7 +46,7 @@ fun NavigationRail(
             isGroup = false,
             quality = 100
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
 
         NavigationRailItem(

@@ -28,8 +28,8 @@ import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.structs.Conversation
-import org.ntqqrev.cecilia.structs.DisplaySegment
 import org.ntqqrev.cecilia.structs.DisplayMessage
+import org.ntqqrev.cecilia.structs.DisplaySegment
 import org.ntqqrev.cecilia.structs.PlaceholderMessage
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.LocalConfig
@@ -51,15 +51,15 @@ fun ChatArea(conversation: Conversation) {
     var isLoadingMore by remember { mutableStateOf(false) }
     var nextLoadSequence by remember { mutableStateOf<Long?>(null) }
     val pendingMessages = remember { mutableMapOf<Int, PlaceholderMessage>() }
-    
+
     var replyToMessage by remember { mutableStateOf<BotIncomingMessage?>(null) }
 
     fun isUserAtBottom(): Boolean {
         val layoutInfo = listState.layoutInfo
         if (layoutInfo.totalItemsCount == 0) return true
-        
+
         val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull() ?: return false
-        
+
         // 检查最后一个可见项是否是列表中的最后一项（或倒数第二项）
         return lastVisibleItem.index >= layoutInfo.totalItemsCount - 2
     }
@@ -203,12 +203,12 @@ fun ChatArea(conversation: Conversation) {
                 }
             }
     }
-    
+
     // 检测滚动到顶部，触发加载更多
     LaunchedEffect(listState.canScrollBackward, listState.firstVisibleItemIndex) {
         if (
             listState.firstVisibleItemIndex == 0 &&
-            listState.firstVisibleItemScrollOffset < 100 && 
+            listState.firstVisibleItemScrollOffset < 100 &&
             !isLoadingMore &&
             messages.isNotEmpty() &&
             nextLoadSequence != null
@@ -296,7 +296,7 @@ fun ChatArea(conversation: Conversation) {
                     }
                 }
             }
-            
+
             items(messages) { message ->
                 when {
                     message.real != null -> MessageBubble(
@@ -317,7 +317,7 @@ fun ChatArea(conversation: Conversation) {
                 }
             }
         }
-        
+
         // 当回复预览显示/隐藏时，如果用户在底部，保持滚动到底部
         LaunchedEffect(replyToMessage) {
             if (replyToMessage != null) {
@@ -390,9 +390,9 @@ private fun ReplyPreview(
                 color = MaterialTheme.colors.primary,
                 shape = RoundedCornerShape(2.dp)
             ) {}
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             // 回复内容
             Column(
                 modifier = Modifier.weight(1f)
@@ -404,23 +404,24 @@ private fun ReplyPreview(
                             info.groupCard.takeIf { it.isNotEmpty() } ?: info.nick
                         } ?: replyToMessage.senderUin.toString()
                     }
+
                     else -> replyToMessage.senderUin.toString()
                 }
-                
+
                 Text(
                     text = senderName,
                     style = MaterialTheme.typography.caption,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colors.primary
                 )
-                
+
                 Spacer(modifier = Modifier.height(2.dp))
-                
+
                 // 消息预览
                 val previewText = remember(replyToMessage) {
                     replyToMessage.segmentsToPreviewString()
                 }
-                
+
                 Text(
                     text = previewText,
                     style = MaterialTheme.typography.body2,
@@ -428,7 +429,7 @@ private fun ReplyPreview(
                     maxLines = 1
                 )
             }
-            
+
             // 取消按钮
             IconButton(
                 onClick = onCancelReply,

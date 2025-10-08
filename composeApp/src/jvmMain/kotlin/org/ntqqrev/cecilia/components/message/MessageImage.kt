@@ -117,6 +117,7 @@ fun MessageImage(
                     )
                 }
             }
+
             hasError -> {
                 Box(
                     modifier = modifier,
@@ -132,6 +133,7 @@ fun MessageImage(
                     )
                 }
             }
+
             imageBitmap != null -> {
                 Image(
                     bitmap = imageBitmap!!,
@@ -145,7 +147,7 @@ fun MessageImage(
             }
         }
     }
-    
+
     // 图片预览窗口
     if (showPreview && imageBitmap != null) {
         ImagePreviewWindow(

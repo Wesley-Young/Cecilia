@@ -51,26 +51,27 @@ fun MessageBubble(
                 info.groupCard.takeIf { it.isNotEmpty() } ?: info.nick
             } ?: message.senderUin.toString()
         }
+
         else -> message.senderUin.toString()
     }
-    
+
     // 格式化时间
     val timeStr = formatMessageTime(message.timestamp)
 
     // 是否原本应该显示昵称
     val shouldShowNickname = message.scene == MessageScene.GROUP && !isSent
-    
+
     // 鼠标悬停状态
     var isHovering by remember { mutableStateOf(false) }
     var showSeq by remember { mutableStateOf(false) }
-    
+
     // 当前显示的文本
     val displayText = when {
         showSeq -> if (shouldShowNickname) "$senderName #${message.sequence}" else "#${message.sequence}"
         shouldShowNickname -> senderName
         else -> null
     }
-    
+
     // 悬停延迟逻辑
     LaunchedEffect(isHovering) {
         if (isHovering) {
@@ -98,7 +99,7 @@ fun MessageBubble(
         }
         return
     }
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -303,6 +304,7 @@ private fun formatMessageTime(timestamp: Long): String {
             // 今天：显示时:分
             messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))
         }
+
         else -> {
             // 其他：显示日期
             messageDateTime.format(DateTimeFormatter.ofPattern("MM/dd"))
@@ -361,6 +363,7 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplaySe
                 flush()
                 add(DisplaySegment.Video(seg))
             }
+
             else -> {
                 flush()
                 add(DisplaySegment.Text(seg.toString()))

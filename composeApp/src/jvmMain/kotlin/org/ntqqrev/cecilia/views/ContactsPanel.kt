@@ -72,7 +72,7 @@ fun ContactsPanel(onOpenConversation: (String) -> Unit = {}) {
                 selectedFriend = selectedFriend,
                 selectedGroup = selectedGroup,
                 onContactTypeChange = {
-                contactType = it
+                    contactType = it
                     selectedFriend = null
                     selectedGroup = null
                 },
@@ -148,7 +148,7 @@ private fun ContactListPanel(
     width: Dp
 ) {
     var searchText by remember { mutableStateOf("") }
-    
+
     // 过滤好友
     val filteredFriends = remember(friends, searchText) {
         if (searchText.isEmpty()) {
@@ -156,12 +156,12 @@ private fun ContactListPanel(
         } else {
             friends.filter { friend ->
                 friend.nickname.contains(searchText, ignoreCase = true) ||
-                friend.remark.contains(searchText, ignoreCase = true) ||
-                friend.uin.toString().contains(searchText)
+                        friend.remark.contains(searchText, ignoreCase = true) ||
+                        friend.uin.toString().contains(searchText)
             }
         }
     }
-    
+
     // 过滤群
     val filteredGroups = remember(groups, searchText) {
         if (searchText.isEmpty()) {
@@ -169,11 +169,11 @@ private fun ContactListPanel(
         } else {
             groups.filter { group ->
                 group.name.contains(searchText, ignoreCase = true) ||
-                group.uin.toString().contains(searchText)
+                        group.uin.toString().contains(searchText)
             }
         }
     }
-    
+
     Column(
         modifier = Modifier
             .width(width)
@@ -308,12 +308,12 @@ private fun FriendsList(
                 val rotation by animateFloatAsState(
                     targetValue = if (isExpanded) 0f else -90f
                 )
-                
+
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { 
-                            expandedCategories[categoryId] = !isExpanded 
+                        .clickable {
+                            expandedCategories[categoryId] = !isExpanded
                         },
                     color = MaterialTheme.colors.background
                 ) {
