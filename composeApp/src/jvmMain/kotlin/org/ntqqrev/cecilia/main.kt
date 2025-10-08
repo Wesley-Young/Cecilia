@@ -3,6 +3,8 @@
 package org.ntqqrev.cecilia
 
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -22,9 +24,16 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 fun main() = application {
-    // 配置头像缓存有效期（可选，默认 24 小时）
-    // AvatarCache.setMaxAge(12.hours)
+    val configPath = Path("config.json")
+    val config: CeciliaConfig = if (configPath.exists()) {
+        CeciliaConfig.jsonModule.decodeFromString(configPath.readText())
+    } else {
+        val defaultConfig = CeciliaConfig()
+        configPath.writeText(CeciliaConfig.jsonModule.encodeToString(defaultConfig))
+        defaultConfig
+    }
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     var bot by remember { mutableStateOf<Bot?>(null) }
     var cacheManager by remember { mutableStateOf<org.ntqqrev.cecilia.utils.CacheManager?>(null) }
     var conversationManager by remember { mutableStateOf<org.ntqqrev.cecilia.utils.ConversationManager?>(null) }
@@ -36,15 +45,6 @@ fun main() = application {
     LaunchedEffect(Unit) {
         launch(Dispatchers.IO) {
             try {
-                val configPath = Path("config.json")
-                val config: CeciliaConfig = if (configPath.exists()) {
-                    CeciliaConfig.jsonModule.decodeFromString(configPath.readText())
-                } else {
-                    val defaultConfig = CeciliaConfig()
-                    configPath.writeText(CeciliaConfig.jsonModule.encodeToString(defaultConfig))
-                    defaultConfig
-                }
-
                 val sessionStorePath = Path("session-store.json")
                 val sessionStore: SessionStore = if (sessionStorePath.exists()) {
                     Json.decodeFromString(sessionStorePath.readText())
@@ -134,15 +134,22 @@ fun main() = application {
             window.title = title
         }
 
-        App(
-            bot = bot,
-            cacheManager = cacheManager,
-            conversationManager = conversationManager,
-            loadingError = loadingError,
-            onLoginStateChange = { loggedIn, uin ->
-                isLoggedIn = loggedIn
-                userUin = uin
-            }
-        )
+        // 通过调整 Density 来实现全局缩放（包括字体和布局）
+        val scaleFactor = config.displayScale
+        val originalDensity = LocalDensity.current
+        val scaledDensity = Density(originalDensity.density * scaleFactor)
+
+        CompositionLocalProvider(LocalDensity provides scaledDensity) {
+            App(
+                bot = bot,
+                cacheManager = cacheManager,
+                conversationManager = conversationManager,
+                loadingError = loadingError,
+                onLoginStateChange = { loggedIn, uin ->
+                    isLoggedIn = loggedIn
+                    userUin = uin
+                }
+            )
+        }
     }
 }

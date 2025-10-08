@@ -9,6 +9,7 @@ data class CeciliaConfig(
     val signApiUrl: String = "https://sign.lagrangecore.org/api/sign/39038",
     val signApiHttpProxy: String = "",
     val minLogLevel: LogLevel = LogLevel.DEBUG,
+    val displayScale: Float = 1.0f,
 ) {
     companion object {
         val jsonModule = Json {
