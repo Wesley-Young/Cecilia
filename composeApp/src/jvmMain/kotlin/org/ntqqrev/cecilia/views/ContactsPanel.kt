@@ -149,11 +149,6 @@ private fun ContactListPanel(
 ) {
     var searchText by remember { mutableStateOf("") }
     
-    // 切换联系人类型时清空搜索
-    LaunchedEffect(contactType) {
-        searchText = ""
-    }
-    
     // 过滤好友
     val filteredFriends = remember(friends, searchText) {
         if (searchText.isEmpty()) {
