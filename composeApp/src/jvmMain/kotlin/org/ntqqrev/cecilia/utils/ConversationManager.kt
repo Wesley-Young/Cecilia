@@ -9,8 +9,12 @@ import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.structs.Conversation
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.DayOfWeek
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 
 /**
  * 会话管理器
@@ -271,57 +275,42 @@ class ConversationManager(
     /**
      * 格式化消息时间戳
      */
+    @Suppress("IDENTITY_SENSITIVE_OPERATIONS_WITH_VALUE_TYPE")
     private fun formatMessageTime(timestamp: Long): String {
-        val messageTime = Date(timestamp * 1000)
-        val now = Date()
-        val calendar = Calendar.getInstance()
-
-        // 今天的开始时间
-        calendar.time = now
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val todayStart = calendar.time
-
-        // 昨天的开始时间
-        calendar.add(Calendar.DAY_OF_YEAR, -1)
-        val yesterdayStart = calendar.time
-
-        // 本周的开始时间（周一）
-        calendar.time = now
-        calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val weekStart = calendar.time
+        val zoneId = ZoneId.systemDefault()
+        val messageDateTime = Instant.ofEpochSecond(timestamp).atZone(zoneId).toLocalDateTime()
+        val messageDate = messageDateTime.toLocalDate()
+        val today = LocalDate.now(zoneId)
+        val yesterday = today.minusDays(1)
+        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
         return when {
-            messageTime.after(todayStart) -> {
-                SimpleDateFormat("HH:mm", Locale.getDefault()).format(messageTime)
+            messageDate == today -> {
+                // 今天：显示时:分
+                messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))
             }
 
-            messageTime.after(yesterdayStart) -> {
+            messageDate == yesterday -> {
+                // 昨天
                 "昨天"
             }
 
-            messageTime.after(weekStart) -> {
-                val dayOfWeek = Calendar.getInstance().apply { time = messageTime }.get(Calendar.DAY_OF_WEEK)
-                when (dayOfWeek) {
-                    Calendar.MONDAY -> "周一"
-                    Calendar.TUESDAY -> "周二"
-                    Calendar.WEDNESDAY -> "周三"
-                    Calendar.THURSDAY -> "周四"
-                    Calendar.FRIDAY -> "周五"
-                    Calendar.SATURDAY -> "周六"
-                    Calendar.SUNDAY -> "周日"
-                    else -> SimpleDateFormat("MM/dd", Locale.getDefault()).format(messageTime)
+            messageDate >= weekStart -> {
+                // 本周：显示星期几
+                when (messageDate.dayOfWeek) {
+                    DayOfWeek.MONDAY -> "周一"
+                    DayOfWeek.TUESDAY -> "周二"
+                    DayOfWeek.WEDNESDAY -> "周三"
+                    DayOfWeek.THURSDAY -> "周四"
+                    DayOfWeek.FRIDAY -> "周五"
+                    DayOfWeek.SATURDAY -> "周六"
+                    DayOfWeek.SUNDAY -> "周日"
                 }
             }
 
             else -> {
-                SimpleDateFormat("MM/dd", Locale.getDefault()).format(messageTime)
+                // 更早：显示日期
+                messageDateTime.format(DateTimeFormatter.ofPattern("MM/dd"))
             }
         }
     }

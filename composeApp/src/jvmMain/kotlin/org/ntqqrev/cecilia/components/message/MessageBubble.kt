@@ -26,8 +26,10 @@ import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.components.AvatarImage
 import org.ntqqrev.cecilia.structs.DisplayElem
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -233,27 +235,21 @@ fun MessageBubble(
 /**
  * 格式化消息时间戳
  */
+@Suppress("IDENTITY_SENSITIVE_OPERATIONS_WITH_VALUE_TYPE")
 private fun formatMessageTime(timestamp: Long): String {
-    val messageTime = Date(timestamp * 1000)
-    val now = Date()
-    val calendar = Calendar.getInstance()
-
-    // 今天的开始时间
-    calendar.time = now
-    calendar.set(Calendar.HOUR_OF_DAY, 0)
-    calendar.set(Calendar.MINUTE, 0)
-    calendar.set(Calendar.SECOND, 0)
-    calendar.set(Calendar.MILLISECOND, 0)
-    val todayStart = calendar.time
+    val zoneId = ZoneId.systemDefault()
+    val messageDateTime = Instant.ofEpochSecond(timestamp).atZone(zoneId).toLocalDateTime()
+    val messageDate = messageDateTime.toLocalDate()
+    val today = LocalDate.now(zoneId)
 
     return when {
-        messageTime.after(todayStart) -> {
+        messageDate == today -> {
             // 今天：显示时:分
-            SimpleDateFormat("HH:mm", Locale.getDefault()).format(messageTime)
+            messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))
         }
         else -> {
             // 其他：显示日期
-            SimpleDateFormat("MM/dd", Locale.getDefault()).format(messageTime)
+            messageDateTime.format(DateTimeFormatter.ofPattern("MM/dd"))
         }
     }
 }
