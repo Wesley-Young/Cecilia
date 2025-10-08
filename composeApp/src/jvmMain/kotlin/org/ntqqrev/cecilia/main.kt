@@ -5,6 +5,7 @@ package org.ntqqrev.cecilia
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -113,10 +114,7 @@ fun main() = application {
             exitApplication()
         },
         title = "Cecilia",
-        state = rememberWindowState(
-            width = 1200.dp,
-            height = 800.dp
-        )
+        state = rememberWindowState(size = DpSize(1200.dp, 800.dp) * config.displayScale)
     ) {
         // 设置窗口最小尺寸
         LaunchedEffect(Unit) {
