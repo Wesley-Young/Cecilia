@@ -12,6 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +42,7 @@ fun ChatArea(conversation: Conversation) {
     val coroutineScope = rememberCoroutineScope()
     var messageText by remember { mutableStateOf(TextFieldValue("")) }
     val listState = rememberLazyListState()
+    val inputFocusRequester = remember { FocusRequester() }
 
     val messages = remember { mutableStateListOf<BotIncomingMessage>() }
     var isLoadingMore by remember { mutableStateOf(false) }
@@ -332,6 +335,10 @@ fun ChatArea(conversation: Conversation) {
         
         // 当回复预览显示/隐藏时，如果用户在底部，保持滚动到底部
         LaunchedEffect(replyToMessage) {
+            if (replyToMessage != null) {
+                // 双击消息时，请求输入框焦点
+                inputFocusRequester.requestFocus()
+            }
             if (isUserAtBottom()) {
                 scrollToBottom()
             }
@@ -352,6 +359,7 @@ fun ChatArea(conversation: Conversation) {
             messageText = messageText,
             onMessageTextChange = { messageText = it },
             useCtrlEnterToSend = config.useCtrlEnterToSend,
+            focusRequester = inputFocusRequester,
             onSendMessage = {
                 if (messageText.text.isNotBlank()) {
                     val content = messageText.text
@@ -479,6 +487,7 @@ private fun ChatInputArea(
     messageText: TextFieldValue,
     onMessageTextChange: (TextFieldValue) -> Unit,
     useCtrlEnterToSend: Boolean,
+    focusRequester: FocusRequester,
     onSendMessage: () -> Unit
 ) {
     Surface(
@@ -497,6 +506,7 @@ private fun ChatInputArea(
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = 40.dp, max = 100.dp)
+                    .focusRequester(focusRequester)
                     .onPreviewKeyEvent { event ->
                         if (event.type == KeyEventType.KeyDown && event.key == Key.Enter) {
                             if (useCtrlEnterToSend) {
