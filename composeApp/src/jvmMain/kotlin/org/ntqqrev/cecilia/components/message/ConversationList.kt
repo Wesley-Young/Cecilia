@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia.components
+package org.ntqqrev.cecilia.components.message
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.ntqqrev.acidify.message.MessageScene
+import org.ntqqrev.cecilia.components.AvatarImage
 import org.ntqqrev.cecilia.structs.Conversation
 
 @Composable

@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia.components
+package org.ntqqrev.cecilia.components.message
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

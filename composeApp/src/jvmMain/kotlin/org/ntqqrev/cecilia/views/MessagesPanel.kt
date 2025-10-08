@@ -14,9 +14,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.components.ChatArea
-import org.ntqqrev.cecilia.components.ConversationList
 import org.ntqqrev.cecilia.components.DraggableDivider
+import org.ntqqrev.cecilia.components.message.ChatArea
+import org.ntqqrev.cecilia.components.message.ConversationList
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.LocalCacheManager
 import org.ntqqrev.cecilia.utils.LocalConversationManager
