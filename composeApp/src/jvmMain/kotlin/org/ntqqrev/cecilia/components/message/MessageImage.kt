@@ -28,7 +28,6 @@ import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.MediaCache
-import org.ntqqrev.cecilia.views.ImagePreviewWindow
 import org.jetbrains.skia.Image as SkiaImage
 
 @Composable
