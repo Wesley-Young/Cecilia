@@ -31,6 +31,7 @@ import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.structs.DisplayMessage
 import org.ntqqrev.cecilia.structs.DisplaySegment
 import org.ntqqrev.cecilia.structs.PlaceholderMessage
+import org.ntqqrev.cecilia.utils.LocalAllMessages
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.LocalConfig
 import org.ntqqrev.cecilia.utils.segmentsToPreviewString
@@ -277,53 +278,53 @@ fun ChatArea(conversation: Conversation) {
         Divider()
 
         // 消息列表
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Bottom),
-            contentPadding = PaddingValues(top = 48.dp, bottom = 16.dp)
-        ) {
-            // 加载指示器
-            if (isLoadingMore) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
+        CompositionLocalProvider(LocalAllMessages provides messages) {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Bottom),
+                contentPadding = PaddingValues(top = 48.dp, bottom = 16.dp)
+            ) {
+                // 加载指示器
+                if (isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
                     }
                 }
-            }
 
-            items(messages) { message ->
-                when {
-                    message.real != null -> MessageBubble(
-                        message = message.real,
-                        allMessages = messages,
-                        onScrollToMessage = { seq ->
-                            coroutineScope.launch {
-                                scrollToSeq(seq)
-                            }
-                        },
-                        onReplyToMessage = { replyToMessage = it }
-                    )
+                items(messages) { message ->
+                    when {
+                        message.real != null -> MessageBubble(
+                            message = message.real,
+                            onScrollToMessage = { seq ->
+                                coroutineScope.launch {
+                                    scrollToSeq(seq)
+                                }
+                            },
+                            onReplyToMessage = { replyToMessage = it }
+                        )
 
-                    message.placeholder != null -> PlaceholderMessageBubble(
-                        message = message.placeholder,
-                        allMessages = messages
-                    )
+                        message.placeholder != null -> PlaceholderMessageBubble(
+                            message = message.placeholder
+                        )
 
-                    message.greyTip != null -> GreyTip(
-                        text = message.greyTip
-                    )
+                        message.greyTip != null -> GreyTip(
+                            text = message.greyTip
+                        )
+                    }
                 }
             }
         }

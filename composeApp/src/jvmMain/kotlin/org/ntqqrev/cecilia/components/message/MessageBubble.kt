@@ -28,6 +28,7 @@ import org.ntqqrev.cecilia.components.AvatarImage
 import org.ntqqrev.cecilia.structs.DisplayMessage
 import org.ntqqrev.cecilia.structs.DisplaySegment
 import org.ntqqrev.cecilia.structs.PlaceholderMessage
+import org.ntqqrev.cecilia.utils.LocalAllMessages
 import org.ntqqrev.cecilia.utils.LocalBot
 import java.time.Instant
 import java.time.LocalDate
@@ -38,7 +39,6 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun MessageBubble(
     message: BotIncomingMessage,
-    allMessages: List<DisplayMessage> = emptyList(),
     onScrollToMessage: ((Long) -> Unit)? = null,
     onReplyToMessage: ((BotIncomingMessage) -> Unit)? = null
 ) {
@@ -167,7 +167,6 @@ fun MessageBubble(
                                         DisplayElement(
                                             item = item,
                                             isSent = isSent,
-                                            allMessages = allMessages,
                                             onScrollToMessage = onScrollToMessage
                                         )
                                     }
@@ -207,8 +206,7 @@ fun MessageBubble(
 
 @Composable
 fun PlaceholderMessageBubble(
-    message: PlaceholderMessage,
-    allMessages: List<DisplayMessage>,
+    message: PlaceholderMessage
 ) {
     // 格式化时间
     val timeStr = formatMessageTime(message.timestamp)
@@ -246,7 +244,6 @@ fun PlaceholderMessageBubble(
                             DisplayElement(
                                 item = item,
                                 isSent = true,
-                                allMessages = allMessages,
                                 onScrollToMessage = null
                             )
                         }
@@ -360,9 +357,10 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplaySe
 @Composable
 private fun DisplayElement(
     item: DisplaySegment,
-    isSent: Boolean, allMessages: List<DisplayMessage>,
+    isSent: Boolean,
     onScrollToMessage: ((Long) -> Unit)?
 ) {
+    val allMessages = LocalAllMessages.current
     when (item) {
         is DisplaySegment.Text -> {
             if (item.text.isNotEmpty()) {
