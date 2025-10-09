@@ -308,6 +308,8 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplaySe
 
             is BotIncomingSegment.Mention -> buffer.append(seg.name)
 
+            is BotIncomingSegment.Face -> buffer.append(seg.summary)
+
             is BotIncomingSegment.Reply -> {
                 flush()
                 add(DisplaySegment.Reply(seg))
