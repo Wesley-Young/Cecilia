@@ -363,8 +363,6 @@ private fun FriendItem(
     onClick: () -> Unit,
     onDoubleClick: () -> Unit
 ) {
-    val bot = LocalBot.current
-
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -442,8 +440,6 @@ private fun GroupItem(
     onClick: () -> Unit,
     onDoubleClick: () -> Unit
 ) {
-    val bot = LocalBot.current
-
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -488,8 +484,6 @@ private fun GroupItem(
 
 @Composable
 private fun FriendDetailPanel(friend: BotFriendData) {
-    val bot = LocalBot.current
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -566,8 +560,6 @@ private fun FriendDetailPanel(friend: BotFriendData) {
 
 @Composable
 private fun GroupDetailPanel(group: BotGroupData) {
-    val bot = LocalBot.current
-
     Column(
         modifier = Modifier
             .fillMaxSize()
