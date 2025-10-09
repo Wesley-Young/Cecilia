@@ -52,7 +52,6 @@ jobs:
         files: composeAppJvm/build/libs/Cecilia.jar
         body: |
           🚀 自动生成的 Nightly 版本
-          - 构建时间：${{ github.run_started_at }}
           - 提交：${{ github.sha }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
