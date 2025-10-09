@@ -216,10 +216,10 @@ fun PlaceholderMessageBubble(
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         CircularProgressIndicator(
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(16.dp).align(Alignment.CenterVertically),
             color = MaterialTheme.colors.primary.copy(alpha = 0.6f),
             strokeWidth = 2.dp
         )
