@@ -2,7 +2,8 @@ name: Build Cecilia
 
 on:
   push:
-    branches: main
+    branches:
+      - main
     paths-ignore:
       - '**.md'
   workflow_dispatch:
@@ -38,6 +39,21 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Cecilia
+        name: Cecilia-${{ github.sha }}
         path: composeAppJvm/build/libs/Cecilia.jar
+
+    - name: Create nightly release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: nightly
+        name: "Nightly Build"
+        draft: false
+        prerelease: false
+        files: composeAppJvm/build/libs/Cecilia.jar
+        body: |
+          🚀 自动生成的 Nightly 版本
+          - 构建时间：${{ github.run_started_at }}
+          - 提交：${{ github.sha }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
