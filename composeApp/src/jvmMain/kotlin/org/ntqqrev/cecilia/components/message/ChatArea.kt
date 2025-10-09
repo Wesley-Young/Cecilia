@@ -200,6 +200,8 @@ fun ChatArea(conversation: Conversation) {
                     if (index != -1) {
                         messages[index] = DisplayMessage(real = message)
                     }
+                } else {
+                    messages.add(DisplayMessage(real = message))
                 }
 
                 if (isUserAtBottom()) {
