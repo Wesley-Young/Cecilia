@@ -18,7 +18,6 @@ import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.util.UrlSignProvider
 import org.ntqqrev.acidify.util.log.SimpleColoredLogHandler
 import org.ntqqrev.cecilia.structs.CeciliaConfig
-import org.ntqqrev.cecilia.utils.CacheManager
 import org.ntqqrev.cecilia.utils.ConversationManager
 import java.awt.Dimension
 import kotlin.io.path.Path
@@ -32,7 +31,6 @@ fun main() = application {
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     var bot by remember { mutableStateOf<Bot?>(null) }
-    var cacheManager by remember { mutableStateOf<CacheManager?>(null) }
     var conversationManager by remember { mutableStateOf<ConversationManager?>(null) }
     var loadingError by remember { mutableStateOf<String?>(null) }
     var isLoggedIn by remember { mutableStateOf(false) }
@@ -79,11 +77,8 @@ fun main() = application {
                 }
 
                 bot = newBot
-                // 创建缓存管理器
-                val newCacheManager = CacheManager(newBot, scope)
-                cacheManager = newCacheManager
-                // 创建会话管理器（在 CacheManager 之后）
-                conversationManager = ConversationManager(newBot, newCacheManager, scope)
+                // 创建会话管理器
+                conversationManager = ConversationManager(newBot, scope)
                 userUin = newBot.sessionStore.uin
                 isLoggedIn = newBot.isLoggedIn
             } catch (e: Exception) {
@@ -141,7 +136,6 @@ fun main() = application {
                     it.writeToPath(configPath)
                 },
                 bot = bot,
-                cacheManager = cacheManager,
                 conversationManager = conversationManager,
                 loadingError = loadingError,
                 onLoginStateChange = { loggedIn, uin ->

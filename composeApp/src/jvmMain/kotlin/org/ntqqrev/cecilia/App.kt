@@ -23,7 +23,6 @@ fun App(
     config: CeciliaConfig,
     setConfig: (CeciliaConfig) -> Unit,
     bot: Bot?,
-    cacheManager: CacheManager? = null,
     conversationManager: ConversationManager? = null,
     loadingError: String? = null,
     onLoginStateChange: ((Boolean, Long) -> Unit)? = null
@@ -97,13 +96,12 @@ fun App(
                     onLoginStateChange?.invoke(isLoggedIn, bot.sessionStore.uin)
                 }
 
-                // 提供 Bot、CacheManager 和 ConversationManager 到子组件
-                if (cacheManager != null && conversationManager != null) {
+                // 提供 Bot 和 ConversationManager 到子组件
+                if (conversationManager != null) {
                     CompositionLocalProvider(
                         LocalConfig provides config,
                         LocalSetConfig provides setConfig,
                         LocalBot provides bot,
-                        LocalCacheManager provides cacheManager,
                         LocalConversationManager provides conversationManager
                     ) {
                         if (isLoggedIn) {
@@ -118,7 +116,7 @@ fun App(
                         }
                     }
                 } else {
-                    // 管理器还未初始化，显示加载界面
+                    // ConversationManager 还未初始化，显示加载界面
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center

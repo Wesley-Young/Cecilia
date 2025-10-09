@@ -27,7 +27,6 @@ import java.time.temporal.TemporalAdjusters
  */
 class ConversationManager(
     private val bot: Bot,
-    private val cacheManager: CacheManager,
     private val scope: CoroutineScope
 ) {
     /**
@@ -134,21 +133,18 @@ class ConversationManager(
                 // 根据消息场景获取名称和头像
                 val name = when (message.scene) {
                     MessageScene.FRIEND -> {
-                        // 从缓存获取好友信息
-                        val friend = cacheManager.friendCache[message.peerUin]
-                        friend?.remark?.takeIf { it.isNotEmpty() }
-                            ?: friend?.nickname
+                        bot.getFriend(message.peerUin, forceUpdate = false)
+                            ?.remark?.takeIf { it.isNotEmpty() }
+                            ?: bot.getFriend(message.peerUin, forceUpdate = false)?.nickname
                             ?: message.peerUin.toString()
                     }
 
                     MessageScene.GROUP -> {
-                        // 从缓存获取群信息
-                        val group = cacheManager.groupCache[message.peerUin]
-                        group?.name ?: message.peerUin.toString()
+                        bot.getGroup(message.peerUin, forceUpdate = false)
+                            ?.name ?: message.peerUin.toString()
                     }
 
                     else -> {
-                        // 临时会话等其他类型
                         message.peerUin.toString()
                     }
                 }
@@ -224,15 +220,15 @@ class ConversationManager(
         try {
             val (name, _) = when (scene) {
                 MessageScene.FRIEND -> {
-                    val friend = cacheManager.friendCache[peerUin]
-                    val displayName = friend?.remark?.takeIf { it.isNotEmpty() }
-                        ?: friend?.nickname
+                    val displayName = bot.getFriend(peerUin, forceUpdate = false)
+                        ?.remark?.takeIf { it.isNotEmpty() }
+                        ?: bot.getFriend(peerUin, forceUpdate = false)?.nickname
                         ?: peerUin.toString()
                     displayName to ""
                 }
 
                 MessageScene.GROUP -> {
-                    val group = cacheManager.groupCache[peerUin]
+                    val group = bot.getGroup(peerUin, forceUpdate = false)
                     val groupName = group?.name ?: peerUin.toString()
                     groupName to ""
                 }

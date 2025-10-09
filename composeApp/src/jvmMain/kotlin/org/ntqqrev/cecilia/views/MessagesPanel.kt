@@ -18,7 +18,6 @@ import org.ntqqrev.cecilia.components.DraggableDivider
 import org.ntqqrev.cecilia.components.message.ChatArea
 import org.ntqqrev.cecilia.components.message.ConversationList
 import org.ntqqrev.cecilia.utils.LocalBot
-import org.ntqqrev.cecilia.utils.LocalCacheManager
 import org.ntqqrev.cecilia.utils.LocalConversationManager
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -29,9 +28,6 @@ fun MessagesPanel(
     onConversationSelected: () -> Unit = {}
 ) {
     val bot = LocalBot.current
-    val logger = remember { bot.createLogger("MessagesPanel") }
-
-    val cacheManager = LocalCacheManager.current
     val conversationManager = LocalConversationManager.current
     val coroutineScope = rememberCoroutineScope()
     var selectedConversationId by remember { mutableStateOf<String?>(null) }
@@ -48,17 +44,6 @@ fun MessagesPanel(
 
     // 使用 ConversationManager 中的会话列表
     val conversations = conversationManager.conversations
-
-    // 初始化缓存
-    LaunchedEffect(cacheManager) {
-        launch {
-            try {
-                cacheManager.initialize()
-            } catch (e: Exception) {
-                logger.e(e) { "缓存初始化失败" }
-            }
-        }
-    }
 
     Row(modifier = Modifier.fillMaxSize()) {
         // 左侧：会话列表
