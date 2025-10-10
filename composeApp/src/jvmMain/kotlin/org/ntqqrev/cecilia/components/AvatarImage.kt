@@ -171,7 +171,6 @@ fun AvatarImage(
             val leftSpace = avatarPosition.x
             val bottomSpace = windowHeight - (avatarPosition.y + avatarSizePx)
             val topSpace = avatarPosition.y
-            println("Avatar position: $avatarPosition, window size: ${windowWidth}x${windowHeight}, spaces - right: $rightSpace, left: $leftSpace, bottom: $bottomSpace, top: $topSpace")
 
             // 智能选择显示位置
             val (alignment, offset) = if (rightSpace >= cardWidth + spacing) {
