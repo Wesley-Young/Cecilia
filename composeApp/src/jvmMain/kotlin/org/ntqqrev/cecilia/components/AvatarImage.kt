@@ -168,9 +168,7 @@ fun AvatarImage(
 
             // 计算各个方向是否有足够空间
             val rightSpace = windowWidth - (avatarPosition.x + avatarSizePx)
-            val leftSpace = avatarPosition.x
             val bottomSpace = windowHeight - (avatarPosition.y + avatarSizePx)
-            val topSpace = avatarPosition.y
 
             // 智能选择显示位置
             val (alignment, offset) = if (rightSpace >= cardWidth + spacing) {
