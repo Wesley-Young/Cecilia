@@ -13,6 +13,7 @@ import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import org.ntqqrev.acidify.Bot
+import org.ntqqrev.acidify.common.AppInfo
 import org.ntqqrev.acidify.common.SessionStore
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.util.UrlSignProvider
@@ -50,7 +51,10 @@ fun main() = application {
                 }
 
                 val signProvider = UrlSignProvider(config.signApiUrl, config.signApiHttpProxy)
-                val appInfo = signProvider.getAppInfo()!!
+                val appInfo = signProvider.getAppInfo() ?: run {
+                    println("获取 AppInfo 失败，使用内置默认值")
+                    AppInfo.Bundled.Linux
+                }
 
                 val newBot = Bot(
                     appInfo = appInfo,
