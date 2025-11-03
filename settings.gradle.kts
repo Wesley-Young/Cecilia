@@ -35,4 +35,3 @@ plugins {
 
 include(":composeApp")
 include(":composeAppJvm")
-includeBuild("acidify")

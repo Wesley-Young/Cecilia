@@ -17,7 +17,6 @@ import org.ntqqrev.acidify.common.AppInfo
 import org.ntqqrev.acidify.common.SessionStore
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.util.UrlSignProvider
-import org.ntqqrev.acidify.util.log.SimpleColoredLogHandler
 import org.ntqqrev.cecilia.structs.CeciliaConfig
 import org.ntqqrev.cecilia.utils.ConversationManager
 import java.awt.Dimension
@@ -62,7 +61,10 @@ fun main() = application {
                     signProvider = signProvider,
                     scope = scope,
                     minLogLevel = config.minLogLevel,
-                    logHandler = SimpleColoredLogHandler
+                    logHandler = { level, tag, message, throwable ->
+                        println("[$level] [$tag] $message")
+                        throwable?.printStackTrace()
+                    }
                 )
 
                 // 监听 SessionStore 更新事件并保存

@@ -10,7 +10,7 @@ kotlin {
     jvm()
 
     sourceSets {
-        commonMain.dependencies {
+        jvmMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
@@ -23,7 +23,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.ktor.client.core)
             implementation(libs.qrcode.kotlin)
-            implementation("acidify:acidify-core")
+            implementation(libs.acidify.core)
 
             // Compose Desktop Native Binaries
             implementation(compose.desktop.windows_x64)
@@ -32,16 +32,14 @@ kotlin {
             implementation(compose.desktop.macos_arm64)
             implementation(compose.desktop.linux_x64)
             implementation(compose.desktop.linux_arm64)
-        }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
-        }
-        jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
 
             // SLF4J Nop
             implementation("org.slf4j:slf4j-nop:2.0.7")
+        }
+        jvmTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }
