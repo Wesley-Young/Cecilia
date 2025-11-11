@@ -22,4 +22,4 @@ Cecilia 使用 [Acidify](https://github.com/LagrangeDev/acidify/) 作为协议�
 
 ## See Also
 
-- [Yogurt](https://github.com/LagrangeDev/acidify/tree/main/yogurt/) - 基于 Acidify + Kotlin Multiplatform 的 Bot 框架，原生支持 Windows / macOS / Linux！
+- [Yogurt](https://acidify.ntqqrev.org/yogurt/start) - 基于 Acidify + Kotlin Multiplatform 的 Bot 框架，原生支持 Windows / macOS / Linux！
