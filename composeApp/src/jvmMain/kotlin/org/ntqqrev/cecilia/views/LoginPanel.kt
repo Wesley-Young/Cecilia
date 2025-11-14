@@ -170,7 +170,7 @@ fun LoginPanel(
                             loginError = null
                             bot.launch {
                                 try {
-                                    bot.tryLogin()
+                                    bot.login()
                                     onLoginSuccess()
                                 } catch (e: Exception) {
                                     loginError = e.message ?: "登录失败"

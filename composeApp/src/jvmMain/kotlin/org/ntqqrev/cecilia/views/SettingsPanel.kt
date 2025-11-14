@@ -9,7 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import org.ntqqrev.acidify.util.log.LogLevel
+import org.ntqqrev.acidify.logging.LogLevel
 import org.ntqqrev.cecilia.ThemeType
 import org.ntqqrev.cecilia.components.DropdownTextField
 import org.ntqqrev.cecilia.components.LabeledToggle

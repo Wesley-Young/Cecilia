@@ -2,7 +2,7 @@ package org.ntqqrev.cecilia.structs
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.ntqqrev.acidify.util.log.LogLevel
+import org.ntqqrev.acidify.logging.LogLevel
 import org.ntqqrev.cecilia.ThemeType
 import java.nio.file.Path
 import kotlin.io.path.exists

@@ -15,8 +15,8 @@ import kotlinx.serialization.json.Json
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.common.AppInfo
 import org.ntqqrev.acidify.common.SessionStore
+import org.ntqqrev.acidify.common.UrlSignProvider
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
-import org.ntqqrev.acidify.util.UrlSignProvider
 import org.ntqqrev.cecilia.structs.CeciliaConfig
 import org.ntqqrev.cecilia.utils.ConversationManager
 import java.awt.Dimension
@@ -55,7 +55,7 @@ fun main() = application {
                     AppInfo.Bundled.Linux
                 }
 
-                val newBot = Bot(
+                val newBot = Bot.create(
                     appInfo = appInfo,
                     sessionStore = sessionStore,
                     signProvider = signProvider,
