@@ -5,9 +5,11 @@ import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
 import java.time.LocalDateTime
+import kotlin.reflect.KProperty
 
 data class CommandParameter(
-    val name: String,
+    val key: String,
+    val name: String = key,
     val description: String = "",
     val placeholder: String = "",
     val required: Boolean = true,
@@ -30,12 +32,23 @@ class CommandCompletionContext(
 )
 
 class CommandExecutionContext(
-    val args: Map<String, String>,
+    val arguments: Map<String, String>,
     val bot: Bot,
     val httpClient: HttpClient,
     val currentFriend: BotFriend? = null,
     val currentGroup: BotGroup? = null,
-)
+) {
+    val args = CommandArguments(arguments)
+}
+
+class CommandArguments internal constructor(
+    private val values: Map<String, String>
+) {
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): String {
+        return values[property.name]
+            ?: error("缺少参数 \"${property.name}\"")
+    }
+}
 
 object CommandCatalog {
     fun demoCommands(): List<Command> {
@@ -64,6 +77,7 @@ object CommandCatalog {
                 description = "向不同目标 println 一条公告内容。",
                 parameters = listOf(
                     CommandParameter(
+                        key = "target",
                         name = "目标",
                         placeholder = "选择广播对象",
                         suggestionsProvider = { query ->
@@ -71,6 +85,7 @@ object CommandCatalog {
                         }
                     ),
                     CommandParameter(
+                        key = "content",
                         name = "内容",
                         placeholder = "输入要广播的内容",
                         suggestionsProvider = { query ->
@@ -79,9 +94,9 @@ object CommandCatalog {
                     )
                 ),
                 execute = {
-                    val target = args["目标"].orEmpty()
-                    val message = args["内容"].orEmpty()
-                    println("[Command] 向 $target 广播：$message")
+                    val target by args
+                    val content by args
+                    println("[Command] 向 $target 广播：$content")
                 }
             ),
             Command(
@@ -90,6 +105,7 @@ object CommandCatalog {
                 description = "带多个参数的示例指令。",
                 parameters = listOf(
                     CommandParameter(
+                        key = "owner",
                         name = "负责人",
                         placeholder = "选择负责人",
                         suggestionsProvider = { query ->
@@ -97,6 +113,7 @@ object CommandCatalog {
                         }
                     ),
                     CommandParameter(
+                        key = "priority",
                         name = "优先级",
                         placeholder = "P0 / P1 / P2 / P3",
                         suggestionsProvider = { query ->
@@ -104,6 +121,7 @@ object CommandCatalog {
                         }
                     ),
                     CommandParameter(
+                        key = "note",
                         name = "备注",
                         required = false,
                         placeholder = "可选备注",
@@ -111,9 +129,9 @@ object CommandCatalog {
                     )
                 ),
                 execute = {
-                    val owner = args["负责人"].orEmpty()
-                    val priority = args["优先级"].orEmpty()
-                    val note = args["备注"].orEmpty().ifBlank { "(无)" }
+                    val owner by args
+                    val priority by args
+                    val note by args
                     println("[Command] 创建演练任务 -> 负责人: $owner, 优先级: $priority, 备注: $note")
                 }
             )

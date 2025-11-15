@@ -646,10 +646,10 @@ private suspend fun executeCommand(
 ) {
     val payload = mutableMapOf<String, String>()
     command.parameters.forEachIndexed { index, parameter ->
-        payload[parameter.name] = args.getOrNull(index).orEmpty()
+        payload[parameter.key] = args.getOrNull(index).orEmpty()
     }
     val ctx = CommandExecutionContext(
-        args = payload,
+        arguments = payload,
         bot = bot,
         httpClient = httpClient,
         currentFriend = currentFriend,
