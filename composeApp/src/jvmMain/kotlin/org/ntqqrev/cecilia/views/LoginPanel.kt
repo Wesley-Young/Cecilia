@@ -26,6 +26,7 @@ import org.ntqqrev.acidify.event.QRCodeStateQueryEvent
 import org.ntqqrev.acidify.struct.QRCodeState
 import org.ntqqrev.cecilia.utils.AvatarCache
 import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.utils.LocalHttpClient
 import qrcode.QRCode
 
 @Composable
@@ -34,6 +35,7 @@ fun LoginPanel(
     onLoginStateChange: ((Boolean, Long) -> Unit)?
 ) {
     val bot = LocalBot.current
+    val httpClient = LocalHttpClient.current
     val hasSession = bot.sessionStore.uin != 0L
     val qrCodeColorArgb = MaterialTheme.colors.primary.toArgb()
     var qrCodeImage by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -56,7 +58,7 @@ fun LoginPanel(
             launch {
                 try {
                     val avatarBitmap = withContext(Dispatchers.IO) {
-                        val response = bot.httpClient.get("https://q1.qlogo.cn/g?b=qq&nk=${bot.sessionStore.uin}&s=640")
+                        val response = httpClient.get("https://q1.qlogo.cn/g?b=qq&nk=${bot.sessionStore.uin}&s=640")
                         val imageBytes = response.readRawBytes()
                         Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
                     }

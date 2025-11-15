@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.ktor.client.HttpClient
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.components.NavigationRail
@@ -23,6 +24,7 @@ fun App(
     config: CeciliaConfig,
     setConfig: (CeciliaConfig) -> Unit,
     bot: Bot?,
+    httpClient: HttpClient,
     conversationManager: ConversationManager? = null,
     loadingError: String? = null,
     onLoginStateChange: ((Boolean, Long) -> Unit)? = null
@@ -102,6 +104,7 @@ fun App(
                         LocalConfig provides config,
                         LocalSetConfig provides setConfig,
                         LocalBot provides bot,
+                        LocalHttpClient provides httpClient,
                         LocalConversationManager provides conversationManager
                     ) {
                         if (isLoggedIn) {

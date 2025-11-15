@@ -27,6 +27,7 @@ import kotlinx.coroutines.withContext
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.utils.LocalHttpClient
 import org.ntqqrev.cecilia.utils.MediaCache
 import org.jetbrains.skia.Image as SkiaImage
 
@@ -36,6 +37,7 @@ fun MessageImage(
     isSent: Boolean
 ) {
     val bot = LocalBot.current
+    val httpClient = LocalHttpClient.current
     var imageBitmap by remember(imageSegment.fileId) { mutableStateOf<ImageBitmap?>(null) }
     var isLoading by remember(imageSegment.fileId) { mutableStateOf(true) }
     var hasError by remember(imageSegment.fileId) { mutableStateOf(false) }
@@ -50,7 +52,7 @@ fun MessageImage(
                         cachedContent
                     } else {
                         val url = bot.getDownloadUrl(imageSegment.fileId)
-                        val response = bot.httpClient.get(url)
+                        val response = httpClient.get(url)
                         val bytes = response.readRawBytes()
                         MediaCache.putFileIdAndContent(imageSegment.fileId, url, bytes)
                         bytes

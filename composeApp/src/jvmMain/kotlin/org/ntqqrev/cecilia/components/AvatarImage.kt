@@ -33,6 +33,7 @@ import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.struct.BotUserInfo
 import org.ntqqrev.cecilia.utils.AvatarCache
 import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.utils.LocalHttpClient
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -44,6 +45,7 @@ fun AvatarImage(
     clickable: Boolean = false  // 是否可点击显示用户信息
 ) {
     val bot = LocalBot.current
+    val httpClient = LocalHttpClient.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val windowInfo = LocalWindowInfo.current
@@ -83,7 +85,7 @@ fun AvatarImage(
                     } else {
                         "https://q1.qlogo.cn/g?b=qq&nk=$uin&s=$quality"
                     }
-                    val response = bot.httpClient.get(url)
+                    val response = httpClient.get(url)
                     val imageBytes = response.readRawBytes()
                     Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
                 }

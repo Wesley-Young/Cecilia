@@ -2,6 +2,7 @@ package org.ntqqrev.cecilia.utils
 
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
+import io.ktor.client.*
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.structs.CeciliaConfig
 import org.ntqqrev.cecilia.structs.DisplayMessage
@@ -16,6 +17,10 @@ val LocalSetConfig = staticCompositionLocalOf<(CeciliaConfig) -> Unit> {
 
 val LocalBot = staticCompositionLocalOf<Bot> {
     error("No Bot provided")
+}
+
+val LocalHttpClient = staticCompositionLocalOf<HttpClient> {
+    error("No HttpClient builder provided")
 }
 
 val LocalConversationManager = staticCompositionLocalOf<ConversationManager> {

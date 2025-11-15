@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import org.ntqqrev.acidify.Bot
@@ -35,6 +36,8 @@ fun main() = application {
     var loadingError by remember { mutableStateOf<String?>(null) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var userUin by remember { mutableStateOf(0L) }
+
+    val httpClient = HttpClient()
 
     // 异步加载 Bot
     LaunchedEffect(Unit) {
@@ -142,6 +145,7 @@ fun main() = application {
                     it.writeToPath(configPath)
                 },
                 bot = bot,
+                httpClient = httpClient,
                 conversationManager = conversationManager,
                 loadingError = loadingError,
                 onLoginStateChange = { loggedIn, uin ->
