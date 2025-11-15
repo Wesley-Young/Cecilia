@@ -30,6 +30,7 @@ import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.acidify.message.MessageScene
+import org.ntqqrev.acidify.struct.GroupMemberRole
 import org.ntqqrev.cecilia.components.AvatarImage
 import org.ntqqrev.cecilia.structs.DisplaySegment
 import org.ntqqrev.cecilia.structs.GroupMemberDisplayInfo
@@ -87,27 +88,17 @@ fun MessageBubble(
     // 群聊下始终展示发送者信息
     val shouldShowSenderInfo = message.scene == MessageScene.GROUP
 
-    val senderInfoText = remember(senderName, groupMemberInfo) {
-        groupMemberInfo?.let { info ->
-            val displayName = info.card.takeIf { it.isNotBlank() }
-                ?: info.nickname.takeIf { it.isNotBlank() }
-                ?: senderName
-            buildList {
-                add(displayName)
-                info.specialTitle.takeIf { it.isNotBlank() }?.let { add(it) }
-                add("Lv.${info.level}")
-            }.joinToString(" · ")
-        } ?: senderName
-    }
+    val badgeText = remember(groupMemberInfo) { buildBadgeText(groupMemberInfo) }
+    val badgeColor = remember(groupMemberInfo) { badgeColorForMember(groupMemberInfo) }
     // 鼠标悬停状态
     var isHovering by remember { mutableStateOf(false) }
     var showSeq by remember { mutableStateOf(false) }
 
     // 当前显示的文本
+    val sequenceLabel = remember(message.sequence) { "#${message.sequence}" }
     val displayText = when {
-        showSeq && shouldShowSenderInfo -> "$senderInfoText #${message.sequence}"
-        showSeq -> "#${message.sequence}"
-        shouldShowSenderInfo -> senderInfoText
+        showSeq && !shouldShowSenderInfo -> sequenceLabel
+        showSeq -> null
         else -> null
     }
 
@@ -154,14 +145,45 @@ fun MessageBubble(
             horizontalAlignment = if (isSent) Alignment.End else Alignment.Start,
             modifier = Modifier.widthIn(max = 400.dp)
         ) {
-            // 显示群昵称或消息序列号
-            if (displayText != null) {
-                Text(
+            // 显示群昵称 / badge 或消息序列号
+            when {
+                showSeq && shouldShowSenderInfo -> Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp, start = 4.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = if (isSent) Arrangement.End else Arrangement.Start
+                ) {
+                    SenderHeader(
+                        displayName = senderName,
+                        badgeText = badgeText,
+                        badgeColor = badgeColor,
+                        isSent = isSent
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = sequenceLabel,
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+
+                displayText != null -> Text(
                     text = displayText,
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier.padding(bottom = 4.dp, start = 4.dp, end = 4.dp)
                 )
+
+                shouldShowSenderInfo -> SenderHeader(
+                    modifier = Modifier.padding(bottom = 4.dp, start = 4.dp, end = 4.dp),
+                    displayName = senderName,
+                    badgeText = badgeText,
+                    badgeColor = badgeColor,
+                    isSent = isSent
+                )
+
+                else -> {}
             }
 
             // 消息气泡容器（包含加载动画和气泡）
@@ -246,33 +268,24 @@ fun MessageBubble(
 @Composable
 fun PlaceholderMessageBubble(
     message: PlaceholderMessage,
-    isGroup: Boolean
+    isGroup: Boolean,
+    isSent: Boolean = true
 ) {
     val bot = LocalBot.current
     // 格式化时间
     val timeStr = formatMessageTime(message.timestamp)
 
-    val senderInfoText = remember(message.groupMemberInfo, isGroup) {
-        if (!isGroup) {
-            null
-        } else {
-            val fallback = bot.uin.toString()
-            message.groupMemberInfo?.let { info ->
-                val displayName = info.card.takeIf { it.isNotBlank() }
-                    ?: info.nickname.takeIf { it.isNotBlank() }
-                    ?: fallback
-                buildList {
-                    add(displayName)
-                    info.specialTitle.takeIf { it.isNotBlank() }?.let { add(it) }
-                    add("Lv.${info.level}")
-                }.joinToString(" · ")
-            } ?: fallback
-        }
+    val senderName = remember(message.groupMemberInfo) {
+        message.groupMemberInfo?.let { info ->
+            info.card.takeIf { it.isNotBlank() } ?: info.nickname.takeIf { it.isNotBlank() }
+        } ?: bot.uin.toString()
     }
+    val badgeText = remember(message.groupMemberInfo) { buildBadgeText(message.groupMemberInfo) }
+    val badgeColor = remember(message.groupMemberInfo) { badgeColorForMember(message.groupMemberInfo) }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = if (isSent) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Top
     ) {
         CircularProgressIndicator(
@@ -284,15 +297,16 @@ fun PlaceholderMessageBubble(
         Spacer(modifier = Modifier.width(8.dp))
 
         Column(
-            horizontalAlignment = Alignment.End,
+            horizontalAlignment = if (isSent) Alignment.End else Alignment.Start,
             modifier = Modifier.widthIn(max = 400.dp)
         ) {
-            if (senderInfoText != null) {
-                Text(
-                    text = senderInfoText,
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(bottom = 4.dp, start = 4.dp, end = 4.dp)
+            if (isGroup) {
+                SenderHeader(
+                    modifier = Modifier.padding(bottom = 4.dp, start = 4.dp, end = 4.dp),
+                    displayName = senderName,
+                    badgeText = badgeText,
+                    badgeColor = badgeColor,
+                    isSent = isSent
                 )
             }
 
@@ -420,6 +434,88 @@ private fun buildDisplayList(segments: List<BotIncomingSegment>): List<DisplaySe
         }
     }
     flush()
+}
+
+private fun buildBadgeText(info: GroupMemberDisplayInfo?): String? {
+    info ?: return null
+    val levelPart = "Lv${info.level}"
+    val titlePart = info.specialTitle.takeIf { it.isNotBlank() } ?: when (info.role) {
+        GroupMemberRole.OWNER -> "群主"
+        GroupMemberRole.ADMIN -> "管理员"
+        else -> null
+    }
+    return buildString {
+        append(levelPart)
+        if (titlePart != null) {
+            append(" ")
+            append(titlePart)
+        }
+    }
+}
+
+private fun badgeColorForMember(info: GroupMemberDisplayInfo?): Color = when (info?.role) {
+    GroupMemberRole.OWNER -> Color(0xFFFFB74D)
+    GroupMemberRole.ADMIN -> Color(0xFF26C6DA)
+    GroupMemberRole.MEMBER, null -> {
+        if (info?.specialTitle?.isNotBlank() == true) {
+            Color(0xFFD269DA)
+        } else {
+            Color(0xFF90A4AE)
+        }
+    }
+}
+
+@Composable
+private fun SenderHeader(
+    modifier: Modifier = Modifier,
+    displayName: String,
+    badgeText: String?,
+    badgeColor: Color,
+    isSent: Boolean
+) {
+    val nameColor = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!isSent) {
+            badgeText?.let {
+                MemberBadge(text = it, backgroundColor = badgeColor)
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            Text(
+                text = displayName,
+                style = MaterialTheme.typography.caption,
+                color = nameColor
+            )
+        } else {
+            Text(
+                text = displayName,
+                style = MaterialTheme.typography.caption,
+                color = nameColor
+            )
+            badgeText?.let {
+                Spacer(modifier = Modifier.width(4.dp))
+                MemberBadge(text = it, backgroundColor = badgeColor)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemberBadge(text: String, backgroundColor: Color) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = backgroundColor,
+        contentColor = Color.White,
+        elevation = 0.dp
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.caption,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+        )
+    }
 }
 
 @Composable
