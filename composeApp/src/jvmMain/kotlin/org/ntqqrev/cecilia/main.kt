@@ -25,12 +25,16 @@ import org.ntqqrev.cecilia.components.SignApiSetupDialog
 import org.ntqqrev.cecilia.structs.CeciliaConfig
 import org.ntqqrev.cecilia.utils.ConversationManager
 import java.awt.Dimension
+import java.io.PrintStream
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 fun main() = application {
+    val utf8out = PrintStream(System.out, true, "UTF-8")
+    System.setOut(utf8out)
+
     val configPath = Path("config.json")
     var isConfigInitialized by remember { mutableStateOf(configPath.exists()) }
     var config by remember {
