@@ -52,14 +52,14 @@ jobs:
         run: |
           mkdir -p composeApp/build/distributions
           cd composeApp/build/compose/binaries/main/app
-          zip -r "../../../distributions/${{ matrix.archive_name }}" composeApp
+          zip -r "../../../../distributions/${{ matrix.archive_name }}" composeApp
 
       - name: Package distributable (macOS)
         if: runner.os == 'macOS'
         run: |
           mkdir -p composeApp/build/distributions
           cd composeApp/build/compose/binaries/main/app
-          zip -r "../../../distributions/${{ matrix.archive_name }}" composeApp.app
+          zip -r "../../../../distributions/${{ matrix.archive_name }}" composeApp.app
 
       - name: Package distributable (Windows)
         if: runner.os == 'Windows'
