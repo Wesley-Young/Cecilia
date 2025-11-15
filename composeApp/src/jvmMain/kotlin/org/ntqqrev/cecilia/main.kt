@@ -178,8 +178,12 @@ fun appMain() = application {
             ) {
                 SignApiSetupDialog(
                     initialSignApiUrl = config.signApiUrl,
-                    onConfirm = { newUrl ->
-                        val updatedConfig = config.copy(signApiUrl = newUrl)
+                    initialSignApiHttpProxy = config.signApiHttpProxy,
+                    onConfirm = { newUrl, newProxy ->
+                        val updatedConfig = config.copy(
+                            signApiUrl = newUrl,
+                            signApiHttpProxy = newProxy
+                        )
                         config = updatedConfig
                         updatedConfig.writeToPath(configPath)
                         isConfigInitialized = true

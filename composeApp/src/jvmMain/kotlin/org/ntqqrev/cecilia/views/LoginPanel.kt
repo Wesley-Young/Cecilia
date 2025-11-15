@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,10 +26,14 @@ import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.event.QRCodeGeneratedEvent
 import org.ntqqrev.acidify.event.QRCodeStateQueryEvent
 import org.ntqqrev.acidify.struct.QRCodeState
+import org.ntqqrev.cecilia.components.SignApiSetupDialog
 import org.ntqqrev.cecilia.utils.AvatarCache
 import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.utils.LocalConfig
 import org.ntqqrev.cecilia.utils.LocalHttpClient
+import org.ntqqrev.cecilia.utils.LocalSetConfig
 import qrcode.QRCode
+import kotlin.system.exitProcess
 
 @Composable
 fun LoginPanel(
@@ -36,6 +42,9 @@ fun LoginPanel(
 ) {
     val bot = LocalBot.current
     val httpClient = LocalHttpClient.current
+    val config = LocalConfig.current
+    val setConfig = LocalSetConfig.current
+    val currentConfig by rememberUpdatedState(config)
     val hasSession = bot.sessionStore.uin != 0L
     val qrCodeColorArgb = MaterialTheme.colors.primary.toArgb()
     var qrCodeImage by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -44,6 +53,7 @@ fun LoginPanel(
     var isLoggingIn by remember { mutableStateOf(false) }
     var userAvatar by remember { mutableStateOf<ImageBitmap?>(null) }
     var isUsingQRCode by remember { mutableStateOf(!hasSession) }
+    var showSignApiDialog by remember { mutableStateOf(false) }
 
     // 加载用户头像
     LaunchedEffect(bot.sessionStore.uin) {
@@ -101,23 +111,24 @@ fun LoginPanel(
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .width(400.dp)
-                .wrapContentHeight(),
-            elevation = 4.dp
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            Column(
+            Card(
                 modifier = Modifier
-                    .padding(32.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .width(400.dp)
+                    .wrapContentHeight(),
+                elevation = 4.dp
             ) {
+                Column(
+                    modifier = Modifier
+                        .padding(32.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                 Text(
                     text = "Cecilia",
                     style = MaterialTheme.typography.h4.copy(fontWeight = FontWeight.Bold),
@@ -380,6 +391,44 @@ fun LoginPanel(
                     )
                 }
             }
+            }
         }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.BottomStart
+        ) {
+            TextButton(
+                onClick = { showSignApiDialog = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "设置"
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("设置")
+            }
+        }
+    }
+
+    if (showSignApiDialog) {
+        SignApiSetupDialog(
+            initialSignApiUrl = currentConfig.signApiUrl,
+            initialSignApiHttpProxy = currentConfig.signApiHttpProxy,
+            onConfirm = { newUrl, newProxy ->
+                setConfig(
+                    currentConfig.copy(
+                        signApiUrl = newUrl,
+                        signApiHttpProxy = newProxy
+                    )
+                )
+                showSignApiDialog = false
+                exitProcess(0)
+            },
+            onDismissRequest = { showSignApiDialog = false },
+            showRestartReminder = true
+        )
     }
 }
