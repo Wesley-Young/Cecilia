@@ -1,5 +1,8 @@
 package org.ntqqrev.cecilia.components.message
 
+import androidx.compose.foundation.ContextMenuArea
+import androidx.compose.foundation.ContextMenuItem
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -29,8 +33,15 @@ import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.LocalHttpClient
 import org.ntqqrev.cecilia.utils.MediaCache
+import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.Transferable
+import java.awt.datatransfer.UnsupportedFlavorException
+import java.io.ByteArrayInputStream
+import javax.imageio.ImageIO
 import org.jetbrains.skia.Image as SkiaImage
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageImage(
     imageSegment: BotIncomingSegment.Image,
@@ -39,9 +50,11 @@ fun MessageImage(
     val bot = LocalBot.current
     val httpClient = LocalHttpClient.current
     var imageBitmap by remember(imageSegment.fileId) { mutableStateOf<ImageBitmap?>(null) }
+    var imageBytes by remember(imageSegment.fileId) { mutableStateOf<ByteArray?>(null) }
     var isLoading by remember(imageSegment.fileId) { mutableStateOf(true) }
     var hasError by remember(imageSegment.fileId) { mutableStateOf(false) }
     var showPreview by remember { mutableStateOf(false) }
+
 
     LaunchedEffect(imageSegment.fileId) {
         launch {
@@ -57,9 +70,10 @@ fun MessageImage(
                         MediaCache.putFileIdAndContent(imageSegment.fileId, url, bytes)
                         bytes
                     }
-                    SkiaImage.makeFromEncoded(imageBytes).toComposeImageBitmap()
+                    imageBytes to SkiaImage.makeFromEncoded(imageBytes).toComposeImageBitmap()
                 }
-                imageBitmap = bitmap
+                imageBytes = bitmap.first
+                imageBitmap = bitmap.second
                 isLoading = false
             } catch (e: Exception) {
                 hasError = true
@@ -137,15 +151,30 @@ fun MessageImage(
             }
 
             imageBitmap != null -> {
-                Image(
-                    bitmap = imageBitmap!!,
-                    contentDescription = imageSegment.summary,
-                    modifier = modifier.combinedClickable(
-                        onDoubleClick = { showPreview = true },
-                        onClick = { /* 单击不做任何操作 */ }
-                    ),
-                    contentScale = ContentScale.Fit
-                )
+                DisableSelection {
+                    ContextMenuArea(
+                        enabled = imageBytes != null,
+                        items = {
+                            if (imageBytes != null) {
+                                listOf(
+                                    ContextMenuItem("复制图片") {
+                                        imageBytes?.let { copyImageToClipboard(it) }
+                                    }
+                                )
+                            } else emptyList()
+                        }
+                    ) {
+                        Image(
+                            bitmap = imageBitmap!!,
+                            contentDescription = imageSegment.summary,
+                            modifier = modifier.combinedClickable(
+                                onDoubleClick = { showPreview = true },
+                                onClick = { /* 单击不做任何操作 */ }
+                            ),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
             }
         }
     }
@@ -159,5 +188,24 @@ fun MessageImage(
             title = "预览 - ${imageSegment.summary}",
             onCloseRequest = { showPreview = false }
         )
+    }
+}
+
+private fun copyImageToClipboard(bytes: ByteArray) {
+    val clipboard = runCatching { Toolkit.getDefaultToolkit().systemClipboard }.getOrNull() ?: return
+    val bufferedImage = runCatching {
+        ByteArrayInputStream(bytes).use { ImageIO.read(it) }
+    }.getOrNull() ?: return
+    val transferable = object : Transferable {
+        private val supportedFlavors = arrayOf(DataFlavor.imageFlavor)
+        override fun getTransferDataFlavors(): Array<DataFlavor> = supportedFlavors
+        override fun isDataFlavorSupported(flavor: DataFlavor?): Boolean = flavor == DataFlavor.imageFlavor
+        override fun getTransferData(flavor: DataFlavor?): Any {
+            if (!isDataFlavorSupported(flavor)) throw UnsupportedFlavorException(flavor)
+            return bufferedImage
+        }
+    }
+    runCatching {
+        clipboard.setContents(transferable, null)
     }
 }
