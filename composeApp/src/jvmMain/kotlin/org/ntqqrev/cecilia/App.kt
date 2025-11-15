@@ -12,7 +12,7 @@ import io.ktor.client.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
-import org.ntqqrev.cecilia.commands.CommandCatalog
+import org.ntqqrev.cecilia.commands.NudgeCommand
 import org.ntqqrev.cecilia.components.CommandPalette
 import org.ntqqrev.cecilia.components.NavigationRail
 import org.ntqqrev.cecilia.components.NavigationTab
@@ -46,7 +46,11 @@ fun App(
                 NotoFontFamily
         )
     ) {
-        val commands = remember { CommandCatalog.demoCommands() }
+        val commands = remember {
+            listOf(
+                NudgeCommand
+            )
+        }
         val snackbarHostState = remember { SnackbarHostState() }
         val snackbarScope = rememberCoroutineScope()
 

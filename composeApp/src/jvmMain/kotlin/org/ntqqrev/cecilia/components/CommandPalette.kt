@@ -37,6 +37,8 @@ import org.ntqqrev.cecilia.commands.Command
 import org.ntqqrev.cecilia.commands.CommandCompletionContext
 import org.ntqqrev.cecilia.commands.CommandExecutionContext
 import org.ntqqrev.cecilia.commands.CommandParameter
+import org.ntqqrev.cecilia.commands.CommandSuggestion
+import org.ntqqrev.cecilia.components.AvatarImage
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.ConversationManager
 
@@ -104,23 +106,24 @@ fun CommandPalette(
         when {
             parameterSuggestionsActive -> {
                 parameterSuggestionState.suggestions.map { suggestion ->
+                    val displayText = suggestion.display ?: suggestion.content
+                    val subtitle = if (!suggestion.display.isNullOrBlank() && suggestion.display != suggestion.content)
+                        suggestion.content else ""
                     SuggestionItem(
-                        primary = suggestion,
-                        secondary = "",
-                        applyText = fillArgumentValue(selectedCommand, consoleState, suggestion)
+                        title = displayText,
+                        subtitle = subtitle,
+                        applyText = fillArgumentValue(selectedCommand, consoleState, suggestion.content),
                     )
                 }
             }
 
             commandSuggestionsActive -> {
                 commandMatches.map { command ->
+                    val content = buildCommandInput(command, emptyList())
                     SuggestionItem(
-                        primary = "/${command.id}",
-                        secondary = command.description,
-                        applyText = buildCommandInput(
-                            command,
-                            emptyList()
-                        )
+                        title = command.signature(),
+                        subtitle = command.description,
+                        applyText = content
                     )
                 }
             }
@@ -513,7 +516,7 @@ private fun SuggestionList(
         } else {
             LazyColumn {
                 itemsIndexed(suggestions) { index, suggestion ->
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
@@ -523,16 +526,29 @@ private fun SuggestionList(
                                     Color.Transparent
                             )
                             .clickable { onSuggestionClicked(suggestion) }
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = suggestion.primary, style = MaterialTheme.typography.subtitle1)
-                        if (suggestion.secondary.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = suggestion.secondary,
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        suggestion.uin?.let { avatarUin ->
+                            AvatarImage(
+                                uin = avatarUin,
+                                size = 32.dp,
+                                isGroup = suggestion.isGroupAvatar,
+                                quality = 100,
+                                clickable = false
                             )
+                            Spacer(modifier = Modifier.width(12.dp))
+                        }
+                        Column(modifier = Modifier.weight(1f, fill = true)) {
+                            Text(text = suggestion.title, style = MaterialTheme.typography.subtitle1)
+                            if (suggestion.subtitle.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = suggestion.subtitle,
+                                    style = MaterialTheme.typography.caption,
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
                         }
                     }
                     Divider(color = MaterialTheme.colors.onSurface.copy(alpha = 0.08f))
@@ -547,14 +563,16 @@ private data class ParameterSuggestionState(
     val parameterIndex: Int = -1,
     val parameter: CommandParameter? = null,
     val query: String = "",
-    val suggestions: List<String> = emptyList(),
+    val suggestions: List<CommandSuggestion> = emptyList(),
     val isLoading: Boolean = false
 )
 
 private data class SuggestionItem(
-    val primary: String,
-    val secondary: String,
-    val applyText: String
+    val title: String,
+    val subtitle: String = "",
+    val applyText: String,
+    val uin: Long? = null,
+    val isGroupAvatar: Boolean = false
 )
 
 private data class ConsoleInputState(
@@ -611,6 +629,20 @@ private fun validateCommand(command: Command?, state: ConsoleInputState): String
         parameter.required && state.arguments.getOrNull(index).isNullOrBlank()
     }?.value
     return missingParameter?.let { "参数 \"${it.name}\" 尚未填写" }
+}
+
+private fun Command.signature(): String {
+    val builder = StringBuilder().apply {
+        append("/")
+        append(id)
+        parameters.forEach { param ->
+            append(' ')
+            append('<')
+            append(param.name)
+            append('>')
+        }
+    }
+    return builder.toString()
 }
 
 private fun buildCommandInput(command: Command, args: List<String>): String {
