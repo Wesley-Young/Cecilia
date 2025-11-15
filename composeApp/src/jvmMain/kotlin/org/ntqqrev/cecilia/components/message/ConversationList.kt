@@ -31,7 +31,6 @@ fun ConversationList(
     onConversationClick: (String) -> Unit,
     width: Dp = 320.dp
 ) {
-    var showMenu by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier

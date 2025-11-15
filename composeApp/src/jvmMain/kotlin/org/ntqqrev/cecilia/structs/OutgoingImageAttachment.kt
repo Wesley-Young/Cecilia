@@ -4,18 +4,18 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.message.ImageFormat
-import java.awt.Image as AwtImage
 import java.awt.image.BufferedImage
 import java.awt.image.MultiResolutionImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.UUID
+import java.util.*
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 import javax.imageio.stream.MemoryCacheImageOutputStream
+import java.awt.Image as AwtImage
 
 data class OutgoingImageAttachment(
     val id: String = UUID.randomUUID().toString(),
@@ -99,6 +99,7 @@ data class OutgoingImageAttachment(
                                     variant.getHeight(null).coerceAtLeast(1))
                         } ?: image
                 }
+
                 else -> image
             }
 

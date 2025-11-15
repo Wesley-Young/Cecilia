@@ -6,9 +6,9 @@ import java.awt.datatransfer.Transferable
 import java.io.File
 import java.io.InputStream
 import java.net.URI
+import java.nio.ByteBuffer
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.ByteBuffer
 
 private val supportedExtensions = setOf("jpg", "jpeg", "png", "gif", "bmp", "webp", "tif", "tiff", "heic", "heif")
 internal fun Transferable.hasSupportedImagePayload(): Boolean {
@@ -101,6 +101,7 @@ internal fun Transferable.extractBinaryImages(): List<ClipboardImageBytes> {
                 buffer.get(arr)
                 arr
             }
+
             else -> null
         } ?: continue
 

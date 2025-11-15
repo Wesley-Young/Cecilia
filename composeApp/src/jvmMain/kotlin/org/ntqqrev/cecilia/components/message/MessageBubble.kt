@@ -30,7 +30,6 @@ import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.components.AvatarImage
-import org.ntqqrev.cecilia.structs.DisplayMessage
 import org.ntqqrev.cecilia.structs.DisplaySegment
 import org.ntqqrev.cecilia.structs.PlaceholderMessage
 import org.ntqqrev.cecilia.utils.LocalAllMessages
