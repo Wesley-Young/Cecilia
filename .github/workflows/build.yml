@@ -51,14 +51,17 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir -p composeApp/build/distributions
-          zip -r "composeApp/build/distributions/${{ matrix.archive_name }}" composeApp/build/compose/binaries/main/app
+          cd composeApp/build/compose/binaries/main/app
+          zip -r "../../../distributions/${{ matrix.archive_name }}" composeApp
 
       - name: Package distributable (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "composeApp/build/distributions" | Out-Null
-          Compress-Archive -Path "composeApp/build/compose/binaries/main/app" -DestinationPath "composeApp/build/distributions/${{ matrix.archive_name }}" -Force
+          Push-Location "composeApp/build/compose/binaries/main/app"
+          Compress-Archive -Path "composeApp" -DestinationPath "$env:GITHUB_WORKSPACE/composeApp/build/distributions/${{ matrix.archive_name }}" -Force
+          Pop-Location
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
