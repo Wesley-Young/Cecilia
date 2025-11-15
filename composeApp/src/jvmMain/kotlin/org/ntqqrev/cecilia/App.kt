@@ -5,12 +5,19 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusTarget
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.ktor.client.*
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
+import org.ntqqrev.cecilia.commands.CommandCatalog
+import org.ntqqrev.cecilia.components.CommandPalette
 import org.ntqqrev.cecilia.components.NavigationRail
 import org.ntqqrev.cecilia.components.NavigationTab
 import org.ntqqrev.cecilia.components.UnsavedChangesDialog
@@ -41,93 +48,147 @@ fun App(
                 NotoFontFamily
         )
     ) {
-        when {
-            loadingError != null -> {
-                // 显示错误界面
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            text = "加载失败",
-                            style = MaterialTheme.typography.h6,
-                            color = MaterialTheme.colors.error
-                        )
-                        Text(
-                            text = loadingError,
-                            style = MaterialTheme.typography.body1,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
+        val commands = remember { CommandCatalog.demoCommands() }
+        var isCommandPaletteVisible by remember { mutableStateOf(false) }
+        val shortcutFocusRequester = remember { FocusRequester() }
+        val snackbarHostState = remember { SnackbarHostState() }
+        val snackbarScope = rememberCoroutineScope()
+
+        LaunchedEffect(Unit) {
+            shortcutFocusRequester.requestFocus()
+        }
+        LaunchedEffect(isCommandPaletteVisible) {
+            if (!isCommandPaletteVisible) {
+                shortcutFocusRequester.requestFocus()
             }
+        }
 
-            bot == null -> {
-                // 显示加载界面
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(shortcutFocusRequester)
+                .focusTarget()
+                .onPreviewKeyEvent { event ->
+                    if (!isCommandPaletteVisible &&
+                        event.type == KeyEventType.KeyDown &&
+                        event.isShiftPressed &&
+                        (event.isMetaPressed || event.isCtrlPressed) &&
+                        event.key == Key.P
                     ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colors.primary
-                        )
-                        Text(
-                            text = "正在初始化...",
-                            style = MaterialTheme.typography.body1,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                        )
+                        isCommandPaletteVisible = true
+                        true
+                    } else {
+                        false
                     }
                 }
-            }
-
-            else -> {
-                // Bot 加载完成
-                var isLoggedIn by remember { mutableStateOf(bot.isLoggedIn) }
-
-                // 通知登录状态变化
-                LaunchedEffect(isLoggedIn) {
-                    onLoginStateChange?.invoke(isLoggedIn, bot.sessionStore.uin)
-                }
-
-                // 提供 Bot 和 ConversationManager 到子组件
-                if (conversationManager != null) {
-                    CompositionLocalProvider(
-                        LocalConfig provides config,
-                        LocalSetConfig provides setConfig,
-                        LocalBot provides bot,
-                        LocalHttpClient provides httpClient,
-                        LocalConversationManager provides conversationManager
-                    ) {
-                        if (isLoggedIn) {
-                            // 已登录，显示主界面
-                            MainContent()
-                        } else {
-                            // 未登录，显示登录界面
-                            LoginPanel(
-                                onLoginSuccess = { isLoggedIn = true },
-                                onLoginStateChange = onLoginStateChange
-                            )
-                        }
-                    }
-                } else {
-                    // ConversationManager 还未初始化，显示加载界面
+        ) {
+            when {
+                loadingError != null -> {
+                    // 显示错误界面
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "加载失败",
+                                style = MaterialTheme.typography.h6,
+                                color = MaterialTheme.colors.error
+                            )
+                            Text(
+                                text = loadingError,
+                                style = MaterialTheme.typography.body1,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                bot == null -> {
+                    // 显示加载界面
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colors.primary
+                            )
+                            Text(
+                                text = "正在初始化...",
+                                style = MaterialTheme.typography.body1,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    // Bot 加载完成
+                    var isLoggedIn by remember { mutableStateOf(bot.isLoggedIn) }
+
+                    // 通知登录状态变化
+                    LaunchedEffect(isLoggedIn) {
+                        onLoginStateChange?.invoke(isLoggedIn, bot.sessionStore.uin)
+                    }
+
+                    // 提供 Bot 和 ConversationManager 到子组件
+                    if (conversationManager != null) {
+                        CompositionLocalProvider(
+                            LocalConfig provides config,
+                            LocalSetConfig provides setConfig,
+                            LocalBot provides bot,
+                            LocalHttpClient provides httpClient,
+                            LocalConversationManager provides conversationManager
+                        ) {
+                            if (isLoggedIn) {
+                                // 已登录，显示主界面
+                                MainContent()
+                            } else {
+                                // 未登录，显示登录界面
+                                LoginPanel(
+                                    onLoginSuccess = { isLoggedIn = true },
+                                    onLoginStateChange = onLoginStateChange
+                                )
+                            }
+                        }
+                    } else {
+                        // ConversationManager 还未初始化，显示加载界面
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
             }
+
+            if (isCommandPaletteVisible) {
+                CommandPalette(
+                    commands = commands,
+                    onDismiss = { isCommandPaletteVisible = false },
+                    onCommandError = { message ->
+                        snackbarScope.launch {
+                            snackbarHostState.showSnackbar(message)
+                        }
+                    }
+                )
+            }
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 24.dp)
+            )
         }
     }
 }
