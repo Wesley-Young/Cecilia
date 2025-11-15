@@ -5,6 +5,14 @@ package org.ntqqrev.cecilia
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Typography
 import androidx.compose.runtime.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
@@ -52,6 +60,7 @@ fun appMain() = application {
     var isLoggedIn by remember { mutableStateOf(false) }
     var userUin by remember { mutableStateOf(0L) }
     val httpClient = remember { HttpClient() }
+    var isCommandPaletteVisible by remember { mutableStateOf(false) }
 
     // 在完成配置前不要初始化 Bot
     LaunchedEffect(isConfigInitialized) {
@@ -130,7 +139,20 @@ fun appMain() = application {
             exitApplication()
         },
         title = "Cecilia",
-        state = rememberWindowState(size = DpSize(1200.dp, 800.dp) * config.displayScale)
+        state = rememberWindowState(size = DpSize(1200.dp, 800.dp) * config.displayScale),
+        onKeyEvent = { event: KeyEvent ->
+            if (!isCommandPaletteVisible &&
+                event.type == KeyEventType.KeyDown &&
+                event.isShiftPressed &&
+                (event.isMetaPressed || event.isCtrlPressed) &&
+                event.key == Key.P
+            ) {
+                isCommandPaletteVisible = true
+                true
+            } else {
+                false
+            }
+        }
     ) {
         // 设置窗口最小尺寸
         LaunchedEffect(Unit) {
@@ -167,7 +189,9 @@ fun appMain() = application {
                 onLoginStateChange = { loggedIn, uin ->
                     isLoggedIn = loggedIn
                     userUin = uin
-                }
+                },
+                showCommandPalette = isCommandPaletteVisible,
+                onCommandPaletteDismiss = { isCommandPaletteVisible = false }
             )
         }
 

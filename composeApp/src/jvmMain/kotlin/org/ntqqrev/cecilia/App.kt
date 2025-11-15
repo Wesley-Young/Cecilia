@@ -5,10 +5,6 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusTarget
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,7 +30,9 @@ fun App(
     httpClient: HttpClient,
     conversationManager: ConversationManager? = null,
     loadingError: String? = null,
-    onLoginStateChange: ((Boolean, Long) -> Unit)? = null
+    onLoginStateChange: ((Boolean, Long) -> Unit)? = null,
+    showCommandPalette: Boolean = false,
+    onCommandPaletteDismiss: () -> Unit = {}
 ) {
     MaterialTheme(
         colors = config.theme.colorScheme,
@@ -49,38 +47,11 @@ fun App(
         )
     ) {
         val commands = remember { CommandCatalog.demoCommands() }
-        var isCommandPaletteVisible by remember { mutableStateOf(false) }
-        val shortcutFocusRequester = remember { FocusRequester() }
         val snackbarHostState = remember { SnackbarHostState() }
         val snackbarScope = rememberCoroutineScope()
 
-        LaunchedEffect(Unit) {
-            shortcutFocusRequester.requestFocus()
-        }
-        LaunchedEffect(isCommandPaletteVisible) {
-            if (!isCommandPaletteVisible) {
-                shortcutFocusRequester.requestFocus()
-            }
-        }
-
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(shortcutFocusRequester)
-                .focusTarget()
-                .onPreviewKeyEvent { event ->
-                    if (!isCommandPaletteVisible &&
-                        event.type == KeyEventType.KeyDown &&
-                        event.isShiftPressed &&
-                        (event.isMetaPressed || event.isCtrlPressed) &&
-                        event.key == Key.P
-                    ) {
-                        isCommandPaletteVisible = true
-                        true
-                    } else {
-                        false
-                    }
-                }
+            modifier = Modifier.fillMaxSize()
         ) {
             when {
                 loadingError != null -> {
@@ -171,13 +142,13 @@ fun App(
                 }
             }
 
-            if (isCommandPaletteVisible && bot != null && conversationManager != null) {
+            if (showCommandPalette && bot != null && conversationManager != null) {
                 CommandPalette(
                     bot = bot,
                     httpClient = httpClient,
                     commands = commands,
                     conversationManager = conversationManager,
-                    onDismiss = { isCommandPaletteVisible = false },
+                    onDismiss = onCommandPaletteDismiss,
                     onCommandError = { message ->
                         snackbarScope.launch {
                             snackbarHostState.showSnackbar(message)
