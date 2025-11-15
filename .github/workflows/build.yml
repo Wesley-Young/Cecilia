@@ -47,12 +47,19 @@ jobs:
       - name: Build distributable
         run: ./gradlew composeApp:createDistributable --no-daemon
 
-      - name: Package distributable (Unix)
-        if: runner.os != 'Windows'
+      - name: Package distributable (Linux)
+        if: runner.os == 'Linux'
         run: |
           mkdir -p composeApp/build/distributions
           cd composeApp/build/compose/binaries/main/app
           zip -r "../../../distributions/${{ matrix.archive_name }}" composeApp
+
+      - name: Package distributable (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p composeApp/build/distributions
+          cd composeApp/build/compose/binaries/main/app
+          zip -r "../../../distributions/${{ matrix.archive_name }}" composeApp.app
 
       - name: Package distributable (Windows)
         if: runner.os == 'Windows'
