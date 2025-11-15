@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -29,10 +30,15 @@ import androidx.compose.ui.unit.dp
 import io.ktor.client.*
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.Bot
+import org.ntqqrev.acidify.entity.BotFriend
+import org.ntqqrev.acidify.entity.BotGroup
+import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.commands.Command
 import org.ntqqrev.cecilia.commands.CommandCompletionContext
 import org.ntqqrev.cecilia.commands.CommandExecutionContext
 import org.ntqqrev.cecilia.commands.CommandParameter
+import org.ntqqrev.cecilia.structs.Conversation
+import org.ntqqrev.cecilia.utils.ConversationManager
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -40,12 +46,24 @@ fun CommandPalette(
     bot: Bot,
     httpClient: HttpClient,
     commands: List<Command>,
+    conversationManager: ConversationManager,
     onDismiss: () -> Unit,
     onCommandError: (String) -> Unit = {}
 ) {
     val sortedCommands = remember(commands) { commands.sortedBy { it.id } }
     var manualInput by remember { mutableStateOf("") }
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
+    val activeConversation by remember(conversationManager) {
+        derivedStateOf {
+            val targetId = conversationManager.selectedConversationId
+            if (targetId == null) null else conversationManager.conversations.find { it.id == targetId }
+        }
+    }
+    var conversationParticipants by remember { mutableStateOf(ConversationParticipants()) }
+
+    LaunchedEffect(activeConversation?.id) {
+        conversationParticipants = resolveConversationParticipants(bot, activeConversation)
+    }
 
     fun updateText(newText: String, commitManual: Boolean) {
         textFieldValue = TextFieldValue(newText, TextRange(newText.length))
@@ -121,7 +139,13 @@ fun CommandPalette(
             consoleState.arguments.getOrNull(idx).orEmpty()
         } ?: ""
     }
-    LaunchedEffect(selectedCommand?.id, currentParameterIndex, currentArgumentValue, consoleState.isArgumentPhase) {
+    LaunchedEffect(
+        selectedCommand?.id,
+        currentParameterIndex,
+        currentArgumentValue,
+        consoleState.isArgumentPhase,
+        conversationParticipants
+    ) {
         if (selectedCommand == null ||
             currentParameterIndex == null ||
             !consoleState.isArgumentPhase
@@ -155,24 +179,26 @@ fun CommandPalette(
             )
         }
         val suggestions = try {
-            val ctx = CommandCompletionContext(
+            val completionContext = CommandCompletionContext(
                 bot = bot,
-                httpClient = httpClient
+                httpClient = httpClient,
+                currentFriend = conversationParticipants.friend,
+                currentGroup = conversationParticipants.group
             )
-            with(parameter) {
-                ctx.suggestionsProvider(currentArgumentValue)
-            }
+            parameter.suggestionsProvider.invoke(completionContext, currentArgumentValue).take(8)
         } catch (e: Exception) {
             emptyList()
         }
-        parameterSuggestionState = ParameterSuggestionState(
-            commandId = commandId,
-            parameterIndex = currentParameterIndex,
-            parameter = parameter,
-            query = currentArgumentValue,
-            suggestions = suggestions,
-            isLoading = false
-        )
+        if (selectedCommand.id == commandId && currentParameterIndex == parameterSuggestionState.parameterIndex) {
+            parameterSuggestionState = ParameterSuggestionState(
+                commandId = commandId,
+                parameterIndex = currentParameterIndex,
+                parameter = parameter,
+                query = currentArgumentValue,
+                suggestions = suggestions,
+                isLoading = false
+            )
+        }
     }
 
     var suggestionIndex by remember { mutableStateOf(-1) }
@@ -195,7 +221,14 @@ fun CommandPalette(
         paletteScope.launch {
             if (commandSnapshot != null) {
                 try {
-                    executeCommand(commandSnapshot, bot, httpClient, argsSnapshot)
+                    executeCommand(
+                        commandSnapshot,
+                        bot,
+                        httpClient,
+                        argsSnapshot,
+                        conversationParticipants.friend,
+                        conversationParticipants.group
+                    )
                 } catch (e: Exception) {
                     val errorMessage = e.message ?: e::class.simpleName ?: "未知错误"
                     onCommandError("执行失败: $errorMessage")
@@ -603,7 +636,14 @@ private fun fillArgumentValue(command: Command, state: ConsoleInputState, sugges
     return buildCommandInput(command, args)
 }
 
-private suspend fun executeCommand(command: Command, bot: Bot, httpClient: HttpClient, args: List<String>) {
+private suspend fun executeCommand(
+    command: Command,
+    bot: Bot,
+    httpClient: HttpClient,
+    args: List<String>,
+    currentFriend: BotFriend?,
+    currentGroup: BotGroup?
+) {
     val payload = mutableMapOf<String, String>()
     command.parameters.forEachIndexed { index, parameter ->
         payload[parameter.name] = args.getOrNull(index).orEmpty()
@@ -611,7 +651,42 @@ private suspend fun executeCommand(command: Command, bot: Bot, httpClient: HttpC
     val ctx = CommandExecutionContext(
         args = payload,
         bot = bot,
-        httpClient = httpClient
+        httpClient = httpClient,
+        currentFriend = currentFriend,
+        currentGroup = currentGroup
     )
     command.execute.invoke(ctx)
+}
+
+private data class ConversationParticipants(
+    val friend: BotFriend? = null,
+    val group: BotGroup? = null
+)
+
+private suspend fun resolveConversationParticipants(
+    bot: Bot,
+    conversation: Conversation?
+): ConversationParticipants {
+    if (conversation == null) return ConversationParticipants()
+    return when (conversation.scene) {
+        MessageScene.FRIEND -> {
+            val friend = try {
+                bot.getFriend(conversation.peerUin, forceUpdate = false)
+            } catch (e: Exception) {
+                null
+            }
+            ConversationParticipants(friend = friend)
+        }
+
+        MessageScene.GROUP -> {
+            val group = try {
+                bot.getGroup(conversation.peerUin, forceUpdate = false)
+            } catch (e: Exception) {
+                null
+            }
+            ConversationParticipants(group = group)
+        }
+
+        else -> ConversationParticipants()
+    }
 }

@@ -1,6 +1,9 @@
 package org.ntqqrev.cecilia.utils
 
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.filterIsInstance
@@ -38,6 +41,9 @@ class ConversationManager(
      * 当前选中的会话 ID
      */
     private var currentSelectedConversationId: String? = null
+    private var selectedConversationIdState: String? by mutableStateOf(null)
+    val selectedConversationId: String?
+        get() = selectedConversationIdState
 
     private val logger = bot.createLogger(this)
 
@@ -51,6 +57,7 @@ class ConversationManager(
      */
     fun setSelectedConversation(conversationId: String?) {
         currentSelectedConversationId = conversationId
+        selectedConversationIdState = conversationId
     }
 
     /**
@@ -310,5 +317,10 @@ class ConversationManager(
                 messageDateTime.format(DateTimeFormatter.ofPattern("MM/dd"))
             }
         }
+    }
+
+    fun getSelectedConversation(): Conversation? {
+        val targetId = currentSelectedConversationId ?: return null
+        return conversations.find { it.id == targetId }
     }
 }

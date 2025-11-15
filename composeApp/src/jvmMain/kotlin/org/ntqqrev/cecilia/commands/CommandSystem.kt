@@ -2,6 +2,8 @@ package org.ntqqrev.cecilia.commands
 
 import io.ktor.client.HttpClient
 import org.ntqqrev.acidify.Bot
+import org.ntqqrev.acidify.entity.BotFriend
+import org.ntqqrev.acidify.entity.BotGroup
 import java.time.LocalDateTime
 
 data class CommandParameter(
@@ -23,12 +25,16 @@ data class Command(
 class CommandCompletionContext(
     val bot: Bot,
     val httpClient: HttpClient,
+    val currentFriend: BotFriend? = null,
+    val currentGroup: BotGroup? = null,
 )
 
 class CommandExecutionContext(
     val args: Map<String, String>,
     val bot: Bot,
     val httpClient: HttpClient,
+    val currentFriend: BotFriend? = null,
+    val currentGroup: BotGroup? = null,
 )
 
 object CommandCatalog {

@@ -171,11 +171,12 @@ fun App(
                 }
             }
 
-            if (isCommandPaletteVisible && bot != null) {
+            if (isCommandPaletteVisible && bot != null && conversationManager != null) {
                 CommandPalette(
                     bot = bot,
                     httpClient = httpClient,
                     commands = commands,
+                    conversationManager = conversationManager,
                     onDismiss = { isCommandPaletteVisible = false },
                     onCommandError = { message ->
                         snackbarScope.launch {
