@@ -26,14 +26,6 @@ kotlin {
             implementation(libs.ktor.client.cio)
             implementation(libs.qrcode.kotlin)
             implementation(libs.acidify.core)
-
-            // Compose Desktop Native Binaries
-            implementation(compose.desktop.windows_x64)
-            implementation(compose.desktop.windows_arm64)
-            implementation(compose.desktop.macos_x64)
-            implementation(compose.desktop.macos_arm64)
-            implementation(compose.desktop.linux_x64)
-            implementation(compose.desktop.linux_arm64)
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
 
