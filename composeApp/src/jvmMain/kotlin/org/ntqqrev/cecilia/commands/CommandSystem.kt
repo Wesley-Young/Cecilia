@@ -13,7 +13,7 @@ data class CommandParameter(
     val description: String = "",
     val placeholder: String = "",
     val required: Boolean = true,
-    val suggestionsProvider: CommandCompletionContext.(String) -> List<String> = { emptyList() },
+    val suggestionsProvider: suspend CommandCompletionContext.(String) -> List<String> = { emptyList() },
 )
 
 data class Command(

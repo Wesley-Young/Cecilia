@@ -185,7 +185,7 @@ fun CommandPalette(
                 currentFriend = conversationParticipants.friend,
                 currentGroup = conversationParticipants.group
             )
-            parameter.suggestionsProvider.invoke(completionContext, currentArgumentValue).take(8)
+            parameter.suggestionsProvider.invoke(completionContext, currentArgumentValue)
         } catch (e: Exception) {
             emptyList()
         }
