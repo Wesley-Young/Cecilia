@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -38,7 +39,6 @@ import org.ntqqrev.cecilia.commands.CommandCompletionContext
 import org.ntqqrev.cecilia.commands.CommandExecutionContext
 import org.ntqqrev.cecilia.commands.CommandParameter
 import org.ntqqrev.cecilia.commands.CommandSuggestion
-import org.ntqqrev.cecilia.components.AvatarImage
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.ConversationManager
 
@@ -494,6 +494,12 @@ private fun SuggestionList(
     highlightedIndex: Int,
     onSuggestionClicked: (SuggestionItem) -> Unit
 ) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(highlightedIndex, suggestions.size) {
+        if (highlightedIndex in suggestions.indices) {
+            listState.animateScrollToItem(highlightedIndex)
+        }
+    }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -514,7 +520,7 @@ private fun SuggestionList(
                 )
             }
         } else {
-            LazyColumn {
+            LazyColumn(state = listState) {
                 itemsIndexed(suggestions) { index, suggestion ->
                     Row(
                         modifier = Modifier
@@ -529,16 +535,6 @@ private fun SuggestionList(
                             .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        suggestion.uin?.let { avatarUin ->
-                            AvatarImage(
-                                uin = avatarUin,
-                                size = 32.dp,
-                                isGroup = suggestion.isGroupAvatar,
-                                quality = 100,
-                                clickable = false
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                        }
                         Column(modifier = Modifier.weight(1f, fill = true)) {
                             Text(text = suggestion.title, style = MaterialTheme.typography.subtitle1)
                             if (suggestion.subtitle.isNotBlank()) {
@@ -570,9 +566,7 @@ private data class ParameterSuggestionState(
 private data class SuggestionItem(
     val title: String,
     val subtitle: String = "",
-    val applyText: String,
-    val uin: Long? = null,
-    val isGroupAvatar: Boolean = false
+    val applyText: String
 )
 
 private data class ConsoleInputState(

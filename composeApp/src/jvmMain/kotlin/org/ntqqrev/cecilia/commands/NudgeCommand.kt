@@ -21,7 +21,7 @@ val NudgeCommand = Command(
                     ?.map {
                         CommandSuggestion(
                             content = it.uin.toString(),
-                            display = "${it.card.ifEmpty { it.nickname }} (${it.uin})"
+                            display = it.card.ifEmpty { it.nickname }
                         )
                     }
                     ?: emptyList()
