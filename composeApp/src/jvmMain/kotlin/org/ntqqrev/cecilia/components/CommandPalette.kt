@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -34,11 +33,7 @@ import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.commands.Command
-import org.ntqqrev.cecilia.commands.CommandCompletionContext
-import org.ntqqrev.cecilia.commands.CommandExecutionContext
-import org.ntqqrev.cecilia.commands.CommandParameter
-import org.ntqqrev.cecilia.commands.CommandSuggestion
+import org.ntqqrev.cecilia.commands.*
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.ConversationManager
 
@@ -192,7 +187,7 @@ fun CommandPalette(
         } catch (e: Exception) {
             emptyList()
         }
-        if (selectedCommand.id == commandId && currentParameterIndex == parameterSuggestionState.parameterIndex) {
+        if (currentParameterIndex == parameterSuggestionState.parameterIndex) {
             parameterSuggestionState = ParameterSuggestionState(
                 commandId = commandId,
                 parameterIndex = currentParameterIndex,
