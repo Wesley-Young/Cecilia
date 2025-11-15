@@ -23,13 +23,11 @@ data class OutgoingImageAttachment(
     val format: ImageFormat,
     val width: Int,
     val height: Int,
-    val preview: ImageBitmap,
-    val summary: String,
+    val preview: ImageBitmap
 ) {
     companion object {
         fun fromBytes(
             raw: ByteArray,
-            summary: String,
             formatOverride: ImageFormat? = null,
             widthOverride: Int? = null,
             heightOverride: Int? = null
@@ -52,19 +50,17 @@ data class OutgoingImageAttachment(
                 width = width,
                 height = height,
                 preview = imageBitmap,
-                summary = summary.ifBlank { "[图片]" }
             )
         }
 
         fun fromFile(path: Path): OutgoingImageAttachment? {
             val bytes = runCatching { Files.readAllBytes(path) }.getOrElse { return null }
-            val fileName = path.fileName?.toString() ?: "[图片]"
-            return fromBytes(bytes, fileName)
+            return fromBytes(bytes)
         }
 
         fun fromBufferedImage(
             image: BufferedImage,
-            summary: String = "[剪贴板图片]"
+            summary: String = "[图片]"
         ): OutgoingImageAttachment? {
             val output = ByteArrayOutputStream()
             return runCatching {
@@ -79,7 +75,6 @@ data class OutgoingImageAttachment(
                 }
                 fromBytes(
                     raw = output.toByteArray(),
-                    summary = summary,
                     formatOverride = ImageFormat.PNG,
                     widthOverride = image.width,
                     heightOverride = image.height

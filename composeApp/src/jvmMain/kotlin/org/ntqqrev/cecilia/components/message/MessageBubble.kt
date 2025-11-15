@@ -24,6 +24,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
@@ -31,7 +32,9 @@ import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.components.AvatarImage
 import org.ntqqrev.cecilia.structs.DisplaySegment
+import org.ntqqrev.cecilia.structs.GroupMemberDisplayInfo
 import org.ntqqrev.cecilia.structs.PlaceholderMessage
+import org.ntqqrev.cecilia.structs.toDisplayInfo
 import org.ntqqrev.cecilia.utils.LocalAllMessages
 import org.ntqqrev.cecilia.utils.LocalBot
 import java.time.Instant
@@ -46,7 +49,26 @@ fun MessageBubble(
     onScrollToMessage: ((Long) -> Unit)? = null,
     onReplyToMessage: ((BotIncomingMessage) -> Unit)? = null
 ) {
-    val isSent = message.senderUin == LocalBot.current.uin
+    val bot = LocalBot.current
+    val isSent = message.senderUin == bot.uin
+
+    val groupMemberInfo by produceState<GroupMemberDisplayInfo?>(
+        initialValue = null,
+        bot,
+        message.scene,
+        message.peerUin,
+        message.senderUin
+    ) {
+        value = if (message.scene == MessageScene.GROUP) {
+            runCatching {
+                bot.getGroupMember(message.peerUin, message.senderUin)
+            }.onFailure {
+                if (it is CancellationException) throw it
+            }.getOrNull()?.toDisplayInfo()
+        } else {
+            null
+        }
+    }
 
     // 获取发送者名称
     val senderName = when (message.scene) {
@@ -62,17 +84,30 @@ fun MessageBubble(
     // 格式化时间
     val timeStr = formatMessageTime(message.timestamp)
 
-    // 是否原本应该显示昵称
-    val shouldShowNickname = message.scene == MessageScene.GROUP && !isSent
+    // 群聊下始终展示发送者信息
+    val shouldShowSenderInfo = message.scene == MessageScene.GROUP
 
+    val senderInfoText = remember(senderName, groupMemberInfo) {
+        groupMemberInfo?.let { info ->
+            val displayName = info.card.takeIf { it.isNotBlank() }
+                ?: info.nickname.takeIf { it.isNotBlank() }
+                ?: senderName
+            buildList {
+                add(displayName)
+                info.specialTitle.takeIf { it.isNotBlank() }?.let { add(it) }
+                add("Lv.${info.level}")
+            }.joinToString(" · ")
+        } ?: senderName
+    }
     // 鼠标悬停状态
     var isHovering by remember { mutableStateOf(false) }
     var showSeq by remember { mutableStateOf(false) }
 
     // 当前显示的文本
     val displayText = when {
-        showSeq -> if (shouldShowNickname) "$senderName #${message.sequence}" else "#${message.sequence}"
-        shouldShowNickname -> senderName
+        showSeq && shouldShowSenderInfo -> "$senderInfoText #${message.sequence}"
+        showSeq -> "#${message.sequence}"
+        shouldShowSenderInfo -> senderInfoText
         else -> null
     }
 
@@ -210,10 +245,30 @@ fun MessageBubble(
 
 @Composable
 fun PlaceholderMessageBubble(
-    message: PlaceholderMessage
+    message: PlaceholderMessage,
+    isGroup: Boolean
 ) {
+    val bot = LocalBot.current
     // 格式化时间
     val timeStr = formatMessageTime(message.timestamp)
+
+    val senderInfoText = remember(message.groupMemberInfo, isGroup) {
+        if (!isGroup) {
+            null
+        } else {
+            val fallback = bot.uin.toString()
+            message.groupMemberInfo?.let { info ->
+                val displayName = info.card.takeIf { it.isNotBlank() }
+                    ?: info.nickname.takeIf { it.isNotBlank() }
+                    ?: fallback
+                buildList {
+                    add(displayName)
+                    info.specialTitle.takeIf { it.isNotBlank() }?.let { add(it) }
+                    add("Lv.${info.level}")
+                }.joinToString(" · ")
+            } ?: fallback
+        }
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -232,6 +287,15 @@ fun PlaceholderMessageBubble(
             horizontalAlignment = Alignment.End,
             modifier = Modifier.widthIn(max = 400.dp)
         ) {
+            if (senderInfoText != null) {
+                Text(
+                    text = senderInfoText,
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(bottom = 4.dp, start = 4.dp, end = 4.dp)
+                )
+            }
+
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = MaterialTheme.colors.primary,

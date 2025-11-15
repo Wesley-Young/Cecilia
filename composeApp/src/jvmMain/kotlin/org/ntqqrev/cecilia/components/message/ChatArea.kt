@@ -27,12 +27,9 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
@@ -88,6 +85,16 @@ fun ChatArea(conversation: Conversation) {
         replySeq: Long?,
         imageAttachments: List<OutgoingImageAttachment>,
     ) {
+        val groupMemberInfo = if (conversation.scene == MessageScene.GROUP) {
+            runCatching {
+                bot.getGroupMember(conversation.peerUin, bot.uin)
+            }.onFailure {
+                if (it is CancellationException) throw it
+            }.getOrNull()?.toDisplayInfo()
+        } else {
+            null
+        }
+
         val clientSequence = Random.nextLong()
         val random = Random.nextInt()
 
@@ -103,7 +110,7 @@ fun ChatArea(conversation: Conversation) {
                     add(
                         DisplaySegment.PendingImage(
                             bitmap = attachment.preview,
-                            summary = attachment.summary,
+                            summary = "[图片]",
                             width = attachment.width,
                             height = attachment.height
                         )
@@ -112,7 +119,8 @@ fun ChatArea(conversation: Conversation) {
                 if (content.isNotBlank()) {
                     add(DisplaySegment.Text(content))
                 }
-            }
+            },
+            groupMemberInfo = groupMemberInfo
         )
 
         messages.add(DisplayMessage(placeholder = placeholder))
@@ -134,7 +142,7 @@ fun ChatArea(conversation: Conversation) {
                             format = attachment.format,
                             width = attachment.width,
                             height = attachment.height,
-                            summary = attachment.summary
+                            summary = "[图片]"
                         )
                     }
                     if (content.isNotBlank()) {
@@ -176,7 +184,7 @@ fun ChatArea(conversation: Conversation) {
                             format = attachment.format,
                             width = attachment.width,
                             height = attachment.height,
-                            summary = attachment.summary
+                            summary = "[图片]"
                         )
                     }
                     if (content.isNotBlank()) {
@@ -381,7 +389,8 @@ fun ChatArea(conversation: Conversation) {
                         )
 
                         message.placeholder != null -> PlaceholderMessageBubble(
-                            message = message.placeholder
+                            message = message.placeholder,
+                            isGroup = conversation.scene == MessageScene.GROUP
                         )
 
                         message.greyTip != null -> GreyTip(
@@ -706,7 +715,7 @@ private fun AttachmentPreview(
     ) {
         Image(
             bitmap = attachment.preview,
-            contentDescription = attachment.summary,
+            contentDescription = "[图片]",
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
@@ -742,10 +751,7 @@ private suspend fun readAttachmentsFromTransferable(
     if (attachments.isEmpty()) {
         val binaryImages = transferable.extractBinaryImages()
         binaryImages.forEachIndexed { index, raw ->
-            val attachment = OutgoingImageAttachment.fromBytes(
-                raw = raw.bytes,
-                summary = "[剪贴板图片${if (binaryImages.size > 1) " ${index + 1}" else ""}]"
-            )
+            val attachment = OutgoingImageAttachment.fromBytes(raw.bytes)
             if (attachment != null) {
                 attachments.add(attachment)
             }
