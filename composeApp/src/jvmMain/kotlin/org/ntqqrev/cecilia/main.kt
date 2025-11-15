@@ -6,7 +6,6 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Typography
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -24,33 +23,35 @@ import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.cecilia.components.SignApiSetupDialog
 import org.ntqqrev.cecilia.structs.CeciliaConfig
 import org.ntqqrev.cecilia.utils.ConversationManager
+import org.ntqqrev.cecilia.utils.getAppDataDirectory
 import java.awt.Dimension
 import java.io.PrintStream
-import kotlin.io.path.Path
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
-fun main() = application {
+fun main() {
     val utf8out = PrintStream(System.out, true, "UTF-8")
     System.setOut(utf8out)
+    appMain()
+}
 
-    val configPath = Path("config.json")
+fun appMain() = application {
+    val appDataDirectory = remember { getAppDataDirectory() }
+    val configPath = appDataDirectory.resolve("config.json")
     var isConfigInitialized by remember { mutableStateOf(configPath.exists()) }
     var config by remember {
         mutableStateOf(
             if (isConfigInitialized) CeciliaConfig.fromPath(configPath) else CeciliaConfig()
         )
     }
-    val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
+    val scope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob()) }
     var bot by remember { mutableStateOf<Bot?>(null) }
     var conversationManager by remember { mutableStateOf<ConversationManager?>(null) }
     var loadingError by remember { mutableStateOf<String?>(null) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var userUin by remember { mutableStateOf(0L) }
-
-    val httpClient = HttpClient()
+    val httpClient = remember { HttpClient() }
 
     // 在完成配置前不要初始化 Bot
     LaunchedEffect(isConfigInitialized) {
@@ -58,7 +59,7 @@ fun main() = application {
 
         launch(Dispatchers.IO) {
             try {
-                val sessionStorePath = Path("session-store.json")
+                val sessionStorePath = appDataDirectory.resolve("session-store.json")
                 val sessionStore: SessionStore = if (sessionStorePath.exists()) {
                     Json.decodeFromString(sessionStorePath.readText())
                 } else {
