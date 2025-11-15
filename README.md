@@ -8,13 +8,7 @@
 
 ## Usage
 
-从 [Releases](https://github.com/Wesley-Young/Cecilia/releases/) 页面下载最新版本的 Jar 文件，用
-```
-java -jar Cecilia.jar
-```
-运行即可。
-
-Cecilia 需要 Java 21 或更高版本。
+从 [Releases](https://github.com/Wesley-Young/Cecilia/releases/) 页面下载最新版本的 `zip` 或 `tar.gz` 压缩包，解压后运行即可。
 
 ## Tech Stack
 
