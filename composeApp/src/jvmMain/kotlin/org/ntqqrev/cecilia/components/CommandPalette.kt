@@ -26,12 +26,19 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import io.ktor.client.*
+import kotlinx.coroutines.launch
+import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.commands.Command
+import org.ntqqrev.cecilia.commands.CommandCompletionContext
+import org.ntqqrev.cecilia.commands.CommandExecutionContext
 import org.ntqqrev.cecilia.commands.CommandParameter
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CommandPalette(
+    bot: Bot,
+    httpClient: HttpClient,
     commands: List<Command>,
     onDismiss: () -> Unit,
     onCommandError: (String) -> Unit = {}
@@ -58,23 +65,14 @@ fun CommandPalette(
         sortedCommands.firstOrNull { it.id.equals(consoleState.commandToken, ignoreCase = true) }
     else null
 
-    val parameterSuggestionState = remember(selectedCommand, consoleState) {
-        if (selectedCommand != null && consoleState.isArgumentPhase) {
-            val parameter = selectedCommand.parameters.getOrNull(consoleState.currentArgumentIndex)
-            val suggestions =
-                parameter?.suggestionsProvider?.invoke(consoleState.currentArgumentValue)?.take(8).orEmpty()
-            ParameterSuggestionState(parameter, suggestions)
-        } else {
-            ParameterSuggestionState(null, emptyList())
-        }
-    }
+    val paletteScope = rememberCoroutineScope()
+    var parameterSuggestionState by remember { mutableStateOf(ParameterSuggestionState()) }
 
     val isExactCommandMatch = selectedCommand?.id?.equals(consoleState.commandToken, ignoreCase = true) == true
     val parameterSuggestionsActive =
         selectedCommand != null &&
                 consoleState.isArgumentPhase &&
-                parameterSuggestionState.parameter != null &&
-                parameterSuggestionState.suggestions.isNotEmpty()
+                parameterSuggestionState.parameter != null
     val commandSuggestionsActive = consoleState.hasSlashPrefix && !parameterSuggestionsActive && !isExactCommandMatch
 
     val suggestionItems = remember(
@@ -118,6 +116,64 @@ fun CommandPalette(
         if (params.isEmpty()) return@remember null
         consoleState.currentArgumentIndex.coerceIn(0, params.lastIndex)
     }
+    val currentArgumentValue = remember(currentParameterIndex, consoleState) {
+        currentParameterIndex?.let { idx ->
+            consoleState.arguments.getOrNull(idx).orEmpty()
+        } ?: ""
+    }
+    LaunchedEffect(selectedCommand?.id, currentParameterIndex, currentArgumentValue, consoleState.isArgumentPhase) {
+        if (selectedCommand == null ||
+            currentParameterIndex == null ||
+            !consoleState.isArgumentPhase
+        ) {
+            parameterSuggestionState = ParameterSuggestionState()
+            return@LaunchedEffect
+        }
+        val parameter = selectedCommand.parameters.getOrNull(currentParameterIndex)
+        if (parameter == null) {
+            parameterSuggestionState = ParameterSuggestionState()
+            return@LaunchedEffect
+        }
+        val commandId = selectedCommand.id
+        val sameParam =
+            parameterSuggestionState.commandId == commandId &&
+                    parameterSuggestionState.parameterIndex == currentParameterIndex
+        parameterSuggestionState = if (sameParam) {
+            parameterSuggestionState.copy(
+                parameter = parameter,
+                query = currentArgumentValue,
+                isLoading = true
+            )
+        } else {
+            ParameterSuggestionState(
+                commandId = commandId,
+                parameterIndex = currentParameterIndex,
+                parameter = parameter,
+                query = currentArgumentValue,
+                suggestions = emptyList(),
+                isLoading = true
+            )
+        }
+        val suggestions = try {
+            val ctx = CommandCompletionContext(
+                bot = bot,
+                httpClient = httpClient
+            )
+            with(parameter) {
+                ctx.suggestionsProvider(currentArgumentValue)
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+        parameterSuggestionState = ParameterSuggestionState(
+            commandId = commandId,
+            parameterIndex = currentParameterIndex,
+            parameter = parameter,
+            query = currentArgumentValue,
+            suggestions = suggestions,
+            isLoading = false
+        )
+    }
 
     var suggestionIndex by remember { mutableStateOf(-1) }
     LaunchedEffect(suggestionItems) {
@@ -133,11 +189,21 @@ fun CommandPalette(
     }
 
     fun attemptExecuteAndExit() {
-        if (selectedCommand != null) {
-            executeCommand(selectedCommand, consoleState.arguments)
+        val commandSnapshot = selectedCommand
+        val argsSnapshot = consoleState.arguments.toList()
+        val validationState = consoleState
+        paletteScope.launch {
+            if (commandSnapshot != null) {
+                try {
+                    executeCommand(commandSnapshot, bot, httpClient, argsSnapshot)
+                } catch (e: Exception) {
+                    val errorMessage = e.message ?: e::class.simpleName ?: "未知错误"
+                    onCommandError("执行失败: $errorMessage")
+                }
+            }
+            validateCommand(commandSnapshot, validationState)?.let(onCommandError)
+            onDismiss()
         }
-        validateCommand(selectedCommand, consoleState)?.let(onCommandError)
-        onDismiss()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -444,8 +510,12 @@ private fun SuggestionList(
 }
 
 private data class ParameterSuggestionState(
-    val parameter: CommandParameter?,
-    val suggestions: List<String>
+    val commandId: String? = null,
+    val parameterIndex: Int = -1,
+    val parameter: CommandParameter? = null,
+    val query: String = "",
+    val suggestions: List<String> = emptyList(),
+    val isLoading: Boolean = false
 )
 
 private data class SuggestionItem(
@@ -533,10 +603,15 @@ private fun fillArgumentValue(command: Command, state: ConsoleInputState, sugges
     return buildCommandInput(command, args)
 }
 
-private fun executeCommand(command: Command, args: List<String>) {
+private suspend fun executeCommand(command: Command, bot: Bot, httpClient: HttpClient, args: List<String>) {
     val payload = mutableMapOf<String, String>()
     command.parameters.forEachIndexed { index, parameter ->
         payload[parameter.name] = args.getOrNull(index).orEmpty()
     }
-    command.execute(payload)
+    val ctx = CommandExecutionContext(
+        args = payload,
+        bot = bot,
+        httpClient = httpClient
+    )
+    command.execute.invoke(ctx)
 }

@@ -171,8 +171,10 @@ fun App(
                 }
             }
 
-            if (isCommandPaletteVisible) {
+            if (isCommandPaletteVisible && bot != null) {
                 CommandPalette(
+                    bot = bot,
+                    httpClient = httpClient,
                     commands = commands,
                     onDismiss = { isCommandPaletteVisible = false },
                     onCommandError = { message ->

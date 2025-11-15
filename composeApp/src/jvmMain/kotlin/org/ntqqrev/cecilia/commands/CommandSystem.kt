@@ -1,15 +1,15 @@
 package org.ntqqrev.cecilia.commands
 
+import io.ktor.client.HttpClient
+import org.ntqqrev.acidify.Bot
 import java.time.LocalDateTime
-
-typealias CommandSuggestionProvider = (String) -> List<String>
 
 data class CommandParameter(
     val name: String,
     val description: String = "",
     val placeholder: String = "",
     val required: Boolean = true,
-    val suggestionsProvider: CommandSuggestionProvider,
+    val suggestionsProvider: CommandCompletionContext.(String) -> List<String> = { emptyList() },
 )
 
 data class Command(
@@ -17,7 +17,18 @@ data class Command(
     val title: String,
     val description: String = "",
     val parameters: List<CommandParameter> = emptyList(),
-    val execute: (Map<String, String>) -> Unit
+    val execute: suspend CommandExecutionContext.() -> Unit
+)
+
+class CommandCompletionContext(
+    val bot: Bot,
+    val httpClient: HttpClient,
+)
+
+class CommandExecutionContext(
+    val args: Map<String, String>,
+    val bot: Bot,
+    val httpClient: HttpClient,
 )
 
 object CommandCatalog {
@@ -61,7 +72,7 @@ object CommandCatalog {
                         }
                     )
                 ),
-                execute = { args ->
+                execute = {
                     val target = args["目标"].orEmpty()
                     val message = args["内容"].orEmpty()
                     println("[Command] 向 $target 广播：$message")
@@ -93,7 +104,7 @@ object CommandCatalog {
                         suggestionsProvider = { emptyList() }
                     )
                 ),
-                execute = { args ->
+                execute = {
                     val owner = args["负责人"].orEmpty()
                     val priority = args["优先级"].orEmpty()
                     val note = args["备注"].orEmpty().ifBlank { "(无)" }
