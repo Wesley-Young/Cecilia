@@ -1,5 +1,6 @@
 package org.ntqqrev.cecilia.structs
 
+import androidx.compose.ui.graphics.ImageBitmap
 import org.ntqqrev.acidify.message.BotIncomingSegment
 
 sealed class DisplaySegment {
@@ -8,4 +9,10 @@ sealed class DisplaySegment {
     data class Image(val segment: BotIncomingSegment.Image) : DisplaySegment()
     data class Record(val segment: BotIncomingSegment.Record) : DisplaySegment()
     data class Video(val segment: BotIncomingSegment.Video) : DisplaySegment()
+    data class PendingImage(
+        val bitmap: ImageBitmap,
+        val summary: String,
+        val width: Int,
+        val height: Int
+    ) : DisplaySegment()
 }

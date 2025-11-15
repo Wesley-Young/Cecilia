@@ -1,5 +1,7 @@
 package org.ntqqrev.cecilia.components.message
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,10 +16,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import org.ntqqrev.acidify.message.BotIncomingMessage
@@ -413,5 +418,62 @@ private fun DisplayElement(
                     MaterialTheme.colors.onSurface.copy(alpha = 0.9f)
             )
         }
+
+        is DisplaySegment.PendingImage -> {
+            PendingImageThumbnail(
+                bitmap = item.bitmap,
+                isSent = isSent,
+                width = item.width,
+                height = item.height
+            )
+        }
+    }
+}
+
+@Composable
+private fun PendingImageThumbnail(
+    bitmap: ImageBitmap,
+    isSent: Boolean,
+    width: Int,
+    height: Int
+) {
+    val (displayWidth, displayHeight) = remember(width, height) {
+        val safeWidth = width.coerceAtLeast(1)
+        val safeHeight = height.coerceAtLeast(1)
+        val aspectRatio = safeWidth.toFloat() / safeHeight.toFloat()
+        val maxSize = 300.dp
+        var w = safeWidth.dp
+        var h = safeHeight.dp
+        if (w > maxSize) {
+            w = maxSize
+            h = w / aspectRatio
+        }
+        if (h > maxSize) {
+            h = maxSize
+            w = h * aspectRatio
+        }
+        w to h
+    }
+
+    Box(
+        modifier = Modifier
+            .width(displayWidth)
+            .height(displayHeight)
+            .clip(RoundedCornerShape(8.dp))
+            .border(
+                width = 1.dp,
+                color = if (isSent)
+                    MaterialTheme.colors.onPrimary.copy(alpha = 0.6f)
+                else
+                    MaterialTheme.colors.primary.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(8.dp)
+            )
+    ) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = "[图片]",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }

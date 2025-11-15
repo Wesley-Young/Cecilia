@@ -1,28 +1,38 @@
 package org.ntqqrev.cecilia.components.message
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
@@ -30,11 +40,18 @@ import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.structs.DisplayMessage
 import org.ntqqrev.cecilia.structs.DisplaySegment
+import org.ntqqrev.cecilia.structs.OutgoingImageAttachment
 import org.ntqqrev.cecilia.structs.PlaceholderMessage
 import org.ntqqrev.cecilia.utils.LocalAllMessages
 import org.ntqqrev.cecilia.utils.LocalBot
 import org.ntqqrev.cecilia.utils.LocalConfig
+import org.ntqqrev.cecilia.utils.extractBinaryImages
+import org.ntqqrev.cecilia.utils.extractImageFilePaths
+import org.ntqqrev.cecilia.utils.extractImageFromClipboard
+import org.ntqqrev.cecilia.utils.hasSupportedImagePayload
 import org.ntqqrev.cecilia.utils.segmentsToPreviewString
+import java.awt.Toolkit
+import java.awt.datatransfer.Transferable
 import kotlin.random.Random
 
 @Composable
@@ -54,6 +71,7 @@ fun ChatArea(conversation: Conversation) {
     val pendingMessages = remember { mutableMapOf<Int, PlaceholderMessage>() }
 
     var replyToMessage by remember { mutableStateOf<BotIncomingMessage?>(null) }
+    val pendingImages = remember { mutableStateListOf<OutgoingImageAttachment>() }
 
     fun isUserAtBottom(): Boolean {
         val layoutInfo = listState.layoutInfo
@@ -79,6 +97,7 @@ fun ChatArea(conversation: Conversation) {
     suspend fun sendMessage(
         content: String,
         replySeq: Long?,
+        imageAttachments: List<OutgoingImageAttachment>,
     ) {
         val clientSequence = Random.nextLong()
         val random = Random.nextInt()
@@ -91,7 +110,19 @@ fun ChatArea(conversation: Conversation) {
                 if (replySeq != null) {
                     add(DisplaySegment.Reply(BotIncomingSegment.Reply(replySeq)))
                 }
-                add(DisplaySegment.Text(content))
+                imageAttachments.forEach { attachment ->
+                    add(
+                        DisplaySegment.PendingImage(
+                            bitmap = attachment.preview,
+                            summary = attachment.summary,
+                            width = attachment.width,
+                            height = attachment.height
+                        )
+                    )
+                }
+                if (content.isNotBlank()) {
+                    add(DisplaySegment.Text(content))
+                }
             }
         )
 
@@ -108,7 +139,18 @@ fun ChatArea(conversation: Conversation) {
                     random = random
                 ) {
                     replySeq?.let { reply(it) }
-                    text(content)
+                    imageAttachments.forEach { attachment ->
+                        image(
+                            raw = attachment.raw,
+                            format = attachment.format,
+                            width = attachment.width,
+                            height = attachment.height,
+                            summary = attachment.summary
+                        )
+                    }
+                    if (content.isNotBlank()) {
+                        text(content)
+                    }
                 }
 
                 if (conversation.peerUin != bot.uin) {
@@ -139,12 +181,42 @@ fun ChatArea(conversation: Conversation) {
                     random = random
                 ) {
                     replySeq?.let { reply(it) }
-                    text(content)
+                    imageAttachments.forEach { attachment ->
+                        image(
+                            raw = attachment.raw,
+                            format = attachment.format,
+                            width = attachment.width,
+                            height = attachment.height,
+                            summary = attachment.summary
+                        )
+                    }
+                    if (content.isNotBlank()) {
+                        text(content)
+                    }
                 }
             }
 
             else -> {}
         }
+    }
+
+    fun handleTransferable(transferable: Transferable) {
+        coroutineScope.launch {
+            val attachments = readAttachmentsFromTransferable(transferable)
+            if (attachments.isNotEmpty()) {
+                pendingImages.addAll(attachments)
+            }
+        }
+    }
+
+    fun handleClipboardImage(): Boolean {
+        val clipboard = runCatching { Toolkit.getDefaultToolkit().systemClipboard }.getOrNull() ?: return false
+        val transferable = runCatching { clipboard.getContents(null) }.getOrNull() ?: return false
+        if (!transferable.hasSupportedImagePayload()) {
+            return false
+        }
+        handleTransferable(transferable)
+        return true
     }
 
     // 初始化：加载历史消息
@@ -353,25 +425,33 @@ fun ChatArea(conversation: Conversation) {
         }
 
         // 输入框区域
+        val canSendMessage = messageText.text.isNotBlank() || pendingImages.isNotEmpty()
         ChatInputArea(
             messageText = messageText,
             onMessageTextChange = { messageText = it },
             useCtrlEnterToSend = config.useCtrlEnterToSend,
             focusRequester = inputFocusRequester,
+            imageAttachments = pendingImages,
+            onRemoveAttachment = { attachmentId ->
+                pendingImages.removeAll { it.id == attachmentId }
+            },
+            canSendMessage = canSendMessage,
+            onPasteImage = ::handleClipboardImage,
             onSendMessage = {
-                if (messageText.text.isNotBlank()) {
-                    val content = messageText.text
-                    val replySeq = replyToMessage?.sequence
+                if (!canSendMessage) return@ChatInputArea
+                val content = messageText.text
+                val replySeq = replyToMessage?.sequence
+                val attachmentsSnapshot = pendingImages.toList()
 
-                    messageText = TextFieldValue("")
-                    replyToMessage = null  // 立即隐藏回复UI
+                messageText = TextFieldValue("")
+                pendingImages.clear()
+                replyToMessage = null  // 立即隐藏回复UI
 
-                    coroutineScope.launch {
-                        try {
-                            sendMessage(content, replySeq)
-                        } catch (e: Exception) {
-                            logger.e(e) { "消息发送失败" }
-                        }
+                coroutineScope.launch {
+                    try {
+                        sendMessage(content, replySeq, attachmentsSnapshot)
+                    } catch (e: Exception) {
+                        logger.e(e) { "消息发送失败" }
                     }
                 }
             }
@@ -491,92 +571,205 @@ private fun ChatHeader(conversation: Conversation) {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ChatInputArea(
     messageText: TextFieldValue,
     onMessageTextChange: (TextFieldValue) -> Unit,
     useCtrlEnterToSend: Boolean,
     focusRequester: FocusRequester,
+    imageAttachments: List<OutgoingImageAttachment>,
+    onRemoveAttachment: (String) -> Unit,
+    canSendMessage: Boolean,
+    onPasteImage: () -> Boolean,
     onSendMessage: () -> Unit
 ) {
+    val pasteHandler by rememberUpdatedState(onPasteImage)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         elevation = 1.dp
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.Bottom
+                .padding(12.dp)
         ) {
-            OutlinedTextField(
-                value = messageText,
-                onValueChange = onMessageTextChange,
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 40.dp, max = 100.dp)
-                    .focusRequester(focusRequester)
-                    .onPreviewKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown && event.key == Key.Enter) {
-                            if (useCtrlEnterToSend) {
-                                if (event.isMetaPressed || event.isCtrlPressed) {
-                                    onSendMessage()
-                                    true
-                                } else {
-                                    false
+            if (imageAttachments.isNotEmpty()) {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(imageAttachments, key = { it.id }) { attachment ->
+                        AttachmentPreview(
+                            attachment = attachment,
+                            onRemove = { onRemoveAttachment(attachment.id) }
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                OutlinedTextField(
+                    value = messageText,
+                    onValueChange = onMessageTextChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 40.dp, max = 100.dp)
+                        .focusRequester(focusRequester)
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown) {
+                                if ((event.isMetaPressed || event.isCtrlPressed) && event.key == Key.V) {
+                                    if (pasteHandler()) {
+                                        return@onPreviewKeyEvent true
+                                    }
                                 }
-                            } else {
-                                if (event.isMetaPressed || event.isCtrlPressed) {
-                                    // 在光标位置插入换行符
-                                    val currentText = messageText.text
-                                    val cursorPos = messageText.selection.start
-                                    val newText = currentText.take(cursorPos) + "\n" +
-                                            currentText.substring(cursorPos)
-                                    val newCursorPos = cursorPos + 1
-                                    onMessageTextChange(
-                                        TextFieldValue(
-                                            text = newText,
-                                            selection = TextRange(newCursorPos)
-                                        )
-                                    )
-                                    true
-                                } else {
-                                    onSendMessage()
-                                    true
+                                if (event.key == Key.Enter) {
+                                    if (useCtrlEnterToSend) {
+                                        if (event.isMetaPressed || event.isCtrlPressed) {
+                                            onSendMessage()
+                                            return@onPreviewKeyEvent true
+                                        }
+                                    } else {
+                                        if (event.isMetaPressed || event.isCtrlPressed) {
+                                            val currentText = messageText.text
+                                            val cursorPos = messageText.selection.start
+                                            val newText = currentText.take(cursorPos) + "\n" +
+                                                    currentText.substring(cursorPos)
+                                            val newCursorPos = cursorPos + 1
+                                            onMessageTextChange(
+                                                TextFieldValue(
+                                                    text = newText,
+                                                    selection = TextRange(newCursorPos)
+                                                )
+                                            )
+                                            return@onPreviewKeyEvent true
+                                        } else {
+                                            onSendMessage()
+                                            return@onPreviewKeyEvent true
+                                        }
+                                    }
                                 }
                             }
-                        } else {
                             false
-                        }
+                        },
+                    placeholder = {
+                        Text(
+                            if (useCtrlEnterToSend) "输入消息... (⌘/Ctrl+Enter 发送，支持粘贴图片)"
+                            else "输入消息... (Enter 发送，支持粘贴图片)"
+                        )
                     },
-                placeholder = {
-                    Text(
-                        if (useCtrlEnterToSend) "输入消息... (⌘/Ctrl+Enter 发送)"
-                        else "输入消息... (Enter 发送)"
-                    )
-                },
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    backgroundColor = MaterialTheme.colors.surface,
-                    focusedBorderColor = MaterialTheme.colors.primary.copy(alpha = 0.5f),
-                    unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
-                ),
-                shape = RoundedCornerShape(20.dp),
-                maxLines = 4
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            FloatingActionButton(
-                onClick = onSendMessage,
-                modifier = Modifier.size(40.dp),
-                backgroundColor = MaterialTheme.colors.primary
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "发送",
-                    tint = MaterialTheme.colors.onPrimary
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        backgroundColor = MaterialTheme.colors.surface,
+                        focusedBorderColor = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                        unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    maxLines = 4
                 )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                FloatingActionButton(
+                    onClick = { if (canSendMessage) onSendMessage() },
+                    modifier = Modifier.size(40.dp),
+                    backgroundColor = if (canSendMessage)
+                        MaterialTheme.colors.primary
+                    else
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.2f),
+                    elevation = FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 0.dp,
+                        pressedElevation = 2.dp
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "发送",
+                        tint = if (canSendMessage)
+                            MaterialTheme.colors.onPrimary
+                        else
+                            MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun AttachmentPreview(
+    attachment: OutgoingImageAttachment,
+    onRemove: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(72.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp)
+            )
+    ) {
+        Image(
+            bitmap = attachment.preview,
+            contentDescription = attachment.summary,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(24.dp)
+                .background(
+                    color = MaterialTheme.colors.surface.copy(alpha = 0.85f),
+                    shape = CircleShape
+                )
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = "移除图片",
+                tint = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+private suspend fun readAttachmentsFromTransferable(
+    transferable: Transferable
+): List<OutgoingImageAttachment> = withContext(Dispatchers.IO) {
+    val attachments = mutableListOf<OutgoingImageAttachment>()
+
+    val fileAttachments = transferable.extractImageFilePaths()
+        .mapNotNull { path -> OutgoingImageAttachment.fromFile(path) }
+    attachments.addAll(fileAttachments)
+
+    if (attachments.isEmpty()) {
+        val binaryImages = transferable.extractBinaryImages()
+        binaryImages.forEachIndexed { index, raw ->
+            val attachment = OutgoingImageAttachment.fromBytes(
+                raw = raw.bytes,
+                summary = "[剪贴板图片${if (binaryImages.size > 1) " ${index + 1}" else ""}]"
+            )
+            if (attachment != null) {
+                attachments.add(attachment)
+            }
+        }
+    }
+
+    if (attachments.isEmpty()) {
+        val image = transferable.extractImageFromClipboard()
+        val attachment = image?.let { OutgoingImageAttachment.fromAwtImage(it) }
+        if (attachment != null) {
+            attachments.add(attachment)
+        }
+    }
+
+    attachments
 }
