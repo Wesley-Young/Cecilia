@@ -2,15 +2,18 @@
 
 package org.ntqqrev.cecilia
 
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Typography
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import io.ktor.client.HttpClient
+import io.ktor.client.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import org.ntqqrev.acidify.Bot
@@ -18,6 +21,7 @@ import org.ntqqrev.acidify.common.AppInfo
 import org.ntqqrev.acidify.common.SessionStore
 import org.ntqqrev.acidify.common.UrlSignProvider
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
+import org.ntqqrev.cecilia.components.SignApiSetupDialog
 import org.ntqqrev.cecilia.structs.CeciliaConfig
 import org.ntqqrev.cecilia.utils.ConversationManager
 import java.awt.Dimension
@@ -28,7 +32,12 @@ import kotlin.io.path.writeText
 
 fun main() = application {
     val configPath = Path("config.json")
-    var config by remember { mutableStateOf(CeciliaConfig.fromPath(configPath)) }
+    var isConfigInitialized by remember { mutableStateOf(configPath.exists()) }
+    var config by remember {
+        mutableStateOf(
+            if (isConfigInitialized) CeciliaConfig.fromPath(configPath) else CeciliaConfig()
+        )
+    }
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     var bot by remember { mutableStateOf<Bot?>(null) }
@@ -39,8 +48,10 @@ fun main() = application {
 
     val httpClient = HttpClient()
 
-    // 异步加载 Bot
-    LaunchedEffect(Unit) {
+    // 在完成配置前不要初始化 Bot
+    LaunchedEffect(isConfigInitialized) {
+        if (!isConfigInitialized) return@LaunchedEffect
+
         launch(Dispatchers.IO) {
             try {
                 val sessionStorePath = Path("session-store.json")
@@ -153,6 +164,23 @@ fun main() = application {
                     userUin = uin
                 }
             )
+        }
+
+        if (!isConfigInitialized) {
+            MaterialTheme(
+                colors = ThemeType.GREEN.colorScheme,
+                typography = Typography(defaultFontFamily = NotoFontFamily)
+            ) {
+                SignApiSetupDialog(
+                    initialSignApiUrl = config.signApiUrl,
+                    onConfirm = { newUrl ->
+                        val updatedConfig = config.copy(signApiUrl = newUrl)
+                        config = updatedConfig
+                        updatedConfig.writeToPath(configPath)
+                        isConfigInitialized = true
+                    }
+                )
+            }
         }
     }
 }
