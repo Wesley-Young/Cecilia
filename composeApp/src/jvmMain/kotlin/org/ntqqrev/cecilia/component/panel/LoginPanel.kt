@@ -41,7 +41,7 @@ fun LoginPanel(
     val config = LocalConfig.current
     val setConfig = LocalSetConfig.current
     val currentConfig by rememberUpdatedState(config)
-    val hasSession = bot.sessionStore.uin != 0L
+    val hasSession = bot.sessionStore.uin != 0L && bot.sessionStore.a2.isNotEmpty()
     val qrCodeColorArgb = MaterialTheme.colors.primary.toArgb()
     var qrCodeImage by remember { mutableStateOf<ImageBitmap?>(null) }
     var qrCodeState by remember { mutableStateOf<QRCodeState?>(null) }
@@ -177,13 +177,49 @@ fun LoginPanel(
                             onClick = {
                                 isLoggingIn = true
                                 loginError = null
+                                qrCodeImage = null
+                                qrCodeState = null
                                 bot.launch {
-                                    try {
-                                        bot.login()
-                                        onLoginSuccess()
+                                    suspend fun switchToQrLogin() {
+                                        bot.sessionStore.clear()
+                                        onLoginStateChange?.invoke(false, 0L)
+                                        isUsingQRCode = true
+                                        qrCodeImage = null
+                                        qrCodeState = null
+                                        try {
+                                            bot.qrCodeLogin(queryInterval = 1000L)
+                                        } catch (e: Exception) {
+                                            loginError = e.message ?: "二维码登录失败"
+                                            isLoggingIn = false
+                                            qrCodeImage = null
+                                            qrCodeState = null
+                                        }
+                                    }
+
+                                    if (bot.sessionStore.a2.isEmpty()) {
+                                        loginError = null
+                                        switchToQrLogin()
+                                        return@launch
+                                    }
+
+                                    val onlineSucceeded = try {
+                                        try {
+                                            bot.online()
+                                            true
+                                        } catch (e: Exception) {
+                                            bot.sessionStore.refreshDeviceGuid()
+                                            bot.online()
+                                            true
+                                        }
                                     } catch (e: Exception) {
-                                        loginError = e.message ?: "登录失败"
-                                        isLoggingIn = false
+                                        loginError = e.message ?: "快捷登录失败，正在转为二维码登录"
+                                        false
+                                    }
+
+                                    if (onlineSucceeded) {
+                                        onLoginSuccess()
+                                    } else {
+                                        switchToQrLogin()
                                     }
                                 }
                             },
