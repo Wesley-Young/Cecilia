@@ -26,12 +26,8 @@ import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.event.QRCodeGeneratedEvent
 import org.ntqqrev.acidify.event.QRCodeStateQueryEvent
 import org.ntqqrev.acidify.struct.QRCodeState
-import org.ntqqrev.cecilia.LocalBot
-import org.ntqqrev.cecilia.LocalConfig
-import org.ntqqrev.cecilia.LocalHttpClient
-import org.ntqqrev.cecilia.LocalSetConfig
 import org.ntqqrev.cecilia.component.view.SignApiSetupDialog
-import org.ntqqrev.cecilia.core.AvatarCache
+import org.ntqqrev.cecilia.core.*
 import qrcode.QRCode
 import kotlin.system.exitProcess
 

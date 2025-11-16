@@ -14,11 +14,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.LocalBot
-import org.ntqqrev.cecilia.LocalConversationManager
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.component.view.ChatArea
 import org.ntqqrev.cecilia.component.view.ConversationList
+import org.ntqqrev.cecilia.core.LocalBot
+import org.ntqqrev.cecilia.core.LocalConversationManager
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

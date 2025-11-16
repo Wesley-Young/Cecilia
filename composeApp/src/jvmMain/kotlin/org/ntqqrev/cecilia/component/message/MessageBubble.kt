@@ -31,9 +31,9 @@ import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.acidify.struct.GroupMemberRole
-import org.ntqqrev.cecilia.LocalAllMessages
-import org.ntqqrev.cecilia.LocalBot
 import org.ntqqrev.cecilia.component.AvatarImage
+import org.ntqqrev.cecilia.core.LocalAllMessages
+import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.struct.DisplaySegment
 import org.ntqqrev.cecilia.struct.GroupMemberDisplayInfo
 import org.ntqqrev.cecilia.struct.GroupMemberDisplayInfo.Companion.toDisplayInfo

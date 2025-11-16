@@ -21,6 +21,8 @@ import org.ntqqrev.acidify.common.AppInfo
 import org.ntqqrev.acidify.common.SessionStore
 import org.ntqqrev.acidify.common.UrlSignProvider
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
+import org.ntqqrev.cecilia.component.NotoFontFamily
+import org.ntqqrev.cecilia.component.ThemeType
 import org.ntqqrev.cecilia.component.view.SignApiSetupDialog
 import org.ntqqrev.cecilia.core.CeciliaConfig
 import org.ntqqrev.cecilia.core.ConversationManager

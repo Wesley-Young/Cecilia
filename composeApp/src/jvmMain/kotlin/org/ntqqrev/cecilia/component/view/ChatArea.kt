@@ -37,12 +37,12 @@ import org.ntqqrev.acidify.event.*
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.LocalAllMessages
-import org.ntqqrev.cecilia.LocalBot
-import org.ntqqrev.cecilia.LocalConfig
 import org.ntqqrev.cecilia.component.message.GreyTip
 import org.ntqqrev.cecilia.component.message.MessageBubble
 import org.ntqqrev.cecilia.component.message.PlaceholderMessageBubble
+import org.ntqqrev.cecilia.core.LocalAllMessages
+import org.ntqqrev.cecilia.core.LocalBot
+import org.ntqqrev.cecilia.core.LocalConfig
 import org.ntqqrev.cecilia.struct.*
 import org.ntqqrev.cecilia.struct.GroupMemberDisplayInfo.Companion.toDisplayInfo
 import org.ntqqrev.cecilia.util.*

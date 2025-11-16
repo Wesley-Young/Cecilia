@@ -10,12 +10,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.ntqqrev.acidify.logging.LogLevel
-import org.ntqqrev.cecilia.LocalConfig
-import org.ntqqrev.cecilia.LocalSetConfig
-import org.ntqqrev.cecilia.ThemeType
 import org.ntqqrev.cecilia.component.DropdownTextField
 import org.ntqqrev.cecilia.component.LabeledToggle
+import org.ntqqrev.cecilia.component.ThemeType
 import org.ntqqrev.cecilia.component.ValidatedTextField
+import org.ntqqrev.cecilia.core.LocalConfig
+import org.ntqqrev.cecilia.core.LocalSetConfig
 
 data class SettingsActions(
     val save: () -> Unit = {},

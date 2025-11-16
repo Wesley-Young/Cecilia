@@ -14,12 +14,11 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.component.NavigationRail
 import org.ntqqrev.cecilia.component.NavigationTab
+import org.ntqqrev.cecilia.component.NotoFontFamily
 import org.ntqqrev.cecilia.component.panel.*
 import org.ntqqrev.cecilia.component.view.CommandPalette
 import org.ntqqrev.cecilia.component.view.UnsavedChangesDialog
-import org.ntqqrev.cecilia.core.CeciliaConfig
-import org.ntqqrev.cecilia.core.ContactsState
-import org.ntqqrev.cecilia.core.ConversationManager
+import org.ntqqrev.cecilia.core.*
 import org.ntqqrev.cecilia.core.command.*
 
 @Composable

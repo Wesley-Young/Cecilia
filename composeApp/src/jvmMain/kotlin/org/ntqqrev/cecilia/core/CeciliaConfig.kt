@@ -3,7 +3,7 @@ package org.ntqqrev.cecilia.core
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.ntqqrev.acidify.logging.LogLevel
-import org.ntqqrev.cecilia.ThemeType
+import org.ntqqrev.cecilia.component.ThemeType
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.readText

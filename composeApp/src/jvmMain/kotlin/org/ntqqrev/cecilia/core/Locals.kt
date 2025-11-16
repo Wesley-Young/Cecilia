@@ -1,12 +1,9 @@
-package org.ntqqrev.cecilia
+package org.ntqqrev.cecilia.core
 
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import io.ktor.client.*
 import org.ntqqrev.acidify.Bot
-import org.ntqqrev.cecilia.core.CeciliaConfig
-import org.ntqqrev.cecilia.core.ContactsState
-import org.ntqqrev.cecilia.core.ConversationManager
 import org.ntqqrev.cecilia.struct.DisplayMessage
 
 val LocalConfig = compositionLocalOf<CeciliaConfig> {

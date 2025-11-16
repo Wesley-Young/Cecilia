@@ -31,9 +31,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.struct.BotUserInfo
-import org.ntqqrev.cecilia.LocalBot
-import org.ntqqrev.cecilia.LocalHttpClient
 import org.ntqqrev.cecilia.core.AvatarCache
+import org.ntqqrev.cecilia.core.LocalBot
+import org.ntqqrev.cecilia.core.LocalHttpClient
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

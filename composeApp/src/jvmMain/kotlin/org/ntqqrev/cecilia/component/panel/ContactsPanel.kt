@@ -23,10 +23,10 @@ import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.acidify.struct.BotFriendData
 import org.ntqqrev.acidify.struct.BotGroupData
-import org.ntqqrev.cecilia.LocalContactsState
-import org.ntqqrev.cecilia.LocalConversationManager
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
+import org.ntqqrev.cecilia.core.LocalContactsState
+import org.ntqqrev.cecilia.core.LocalConversationManager
 
 enum class ContactType {
     FRIENDS,

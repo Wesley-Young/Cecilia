@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia
+package org.ntqqrev.cecilia.component
 
 import androidx.compose.material.Colors
 import androidx.compose.material.lightColors

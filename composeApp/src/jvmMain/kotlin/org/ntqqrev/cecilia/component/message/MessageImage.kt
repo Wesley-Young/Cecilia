@@ -24,11 +24,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Codec
+import org.jetbrains.skia.Data
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
-import org.ntqqrev.cecilia.LocalBot
-import org.ntqqrev.cecilia.LocalHttpClient
 import org.ntqqrev.cecilia.component.view.ImagePreviewWindow
+import org.ntqqrev.cecilia.core.LocalBot
+import org.ntqqrev.cecilia.core.LocalHttpClient
 import org.ntqqrev.cecilia.core.MediaCache
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
@@ -37,8 +39,6 @@ import java.awt.datatransfer.UnsupportedFlavorException
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
 import org.jetbrains.skia.Bitmap as SkiaBitmap
-import org.jetbrains.skia.Codec
-import org.jetbrains.skia.Data
 import org.jetbrains.skia.Image as SkiaImage
 
 @OptIn(ExperimentalFoundationApi::class)
