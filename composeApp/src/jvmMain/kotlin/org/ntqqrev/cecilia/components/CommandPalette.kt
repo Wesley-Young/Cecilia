@@ -33,11 +33,7 @@ import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.Command
-import org.ntqqrev.cecilia.CommandCompletionContext
-import org.ntqqrev.cecilia.CommandExecutionContext
-import org.ntqqrev.cecilia.CommandParameter
-import org.ntqqrev.cecilia.CommandSuggestion
+import org.ntqqrev.cecilia.*
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.ConversationManager
 
@@ -313,7 +309,11 @@ fun CommandPalette(
                                 append(" ")
                                 val value = consoleState.arguments.getOrNull(index).orEmpty()
                                 val isFilled = value.isNotBlank()
-                                val display = if (isFilled) value else "<${parameter.name}>"
+                                val display = if (currentParameterIndex == index) {
+                                    "<${parameter.name}: ${parameter.description}>"
+                                } else {
+                                    "<${parameter.name}>"
+                                }
                                 val color = when {
                                     isFilled -> onSurfaceColor
                                     currentParameterIndex == index -> currentColor
