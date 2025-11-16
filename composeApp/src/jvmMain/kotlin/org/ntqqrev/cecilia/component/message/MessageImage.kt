@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.ntqqrev.acidify.message.BotIncomingSegment
@@ -35,6 +36,9 @@ import java.awt.datatransfer.Transferable
 import java.awt.datatransfer.UnsupportedFlavorException
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
+import org.jetbrains.skia.Bitmap as SkiaBitmap
+import org.jetbrains.skia.Codec
+import org.jetbrains.skia.Data
 import org.jetbrains.skia.Image as SkiaImage
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -50,6 +54,8 @@ fun MessageImage(
     var isLoading by remember(imageSegment.fileId) { mutableStateOf(true) }
     var hasError by remember(imageSegment.fileId) { mutableStateOf(false) }
     var showPreview by remember { mutableStateOf(false) }
+    var animatedFrames by remember(imageSegment.fileId) { mutableStateOf<List<ImageBitmap>?>(null) }
+    var animatedDurations by remember(imageSegment.fileId) { mutableStateOf<List<Int>>(emptyList()) }
 
 
     LaunchedEffect(imageSegment.fileId) {
@@ -66,10 +72,31 @@ fun MessageImage(
                         MediaCache.putFileIdAndContent(imageSegment.fileId, url, bytes)
                         bytes
                     }
-                    imageBytes to SkiaImage.makeFromEncoded(imageBytes).toComposeImageBitmap()
+                    val data = Data.makeFromBytes(imageBytes)
+                    val codec = Codec.makeFromData(data)
+                    if (codec.frameCount > 1) {
+                        val frames = mutableListOf<ImageBitmap>()
+                        val durations = mutableListOf<Int>()
+                        repeat(codec.frameCount) { index ->
+                            val bitmap = SkiaBitmap()
+                            bitmap.allocPixels(codec.imageInfo)
+                            codec.readPixels(bitmap, index)
+                            frames += SkiaImage.makeFromBitmap(bitmap).toComposeImageBitmap()
+                            val duration = codec.getFrameInfo(index).duration
+                            durations += duration.coerceAtLeast(16)
+                        }
+                        codec.close()
+                        Triple(imageBytes, frames.first(), frames to durations)
+                    } else {
+                        codec.close()
+                        Triple(imageBytes, SkiaImage.makeFromEncoded(imageBytes).toComposeImageBitmap(), null)
+                    }
                 }
                 imageBytes = bitmap.first
                 imageBitmap = bitmap.second
+                val animatedData = bitmap.third
+                animatedFrames = animatedData?.first
+                animatedDurations = animatedData?.second ?: emptyList()
                 isLoading = false
             } catch (e: Exception) {
                 hasError = true
@@ -184,6 +211,19 @@ fun MessageImage(
             title = "预览 - ${imageSegment.summary}",
             onCloseRequest = { showPreview = false }
         )
+    }
+
+    LaunchedEffect(imageSegment.fileId, animatedFrames, animatedDurations) {
+        val frames = animatedFrames
+        if (frames.isNullOrEmpty()) return@LaunchedEffect
+        val durations = animatedDurations.takeIf { it.size == frames.size } ?: return@LaunchedEffect
+        var frameIndex = 0
+        while (true) {
+            val delayMs = durations.getOrElse(frameIndex) { 100 }
+            delay(delayMs.toLong())
+            frameIndex = (frameIndex + 1) % frames.size
+            imageBitmap = frames[frameIndex]
+        }
     }
 }
 
