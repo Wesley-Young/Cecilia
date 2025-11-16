@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia.commands
+package org.ntqqrev.cecilia
 
 import io.ktor.client.*
 import org.ntqqrev.acidify.Bot
@@ -10,7 +10,6 @@ data class CommandParameter(
     val key: String,
     val name: String = key,
     val description: String = "",
-    val placeholder: String = "",
     val required: Boolean = true,
     val suggestionsProvider: suspend CommandCompletionContext.(String) -> List<CommandSuggestion> = { emptyList() },
 )

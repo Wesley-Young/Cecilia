@@ -33,7 +33,11 @@ import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.commands.*
+import org.ntqqrev.cecilia.Command
+import org.ntqqrev.cecilia.CommandCompletionContext
+import org.ntqqrev.cecilia.CommandExecutionContext
+import org.ntqqrev.cecilia.CommandParameter
+import org.ntqqrev.cecilia.CommandSuggestion
 import org.ntqqrev.cecilia.structs.Conversation
 import org.ntqqrev.cecilia.utils.ConversationManager
 
