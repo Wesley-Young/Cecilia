@@ -26,6 +26,7 @@ kotlin {
             implementation(libs.ktor.client.cio)
             implementation(libs.qrcode.kotlin)
             implementation(libs.acidify.core)
+            implementation(libs.pinyin4j)
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
 

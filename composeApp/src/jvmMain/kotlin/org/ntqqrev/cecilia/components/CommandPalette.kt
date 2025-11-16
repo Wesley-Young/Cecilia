@@ -78,7 +78,7 @@ fun CommandPalette(
         sortedCommands.firstOrNull { it.id.equals(consoleState.commandToken, ignoreCase = true) }
     else null
 
-    val paletteScope = rememberCoroutineScope()
+    rememberCoroutineScope()
     var parameterSuggestionState by remember { mutableStateOf(ParameterSuggestionState()) }
 
     val isExactCommandMatch = selectedCommand?.id?.equals(consoleState.commandToken, ignoreCase = true) == true
