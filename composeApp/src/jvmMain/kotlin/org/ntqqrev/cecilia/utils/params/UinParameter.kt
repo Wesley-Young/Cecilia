@@ -6,10 +6,8 @@ import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat
 import net.sourceforge.pinyin4j.format.HanyuPinyinToneType
 import net.sourceforge.pinyin4j.format.HanyuPinyinVCharType
 import net.sourceforge.pinyin4j.format.exception.BadHanyuPinyinOutputFormatCombination
-import org.ntqqrev.cecilia.CommandCompletionContext
 import org.ntqqrev.cecilia.CommandParameter
 import org.ntqqrev.cecilia.CommandSuggestion
-import kotlin.text.ifEmpty
 
 private const val MATCH_TYPE_COUNT = 5
 private const val MATCH_TYPE_STARTS_WITH = 0
@@ -114,7 +112,7 @@ fun uinParameter(
             .map {
                 CommandSuggestion(
                     content = it.uin.toString(),
-                    display = it.card.ifEmpty { it.nickname }
+                    display = it.card.ifEmpty { it.nickname }.ifEmpty { "<无名氏>" }
                 )
             }
     }
@@ -142,7 +140,7 @@ fun uinParameter(
         .map { (member, _) ->
             CommandSuggestion(
                 content = member.uin.toString(),
-                display = member.card.ifEmpty { member.nickname }
+                display = member.card.ifEmpty { member.nickname }.ifEmpty { "<无名氏>" }
             )
         }
 }
