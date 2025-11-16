@@ -12,8 +12,7 @@ import io.ktor.client.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
-import org.ntqqrev.cecilia.commands.NudgeCommand
-import org.ntqqrev.cecilia.commands.RefreshCommand
+import org.ntqqrev.cecilia.commands.*
 import org.ntqqrev.cecilia.components.CommandPalette
 import org.ntqqrev.cecilia.components.NavigationRail
 import org.ntqqrev.cecilia.components.NavigationTab
@@ -49,8 +48,14 @@ fun App(
     ) {
         val commands = remember {
             listOf(
+                RefreshCommand,
                 NudgeCommand,
-                RefreshCommand
+                CardCommand,
+                AdminCommand,
+                TitleCommand,
+                KickCommand,
+                MuteCommand,
+                MuteAllCommand
             )
         }
         val snackbarHostState = remember { SnackbarHostState() }
