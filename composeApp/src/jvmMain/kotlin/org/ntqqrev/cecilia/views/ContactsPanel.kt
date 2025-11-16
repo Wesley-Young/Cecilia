@@ -24,7 +24,7 @@ import org.ntqqrev.acidify.struct.BotFriendData
 import org.ntqqrev.acidify.struct.BotGroupData
 import org.ntqqrev.cecilia.components.AvatarImage
 import org.ntqqrev.cecilia.components.DraggableDivider
-import org.ntqqrev.cecilia.utils.LocalBot
+import org.ntqqrev.cecilia.utils.LocalContactsState
 import org.ntqqrev.cecilia.utils.LocalConversationManager
 
 enum class ContactType {
@@ -35,29 +35,28 @@ enum class ContactType {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ContactsPanel(onOpenConversation: (String) -> Unit = {}) {
-    val bot = LocalBot.current
     val conversationManager = LocalConversationManager.current
+    val contactsState = LocalContactsState.current
     var contactType by remember { mutableStateOf(ContactType.FRIENDS) }
-    var friends by remember { mutableStateOf<List<BotFriendData>>(emptyList()) }
-    var groups by remember { mutableStateOf<List<BotGroupData>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
     var selectedFriend by remember { mutableStateOf<BotFriendData?>(null) }
     var selectedGroup by remember { mutableStateOf<BotGroupData?>(null) }
     var leftPanelWidth by remember { mutableStateOf(320.dp) }
     val scope = rememberCoroutineScope()
+    val friends = contactsState.friends
+    val groups = contactsState.groups
+    val isLoading = contactsState.isFriendsLoading || contactsState.isGroupsLoading
 
-    // 加载好友和群列表
-    LaunchedEffect(Unit) {
-        isLoading = true
-        scope.launch {
-            try {
-                friends = bot.fetchFriends()
-                groups = bot.fetchGroups()
-            } catch (e: Exception) {
-                // 加载失败
-            } finally {
-                isLoading = false
-            }
+    LaunchedEffect(friends) {
+        selectedFriend?.let { current ->
+            val updated = friends.firstOrNull { it.uin == current.uin }
+            selectedFriend = updated
+        }
+    }
+
+    LaunchedEffect(groups) {
+        selectedGroup?.let { current ->
+            val updated = groups.firstOrNull { it.uin == current.uin }
+            selectedGroup = updated
         }
     }
 

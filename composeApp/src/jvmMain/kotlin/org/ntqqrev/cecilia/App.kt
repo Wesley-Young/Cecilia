@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.commands.NudgeCommand
+import org.ntqqrev.cecilia.commands.RefreshCommand
 import org.ntqqrev.cecilia.components.CommandPalette
 import org.ntqqrev.cecilia.components.NavigationRail
 import org.ntqqrev.cecilia.components.NavigationTab
@@ -48,7 +49,8 @@ fun App(
     ) {
         val commands = remember {
             listOf(
-                NudgeCommand
+                NudgeCommand,
+                RefreshCommand
             )
         }
         val snackbarHostState = remember { SnackbarHostState() }
@@ -108,10 +110,17 @@ fun App(
                 else -> {
                     // Bot 加载完成
                     var isLoggedIn by remember { mutableStateOf(bot.isLoggedIn) }
+                    val contactsState = remember(bot) { ContactsState(bot) }
 
                     // 通知登录状态变化
                     LaunchedEffect(isLoggedIn) {
                         onLoginStateChange?.invoke(isLoggedIn, bot.sessionStore.uin)
+                    }
+
+                    LaunchedEffect(isLoggedIn) {
+                        if (!isLoggedIn) {
+                            contactsState.clear()
+                        }
                     }
 
                     // 提供 Bot 和 ConversationManager 到子组件
@@ -121,7 +130,8 @@ fun App(
                             LocalSetConfig provides setConfig,
                             LocalBot provides bot,
                             LocalHttpClient provides httpClient,
-                            LocalConversationManager provides conversationManager
+                            LocalConversationManager provides conversationManager,
+                            LocalContactsState provides contactsState
                         ) {
                             if (isLoggedIn) {
                                 // 已登录，显示主界面
@@ -143,22 +153,22 @@ fun App(
                             CircularProgressIndicator()
                         }
                     }
-                }
-            }
-
-            if (showCommandPalette && bot != null && conversationManager != null) {
-                CommandPalette(
-                    bot = bot,
-                    httpClient = httpClient,
-                    commands = commands,
-                    conversationManager = conversationManager,
-                    onDismiss = onCommandPaletteDismiss,
-                    onCommandError = { message ->
-                        snackbarScope.launch {
-                            snackbarHostState.showSnackbar(message)
-                        }
+                    if (showCommandPalette && conversationManager != null) {
+                        CommandPalette(
+                            bot = bot,
+                            httpClient = httpClient,
+                            commands = commands,
+                            conversationManager = conversationManager,
+                            contactsState = contactsState,
+                            onDismiss = onCommandPaletteDismiss,
+                            onCommandError = { message ->
+                                snackbarScope.launch {
+                                    snackbarHostState.showSnackbar(message)
+                                }
+                            }
+                        )
                     }
-                )
+                }
             }
 
             SnackbarHost(
@@ -175,6 +185,11 @@ fun App(
 private fun MainContent() {
     var selectedTab by remember { mutableStateOf(NavigationTab.MESSAGES) }
     var targetConversationId by remember { mutableStateOf<String?>(null) }
+    val contactsState = LocalContactsState.current
+
+    LaunchedEffect(contactsState) {
+        contactsState.ensureInitialized()
+    }
 
     // 设置页面的状态
     var hasUnsavedChanges by remember { mutableStateOf(false) }

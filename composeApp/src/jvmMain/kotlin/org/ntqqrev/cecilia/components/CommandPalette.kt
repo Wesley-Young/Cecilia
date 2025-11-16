@@ -34,6 +34,7 @@ import org.ntqqrev.acidify.entity.BotGroup
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.*
 import org.ntqqrev.cecilia.structs.Conversation
+import org.ntqqrev.cecilia.utils.ContactsState
 import org.ntqqrev.cecilia.utils.ConversationManager
 
 @Composable
@@ -42,6 +43,7 @@ fun CommandPalette(
     httpClient: HttpClient,
     commands: List<Command>,
     conversationManager: ConversationManager,
+    contactsState: ContactsState,
     onDismiss: () -> Unit,
     onCommandError: (String) -> Unit = {}
 ) {
@@ -179,7 +181,8 @@ fun CommandPalette(
                 bot = bot,
                 httpClient = httpClient,
                 currentFriend = conversationParticipants.friend,
-                currentGroup = conversationParticipants.group
+                currentGroup = conversationParticipants.group,
+                contactsState = contactsState
             )
             parameter.suggestionsProvider.invoke(completionContext, currentArgumentValue)
         } catch (e: Exception) {
@@ -229,7 +232,8 @@ fun CommandPalette(
                     httpClient,
                     argsSnapshot,
                     conversationParticipants.friend,
-                    conversationParticipants.group
+                    conversationParticipants.group,
+                    contactsState
                 )
             } catch (e: Exception) {
                 val errorMessage = e.message ?: e::class.simpleName ?: "未知错误"
@@ -668,7 +672,8 @@ private suspend fun executeCommand(
     httpClient: HttpClient,
     args: List<String>,
     currentFriend: BotFriend?,
-    currentGroup: BotGroup?
+    currentGroup: BotGroup?,
+    contactsState: ContactsState?
 ) {
     val payload = mutableMapOf<String, String>()
     command.parameters.forEachIndexed { index, parameter ->
@@ -679,7 +684,8 @@ private suspend fun executeCommand(
         bot = bot,
         httpClient = httpClient,
         currentFriend = currentFriend,
-        currentGroup = currentGroup
+        currentGroup = currentGroup,
+        contactsState = contactsState
     )
     command.execute.invoke(ctx)
 }

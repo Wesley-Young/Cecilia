@@ -4,6 +4,7 @@ import io.ktor.client.*
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
+import org.ntqqrev.cecilia.utils.ContactsState
 import kotlin.reflect.KProperty
 
 data class CommandParameter(
@@ -27,6 +28,7 @@ class CommandCompletionContext(
     val httpClient: HttpClient,
     val currentFriend: BotFriend? = null,
     val currentGroup: BotGroup? = null,
+    val contactsState: ContactsState? = null,
 )
 
 data class CommandSuggestion(
@@ -40,6 +42,7 @@ class CommandExecutionContext(
     val httpClient: HttpClient,
     val currentFriend: BotFriend? = null,
     val currentGroup: BotGroup? = null,
+    val contactsState: ContactsState? = null,
 ) {
     val args = CommandArguments(arguments)
 }

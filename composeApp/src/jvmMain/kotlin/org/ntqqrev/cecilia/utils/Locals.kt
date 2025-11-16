@@ -30,3 +30,7 @@ val LocalConversationManager = staticCompositionLocalOf<ConversationManager> {
 val LocalAllMessages = compositionLocalOf<List<DisplayMessage>> {
     error("No Messages provided")
 }
+
+val LocalContactsState = staticCompositionLocalOf<ContactsState> {
+    error("No ContactsState provided")
+}
