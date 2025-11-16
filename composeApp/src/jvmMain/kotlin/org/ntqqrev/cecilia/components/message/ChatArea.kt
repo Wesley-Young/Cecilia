@@ -30,7 +30,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
-import org.ntqqrev.acidify.event.MessageReceiveEvent
+import org.ntqqrev.acidify.Bot
+import org.ntqqrev.acidify.entity.BotFriend
+import org.ntqqrev.acidify.entity.BotGroupMember
+import org.ntqqrev.acidify.event.*
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.MessageScene
@@ -277,6 +280,19 @@ fun ChatArea(conversation: Conversation) {
                     scrollToBottom()
                 }
             }
+    }
+
+    // 监听会话相关的其他事件，并以灰色提示的形式展示
+    LaunchedEffect(conversation.id) {
+        bot.eventFlow.collect { event ->
+            val greyTipText = formatGreyTipForEvent(event, conversation, bot)
+            if (greyTipText != null) {
+                messages.add(DisplayMessage(greyTip = greyTipText))
+                if (isUserAtBottom()) {
+                    scrollToBottom()
+                }
+            }
+        }
     }
 
     // 检测滚动到顶部，触发加载更多
@@ -767,4 +783,388 @@ private suspend fun readAttachmentsFromTransferable(
     }
 
     attachments
+}
+
+private suspend fun formatGreyTipForEvent(
+    event: Any,
+    conversation: Conversation,
+    bot: Bot
+): String? = when (event) {
+    is MessageRecallEvent -> formatMessageRecallGreyTip(event, conversation, bot)
+    is FriendNudgeEvent -> formatFriendNudgeGreyTip(event, conversation, bot)
+    is GroupAdminChangeEvent -> formatGroupAdminChangeGreyTip(event, conversation, bot)
+    is GroupEssenceMessageChangeEvent -> formatGroupEssenceMessageGreyTip(event, conversation, bot)
+    is GroupInvitationEvent -> formatGroupInvitationGreyTip(event, conversation, bot)
+    is GroupInvitedJoinRequestEvent -> formatGroupInvitedJoinGreyTip(event, conversation, bot)
+    is GroupJoinRequestEvent -> formatGroupJoinRequestGreyTip(event, conversation, bot)
+    is GroupMemberIncreaseEvent -> formatGroupMemberIncreaseGreyTip(event, conversation, bot)
+    is GroupMemberDecreaseEvent -> formatGroupMemberDecreaseGreyTip(event, conversation, bot)
+    is GroupNameChangeEvent -> formatGroupNameChangeGreyTip(event, conversation, bot)
+    is GroupMessageReactionEvent -> formatGroupMessageReactionGreyTip(event, conversation, bot)
+    is GroupMuteEvent -> formatGroupMuteGreyTip(event, conversation, bot)
+    is GroupWholeMuteEvent -> formatGroupWholeMuteGreyTip(event, conversation, bot)
+    is GroupNudgeEvent -> formatGroupNudgeGreyTip(event, conversation, bot)
+    else -> null
+}
+
+private suspend fun formatMessageRecallGreyTip(
+    event: MessageRecallEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (event.scene != conversation.scene || event.peerUin != conversation.peerUin) {
+        return null
+    }
+    return when (event.scene) {
+        MessageScene.FRIEND -> {
+            val friendLabel = bot.friendDisplayName(event.peerUin)
+            buildString {
+                if (event.senderUin == bot.uin) {
+                    append("你撤回了一条消息")
+                } else {
+                    append(friendLabel)
+                    append("撤回了一条消息")
+                }
+                if (event.displaySuffix.isNotBlank()) {
+                    append("，")
+                    append(event.displaySuffix)
+                }
+            }
+        }
+
+        MessageScene.GROUP -> {
+            val senderLabel = bot.groupMemberDisplayName(event.peerUin, event.senderUin)
+            val operatorLabel = bot.groupMemberDisplayName(event.peerUin, event.operatorUin)
+            buildString {
+                append(senderLabel)
+                if (event.senderUin == event.operatorUin) {
+                    append("撤回了一条消息")
+                } else {
+                    append("的消息被")
+                    append(operatorLabel)
+                    append("撤回")
+                }
+                if (event.displaySuffix.isNotBlank()) {
+                    append("，")
+                    append(event.displaySuffix)
+                }
+            }
+        }
+
+        else -> null
+    }
+}
+
+private suspend fun formatFriendNudgeGreyTip(
+    event: FriendNudgeEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesFriend(event.userUin)) return null
+    val friendLabel = bot.friendDisplayName(event.userUin)
+    return buildString {
+        if (event.isSelfSend) {
+            append("你")
+            append(event.displayAction)
+            if (event.isSelfReceive) {
+                append("自己")
+            } else {
+                append(friendLabel)
+            }
+            append(event.displaySuffix)
+        } else {
+            append(friendLabel)
+            append(event.displayAction)
+            if (event.isSelfReceive) {
+                append("你")
+            } else {
+                append("自己")
+            }
+            append(event.displaySuffix)
+        }
+    }
+}
+
+private suspend fun formatGroupAdminChangeGreyTip(
+    event: GroupAdminChangeEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val userLabel = bot.groupMemberDisplayName(event.groupUin, event.userUin)
+    return buildString {
+        append(userLabel)
+        append(if (event.isSet) "被设置为" else "被取消")
+        append("管理员")
+    }
+}
+
+private fun formatGroupEssenceMessageGreyTip(
+    event: GroupEssenceMessageChangeEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    return buildString {
+        append("消息#")
+        append(event.messageSeq)
+        append(if (event.isSet) "被设置为" else "被取消")
+        append("精华消息")
+    }
+}
+
+private suspend fun formatGroupInvitationGreyTip(
+    event: GroupInvitationEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val initiatorLabel = bot.groupMemberDisplayName(event.groupUin, event.initiatorUin)
+    return "${initiatorLabel}发起了群邀请"
+}
+
+private suspend fun formatGroupInvitedJoinGreyTip(
+    event: GroupInvitedJoinRequestEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val initiatorLabel = bot.groupMemberDisplayName(event.groupUin, event.initiatorUin)
+    return buildString {
+        append(initiatorLabel)
+        append("邀请")
+        append(event.targetUserUin)
+        append("加入群聊")
+    }
+}
+
+private fun formatGroupJoinRequestGreyTip(
+    event: GroupJoinRequestEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val comment = event.comment
+    return buildString {
+        append("收到")
+        append(event.initiatorUin)
+        append("的入群申请")
+        if (comment.isNotBlank()) {
+            append("，附加信息：")
+            append(comment)
+        }
+    }
+}
+
+private suspend fun formatGroupMemberIncreaseGreyTip(
+    event: GroupMemberIncreaseEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val userLabel = bot.groupMemberDisplayName(event.groupUin, event.userUin)
+    return buildString {
+        append(userLabel)
+        when {
+            event.operatorUin != null -> {
+                append("被")
+                append(bot.groupMemberDisplayName(event.groupUin, event.operatorUin!!))
+                append("同意加入群聊")
+            }
+
+            event.invitorUin != null -> {
+                append("被")
+                append(bot.groupMemberDisplayName(event.groupUin, event.invitorUin!!))
+                append("邀请加入群聊")
+            }
+
+            else -> append("加入了群聊")
+        }
+    }
+}
+
+private suspend fun formatGroupMemberDecreaseGreyTip(
+    event: GroupMemberDecreaseEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val userLabel = bot.groupMemberDisplayName(event.groupUin, event.userUin)
+    return buildString {
+        append(userLabel)
+        if (event.operatorUin != null && event.operatorUin != event.userUin) {
+            append("被")
+            append(bot.groupMemberDisplayName(event.groupUin, event.operatorUin!!))
+            append("移出群聊")
+        } else {
+            append("退出了群聊")
+        }
+    }
+}
+
+private suspend fun formatGroupNameChangeGreyTip(
+    event: GroupNameChangeEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val operatorLabel = bot.groupMemberDisplayName(event.groupUin, event.operatorUin)
+    return buildString {
+        append(operatorLabel)
+        append("将群名称修改为：")
+        append(event.newGroupName)
+    }
+}
+
+private suspend fun formatGroupMessageReactionGreyTip(
+    event: GroupMessageReactionEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val userLabel = bot.groupMemberDisplayName(event.groupUin, event.userUin)
+    val faceDescription = bot.faceDetailMap[event.faceId]?.qDes ?: event.faceId
+    return buildString {
+        append(userLabel)
+        if (event.isAdd) {
+            append("对消息#")
+            append(event.messageSeq)
+            append("添加了表情回应")
+        } else {
+            append("取消了对消息#")
+            append(event.messageSeq)
+            append("的表情回应")
+        }
+        append(faceDescription)
+    }
+}
+
+private suspend fun formatGroupMuteGreyTip(
+    event: GroupMuteEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val userLabel = bot.groupMemberDisplayName(event.groupUin, event.userUin)
+    val operatorLabel = bot.groupMemberDisplayName(event.groupUin, event.operatorUin)
+    return buildString {
+        append(userLabel)
+        if (event.duration == 0) {
+            append("被")
+            append(operatorLabel)
+            append("解除禁言")
+        } else {
+            append("被")
+            append(operatorLabel)
+            append("禁言")
+            append(event.duration)
+            append("秒")
+        }
+    }
+}
+
+private suspend fun formatGroupWholeMuteGreyTip(
+    event: GroupWholeMuteEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val operatorLabel = bot.groupMemberDisplayName(event.groupUin, event.operatorUin)
+    return buildString {
+        append(operatorLabel)
+        if (event.isMute) {
+            append("开启了全员禁言")
+        } else {
+            append("关闭了全员禁言")
+        }
+    }
+}
+
+private suspend fun formatGroupNudgeGreyTip(
+    event: GroupNudgeEvent,
+    conversation: Conversation,
+    bot: Bot
+): String? {
+    if (!conversation.matchesGroup(event.groupUin)) return null
+    val senderIsSelf = event.senderUin == bot.uin
+    val receiverIsSelf = event.receiverUin == bot.uin
+    val senderLabel = bot.groupMemberDisplayName(event.groupUin, event.senderUin)
+    val receiverLabel = bot.groupMemberDisplayName(event.groupUin, event.receiverUin)
+    return buildString {
+        if (senderIsSelf) {
+            append("你")
+        } else {
+            append(senderLabel)
+        }
+        append(event.displayAction)
+        if (receiverIsSelf) {
+            if (senderIsSelf) {
+                append("自己")
+            } else {
+                append("你")
+            }
+        } else {
+            append(receiverLabel)
+        }
+        append(event.displaySuffix)
+    }
+}
+
+private fun Conversation.matchesGroup(groupUin: Long) =
+    scene == MessageScene.GROUP && peerUin == groupUin
+
+private fun Conversation.matchesFriend(uin: Long) =
+    scene == MessageScene.FRIEND && peerUin == uin
+
+private suspend fun Bot.friendDisplayName(uin: Long): String {
+    val friend = safeFriend(uin)
+    return friend?.displayString ?: uin.toString()
+}
+
+private suspend fun Bot.groupMemberDisplayName(groupUin: Long, memberUin: Long): String {
+    val member = safeGroupMember(groupUin, memberUin)
+    return member?.displayString ?: memberUin.toString()
+}
+
+private suspend fun Bot.safeFriend(uin: Long): BotFriend? = runIgnoringCancellation {
+    getFriend(uin)
+}
+
+private suspend fun Bot.safeGroupMember(groupUin: Long, memberUin: Long): BotGroupMember? = runIgnoringCancellation {
+    getGroupMember(groupUin, memberUin)
+}
+
+private suspend fun <T> runIgnoringCancellation(block: suspend () -> T): T? =
+    try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+
+private val BotFriend.displayName: String
+    get() = remark.takeIf { it.isNotBlank() } ?: nickname
+
+private val BotFriend.displayString: String
+    get() = displayName.toSingleLine()
+
+private val BotGroupMember.displayName: String
+    get() = card.takeIf { it.isNotBlank() } ?: nickname
+
+private val BotGroupMember.displayString: String
+    get() = displayName.toSingleLine()
+
+private fun String.toSingleLine(): String {
+    val builder = StringBuilder(length)
+    for (c in this) {
+        builder.append(
+            if (c == '\n' || c == '\r') {
+                ' '
+            } else {
+                c
+            }
+        )
+    }
+    return builder.toString()
 }
