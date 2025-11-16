@@ -12,6 +12,7 @@ import io.ktor.client.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
+import org.ntqqrev.acidify.event.BotOfflineEvent
 import org.ntqqrev.cecilia.component.NavigationRail
 import org.ntqqrev.cecilia.component.NavigationTab
 import org.ntqqrev.cecilia.component.NotoFontFamily
@@ -64,6 +65,7 @@ fun App(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
+            var offlineReason by remember { mutableStateOf<String?>(null) }
             when {
                 loadingError != null -> {
                     // 显示错误界面
@@ -116,6 +118,15 @@ fun App(
                     // Bot 加载完成
                     var isLoggedIn by remember { mutableStateOf(bot.isLoggedIn) }
                     val contactsState = remember(bot) { ContactsState(bot) }
+
+                    LaunchedEffect(bot) {
+                        bot.eventFlow.collect { event ->
+                            if (event is BotOfflineEvent) {
+                                offlineReason = event.reason
+                                isLoggedIn = false
+                            }
+                        }
+                    }
 
                     // 通知登录状态变化
                     LaunchedEffect(isLoggedIn) {
@@ -182,6 +193,23 @@ fun App(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp)
             )
+
+            offlineReason?.let { reason ->
+                AlertDialog(
+                    onDismissRequest = { offlineReason = null },
+                    title = {
+                        Text("已下线")
+                    },
+                    text = {
+                        Text(reason.ifBlank { "Bot 已离线" })
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { offlineReason = null }) {
+                            Text("确定")
+                        }
+                    }
+                )
+            }
         }
     }
 }
