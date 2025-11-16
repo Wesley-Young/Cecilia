@@ -213,27 +213,30 @@ fun CommandPalette(
     }
 
     fun attemptExecuteAndExit() {
-        val commandSnapshot = selectedCommand
         val argsSnapshot = consoleState.arguments.toList()
-        val validationState = consoleState
-        paletteScope.launch {
-            if (commandSnapshot != null) {
-                try {
-                    executeCommand(
-                        commandSnapshot,
-                        bot,
-                        httpClient,
-                        argsSnapshot,
-                        conversationParticipants.friend,
-                        conversationParticipants.group
-                    )
-                } catch (e: Exception) {
-                    val errorMessage = e.message ?: e::class.simpleName ?: "未知错误"
-                    onCommandError("执行失败: $errorMessage")
-                }
-            }
-            validateCommand(commandSnapshot, validationState)?.let(onCommandError)
+        val validationError = validateCommand(selectedCommand, consoleState)
+        if (validationError != null) {
+            onCommandError(validationError)
             onDismiss()
+            return
+        }
+
+        onDismiss()
+        bot.launch {
+            if (selectedCommand == null) return@launch
+            try {
+                executeCommand(
+                    selectedCommand,
+                    bot,
+                    httpClient,
+                    argsSnapshot,
+                    conversationParticipants.friend,
+                    conversationParticipants.group
+                )
+            } catch (e: Exception) {
+                val errorMessage = e.message ?: e::class.simpleName ?: "未知错误"
+                onCommandError("执行失败: $errorMessage")
+            }
         }
     }
 
