@@ -32,12 +32,21 @@ fun uinParameter(
     required = required,
 ) { arg ->
     val query = arg.trim()
+    val members = currentGroup?.getMembers() ?: return@CommandParameter emptyList()
+
     if (query.isEmpty()) {
-        return@CommandParameter emptyList()
+        return@CommandParameter members
+            .sortedBy { it.card.ifEmpty { it.nickname } }
+            .map {
+                CommandSuggestion(
+                    content = it.uin.toString(),
+                    display = it.card.ifEmpty { it.nickname }
+                )
+            }
     }
 
-    currentGroup?.getMembers()
-        ?.mapNotNull { member ->
+    return@CommandParameter members
+        .mapNotNull { member ->
             val cardPriority =
                 member.card.matchType(query, ignoreCase = true)?.let { CARD_FIELD_PRIORITY to it }
             val nicknamePriority =
@@ -55,12 +64,11 @@ fun uinParameter(
                 member to overallPriority
             }
         }
-        ?.sortedBy { it.second }
-        ?.map { (member, _) ->
+        .sortedBy { it.second }
+        .map { (member, _) ->
             CommandSuggestion(
                 content = member.uin.toString(),
                 display = member.card.ifEmpty { member.nickname }
             )
         }
-        ?: emptyList()
 }
