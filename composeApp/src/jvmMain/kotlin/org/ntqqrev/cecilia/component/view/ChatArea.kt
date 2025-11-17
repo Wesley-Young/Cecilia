@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -533,21 +535,34 @@ fun ChatArea(conversation: Conversation) {
         }
 
         if (showCustomFacePicker) {
-            CustomFacePanel(
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(16.dp),
-                urls = customFaceUrls,
-                isLoading = isCustomFaceLoading,
-                errorMessage = customFaceLoadError,
-                onClose = { showCustomFacePicker = false },
-                onRetry = { loadCustomFaceList() },
-                loadFace = { url -> CustomFaceCache.getOrLoad(url, httpClient) },
-                onSelect = { url ->
-                    handleCustomFaceSelected(url)
-                    showCustomFacePicker = false
-                }
-            )
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures {
+                            showCustomFacePicker = false
+                        }
+                    },
+                contentAlignment = Alignment.BottomStart
+            ) {
+                CustomFacePanel(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { /* consume */ })
+                        },
+                    urls = customFaceUrls,
+                    isLoading = isCustomFaceLoading,
+                    errorMessage = customFaceLoadError,
+                    onClose = { showCustomFacePicker = false },
+                    onRetry = { loadCustomFaceList() },
+                    loadFace = { url -> CustomFaceCache.getOrLoad(url, httpClient) },
+                    onSelect = { url ->
+                        handleCustomFaceSelected(url)
+                        showCustomFacePicker = false
+                    }
+                )
+            }
         }
     }
 }
@@ -705,28 +720,34 @@ private fun ChatInputArea(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 40.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onOpenCustomFacePicker,
-                    modifier = Modifier.size(40.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.InsertEmoticon,
-                        contentDescription = "自定义表情",
-                        tint = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                    )
-                }
+                    IconButton(
+                        onClick = onOpenCustomFacePicker,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.InsertEmoticon,
+                            contentDescription = "自定义表情",
+                            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
 
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = onMessageTextChange,
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 40.dp, max = 100.dp)
+                        .heightIn(min = 32.dp, max = 80.dp)
                         .focusRequester(focusRequester)
                         .onPreviewKeyEvent { event ->
                             if (event.type == KeyEventType.KeyDown) {
@@ -783,7 +804,7 @@ private fun ChatInputArea(
 
                 FloatingActionButton(
                     onClick = { if (canSendMessage) onSendMessage() },
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(36.dp),
                     backgroundColor = if (canSendMessage)
                         MaterialTheme.colors.primary
                     else
