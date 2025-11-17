@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
+import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.acidify.struct.BotFriendData
 import org.ntqqrev.acidify.struct.BotGroupData
 
@@ -26,15 +27,34 @@ class ContactsState(private val bot: Bot) {
     var isGroupsLoading by mutableStateOf(false)
         private set
 
+    var pinnedFriendUins by mutableStateOf<List<Long>>(emptyList())
+        private set
+
+    var pinnedGroupUins by mutableStateOf<List<Long>>(emptyList())
+        private set
+
     private var friendsInitialized = false
     private var groupsInitialized = false
+    private var pinsInitialized = false
 
     suspend fun ensureInitialized() {
+        if (!pinsInitialized) {
+            runCatching { refreshPins() }
+        }
         if (!friendsInitialized) {
             runCatching { refreshFriends() }
         }
         if (!groupsInitialized) {
             runCatching { refreshGroups() }
+        }
+    }
+
+    suspend fun refreshPins() {
+        val pins = bot.getPins()
+        withContext(Dispatchers.Main) {
+            pinnedFriendUins = pins.friendUins
+            pinnedGroupUins = pins.groupUins
+            pinsInitialized = true
         }
     }
 
@@ -65,6 +85,22 @@ class ContactsState(private val bot: Bot) {
         }
     }
 
+    suspend fun setFriendPinned(friendUin: Long, isPinned: Boolean) {
+        bot.setFriendPin(friendUin, isPinned)
+        refreshPins()
+    }
+
+    suspend fun setGroupPinned(groupUin: Long, isPinned: Boolean) {
+        bot.setGroupPin(groupUin, isPinned)
+        refreshPins()
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    suspend fun handlePinChanged(scene: MessageScene, peerUin: Long, isPinned: Boolean) {
+        // 后端事件会附带最新的置顶状态，直接重新拉取一次以保持排序一致
+        refreshPins()
+    }
+
     fun clear() {
         friends = emptyList()
         groups = emptyList()
@@ -72,6 +108,9 @@ class ContactsState(private val bot: Bot) {
         isGroupsLoading = false
         friendsInitialized = false
         groupsInitialized = false
+        pinnedFriendUins = emptyList()
+        pinnedGroupUins = emptyList()
+        pinsInitialized = false
     }
 
     private suspend fun setFriendsLoading(value: Boolean) {

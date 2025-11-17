@@ -92,6 +92,11 @@ fun MessagesPanel(
                     // 通知 ConversationManager 当前选中的会话
                     conversationManager.setSelectedConversation(conversationId)
                 },
+                onPinToggle = { conversation, shouldPin ->
+                    coroutineScope.launch {
+                        runCatching { conversationManager.setConversationPinned(conversation, shouldPin) }
+                    }
+                },
                 width = leftPanelWidth
             )
         }
@@ -126,4 +131,3 @@ fun MessagesPanel(
         }
     }
 }
-

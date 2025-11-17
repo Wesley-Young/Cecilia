@@ -18,5 +18,6 @@ data class Conversation(
     val time: String,
 
     // 状态信息
-    val unreadCount: Int = 0
+    val unreadCount: Int = 0,
+    val isPinned: Boolean = false
 )

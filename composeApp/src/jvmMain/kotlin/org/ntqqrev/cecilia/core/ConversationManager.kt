@@ -8,8 +8,11 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.event.MessageReceiveEvent
+import org.ntqqrev.acidify.event.PinChangedEvent
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.struct.Conversation
 import org.ntqqrev.cecilia.util.segmentsToPreviewString
@@ -32,10 +35,30 @@ class ConversationManager(
         get() = selectedConversationIdState
 
     private val logger = bot.createLogger(this)
+    private var pinnedFriendUins: List<Long> = emptyList()
+    private var pinnedGroupUins: List<Long> = emptyList()
+    private val pinMutex = Mutex()
 
     init {
         // 启动后台消息监听
         startMessageListener()
+        startPinChangeListener()
+        scope.launch {
+            refreshPins()
+        }
+    }
+
+    suspend fun setConversationPinned(conversation: Conversation, shouldPin: Boolean) {
+        when (conversation.scene) {
+            MessageScene.FRIEND -> bot.setFriendPin(conversation.peerUin, shouldPin)
+            MessageScene.GROUP -> bot.setGroupPin(conversation.peerUin, shouldPin)
+            else -> return
+        }
+        refreshPins()
+    }
+
+    suspend fun refreshPinnedConversations() {
+        refreshPins()
     }
 
     fun setSelectedConversation(conversationId: String?) {
@@ -47,6 +70,14 @@ class ConversationManager(
         scope.launch {
             bot.eventFlow.filterIsInstance<MessageReceiveEvent>().collect { event ->
                 handleIncomingMessage(event)
+            }
+        }
+    }
+
+    private fun startPinChangeListener() {
+        scope.launch {
+            bot.eventFlow.filterIsInstance<PinChangedEvent>().collect {
+                refreshPins()
             }
         }
     }
@@ -105,7 +136,8 @@ class ConversationManager(
                 time = timeStr,
                 unreadCount = newUnreadCount,
                 lastMessageSeq = message.sequence,
-                lastMessageTimestamp = message.timestamp
+                lastMessageTimestamp = message.timestamp,
+                isPinned = existing.isPinned
             )
 
             // 移除旧的位置，插入到最前面
@@ -147,7 +179,8 @@ class ConversationManager(
                     lastMessageSeq = message.sequence,
                     lastMessageTimestamp = message.timestamp,
                     time = timeStr,
-                    unreadCount = unreadCount
+                    unreadCount = unreadCount,
+                    isPinned = isPinned(message.scene, message.peerUin)
                 )
                 conversations.add(0, newConversation)
             } catch (e: Exception) {
@@ -165,11 +198,13 @@ class ConversationManager(
                         lastMessageSeq = message.sequence,
                         lastMessageTimestamp = message.timestamp,
                         time = timeStr,
-                        unreadCount = unreadCount
+                        unreadCount = unreadCount,
+                        isPinned = isPinned(message.scene, message.peerUin)
                     )
                 )
             }
         }
+        reorderConversations()
     }
 
     fun clearUnread(conversationId: String) {
@@ -182,7 +217,11 @@ class ConversationManager(
         }
     }
 
-    suspend fun findOrCreateConversation(peerUin: Long, scene: MessageScene): String {
+    suspend fun findOrCreateConversation(
+        peerUin: Long,
+        scene: MessageScene,
+        reorderAfterCreate: Boolean = true
+    ): String {
         val conversationId = peerUin.toString()
 
         // 检查会话是否已存在
@@ -221,9 +260,13 @@ class ConversationManager(
                 lastMessageSeq = 0,
                 lastMessageTimestamp = System.currentTimeMillis() / 1000,
                 time = "",
-                unreadCount = 0
+                unreadCount = 0,
+                isPinned = isPinned(scene, peerUin)
             )
             conversations.add(newConversation)
+            if (reorderAfterCreate) {
+                reorderConversations()
+            }
 
             return conversationId
         } catch (e: Exception) {
@@ -237,11 +280,68 @@ class ConversationManager(
                 lastMessageSeq = 0,
                 lastMessageTimestamp = System.currentTimeMillis() / 1000,
                 time = "",
-                unreadCount = 0
+                unreadCount = 0,
+                isPinned = isPinned(scene, peerUin)
             )
             conversations.add(newConversation)
+            if (reorderAfterCreate) {
+                reorderConversations()
+            }
             return conversationId
         }
+    }
+
+    private suspend fun refreshPins() {
+        pinMutex.withLock {
+            if (!bot.isLoggedIn) {
+                pinnedFriendUins = emptyList()
+                pinnedGroupUins = emptyList()
+                reorderConversations()
+                return
+            }
+            try {
+                val pins = bot.getPins()
+                pinnedFriendUins = pins.friendUins
+                pinnedGroupUins = pins.groupUins
+                ensurePinnedConversations()
+                reorderConversations()
+            } catch (e: Exception) {
+                logger.w(e) { "刷新置顶会话失败" }
+            }
+        }
+    }
+
+    private suspend fun ensurePinnedConversations() {
+        pinnedFriendUins.forEach { findOrCreateConversation(it, MessageScene.FRIEND, reorderAfterCreate = false) }
+        pinnedGroupUins.forEach { findOrCreateConversation(it, MessageScene.GROUP, reorderAfterCreate = false) }
+    }
+
+    private fun reorderConversations() {
+        val pinnedOrder = buildList {
+            pinnedFriendUins.forEach { add(it.toString()) }
+            pinnedGroupUins.forEach { add(it.toString()) }
+        }
+        val current = conversations.toList()
+        if (pinnedOrder.isEmpty()) {
+            if (current.any { it.isPinned }) {
+                conversations.clear()
+                conversations.addAll(current.map { it.copy(isPinned = false) })
+            }
+            return
+        }
+        val pinnedSet = pinnedOrder.toSet()
+        val pinned = pinnedOrder.mapNotNull { id ->
+            current.find { it.id == id }
+        }.map { it.copy(isPinned = true) }
+        val others = current.filter { !pinnedSet.contains(it.id) }.map { it.copy(isPinned = false) }
+        conversations.clear()
+        conversations.addAll(pinned + others)
+    }
+
+    private fun isPinned(scene: MessageScene, peerUin: Long): Boolean = when (scene) {
+        MessageScene.FRIEND -> pinnedFriendUins.contains(peerUin)
+        MessageScene.GROUP -> pinnedGroupUins.contains(peerUin)
+        else -> false
     }
 
     @Suppress("IDENTITY_SENSITIVE_OPERATIONS_WITH_VALUE_TYPE")

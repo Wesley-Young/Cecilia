@@ -1,15 +1,16 @@
 package org.ntqqrev.cecilia.component.view
 
+import androidx.compose.foundation.ContextMenuArea
+import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.Divider
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +30,7 @@ fun ConversationList(
     conversations: List<Conversation>,
     selectedId: String?,
     onConversationClick: (String) -> Unit,
+    onPinToggle: (Conversation, Boolean) -> Unit,
     width: Dp = 320.dp
 ) {
 
@@ -65,11 +67,12 @@ fun ConversationList(
         LazyColumn(
             modifier = Modifier.fillMaxSize()
         ) {
-            items(conversations) { conversation ->
+            items(conversations, key = { it.id }) { conversation ->
                 ConversationItem(
                     conversation = conversation,
                     isSelected = conversation.id == selectedId,
-                    onClick = { onConversationClick(conversation.id) }
+                    onClick = { onConversationClick(conversation.id) },
+                    onPinToggle = { shouldPin -> onPinToggle(conversation, shouldPin) }
                 )
             }
         }
@@ -80,90 +83,117 @@ fun ConversationList(
 private fun ConversationItem(
     conversation: Conversation,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onPinToggle: (Boolean) -> Unit
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        color = if (isSelected) MaterialTheme.colors.primary.copy(alpha = 0.12f)
-        else MaterialTheme.colors.surface
+    ContextMenuArea(
+        items = {
+            listOf(
+                ContextMenuItem(
+                    if (conversation.isPinned) "取消置顶" else "置顶"
+                ) {
+                    onPinToggle(!conversation.isPinned)
+                }
+            )
+        }
     ) {
-        Row(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .clickable(onClick = onClick),
+            color = if (isSelected) MaterialTheme.colors.primary.copy(alpha = 0.12f)
+            else MaterialTheme.colors.surface
         ) {
-            // 头像
-            AvatarImage(
-                uin = conversation.peerUin,
-                size = 48.dp,
-                isGroup = conversation.scene == MessageScene.GROUP,
-                quality = 100
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // 消息内容
-            Column(
-                modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // 头像
+                AvatarImage(
+                    uin = conversation.peerUin,
+                    size = 48.dp,
+                    isGroup = conversation.scene == MessageScene.GROUP,
+                    quality = 100
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // 消息内容
+                Column(
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = conversation.name,
-                        style = MaterialTheme.typography.subtitle1,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = conversation.time,
-                        style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = conversation.lastMessage,
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    if (conversation.unreadCount > 0) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        // 自定义 Badge
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colors.error),
-                            contentAlignment = Alignment.Center
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val textSize = 11.sp
                             Text(
-                                text = conversation.unreadCount.toString(),
-                                fontSize = textSize,
-                                lineHeight = textSize,
-                                color = MaterialTheme.colors.onError,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.wrapContentSize(Alignment.Center)
+                                text = conversation.name,
+                                style = MaterialTheme.typography.subtitle1,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
                             )
+                            if (conversation.isPinned) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Filled.PushPin,
+                                    contentDescription = "置顶",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colors.primary
+                                )
+                            }
+                        }
+                        Text(
+                            text = conversation.time,
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = conversation.lastMessage,
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        if (conversation.unreadCount > 0) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // 自定义 Badge
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colors.error),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val textSize = 11.sp
+                                Text(
+                                    text = conversation.unreadCount.toString(),
+                                    fontSize = textSize,
+                                    lineHeight = textSize,
+                                    color = MaterialTheme.colors.onError,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.wrapContentSize(Alignment.Center)
+                                )
+                            }
                         }
                     }
                 }
@@ -171,4 +201,3 @@ private fun ConversationItem(
         }
     }
 }
-

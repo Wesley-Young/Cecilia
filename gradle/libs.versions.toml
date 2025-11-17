@@ -7,7 +7,7 @@ kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
 ktor = "3.3.2"
 qrcode-kotlin = "4.5.0"
-acidify = "0.3.4"
+acidify = "0.4.0"
 pinyin4j = "2.5.1"
 
 [libraries]

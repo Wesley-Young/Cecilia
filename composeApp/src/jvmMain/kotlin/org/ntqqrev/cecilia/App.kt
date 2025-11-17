@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.event.BotOfflineEvent
+import org.ntqqrev.acidify.event.PinChangedEvent
 import org.ntqqrev.cecilia.component.NavigationRail
 import org.ntqqrev.cecilia.component.NavigationTab
 import org.ntqqrev.cecilia.component.NotoFontFamily
@@ -121,9 +122,19 @@ fun App(
 
                     LaunchedEffect(bot) {
                         bot.eventFlow.collect { event ->
-                            if (event is BotOfflineEvent) {
-                                offlineReason = event.reason
-                                isLoggedIn = false
+                            when (event) {
+                                is BotOfflineEvent -> {
+                                    offlineReason = event.reason
+                                    isLoggedIn = false
+                                }
+
+                                is PinChangedEvent -> {
+                                    contactsState.handlePinChanged(
+                                        event.scene,
+                                        event.peerUin,
+                                        event.isPinned
+                                    )
+                                }
                             }
                         }
                     }
@@ -136,6 +147,10 @@ fun App(
                     LaunchedEffect(isLoggedIn) {
                         if (!isLoggedIn) {
                             contactsState.clear()
+                        } else {
+                            conversationManager?.let { manager ->
+                                runCatching { manager.refreshPinnedConversations() }
+                            }
                         }
                     }
 
