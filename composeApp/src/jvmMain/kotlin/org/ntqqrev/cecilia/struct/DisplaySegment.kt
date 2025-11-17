@@ -2,6 +2,7 @@ package org.ntqqrev.cecilia.struct
 
 import androidx.compose.ui.graphics.ImageBitmap
 import org.ntqqrev.acidify.message.BotIncomingSegment
+import org.ntqqrev.acidify.message.ImageSubType
 
 sealed class DisplaySegment {
     data class Text(val text: String) : DisplaySegment()
@@ -13,6 +14,7 @@ sealed class DisplaySegment {
         val bitmap: ImageBitmap,
         val summary: String,
         val width: Int,
-        val height: Int
+        val height: Int,
+        val subType: ImageSubType = ImageSubType.NORMAL
     ) : DisplaySegment()
 }

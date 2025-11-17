@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.message.ImageFormat
+import org.ntqqrev.acidify.message.ImageSubType
 import java.awt.image.BufferedImage
 import java.awt.image.MultiResolutionImage
 import java.io.ByteArrayInputStream
@@ -23,14 +24,18 @@ data class OutgoingImageAttachment(
     val format: ImageFormat,
     val width: Int,
     val height: Int,
-    val preview: ImageBitmap
+    val preview: ImageBitmap,
+    val summary: String = "[图片]",
+    val subType: ImageSubType = ImageSubType.NORMAL
 ) {
     companion object {
         fun fromBytes(
             raw: ByteArray,
             formatOverride: ImageFormat? = null,
             widthOverride: Int? = null,
-            heightOverride: Int? = null
+            heightOverride: Int? = null,
+            summary: String = "[图片]",
+            subType: ImageSubType = ImageSubType.NORMAL
         ): OutgoingImageAttachment? {
             val (format, width, height) = if (formatOverride != null && widthOverride != null && heightOverride != null) {
                 Triple(formatOverride, widthOverride, heightOverride)
@@ -50,6 +55,8 @@ data class OutgoingImageAttachment(
                 width = width,
                 height = height,
                 preview = imageBitmap,
+                summary = summary,
+                subType = subType
             )
         }
 
@@ -60,7 +67,8 @@ data class OutgoingImageAttachment(
 
         fun fromBufferedImage(
             image: BufferedImage,
-            summary: String = "[图片]"
+            summary: String = "[图片]",
+            subType: ImageSubType = ImageSubType.NORMAL
         ): OutgoingImageAttachment? {
             val output = ByteArrayOutputStream()
             return runCatching {
@@ -77,14 +85,17 @@ data class OutgoingImageAttachment(
                     raw = output.toByteArray(),
                     formatOverride = ImageFormat.PNG,
                     widthOverride = image.width,
-                    heightOverride = image.height
+                    heightOverride = image.height,
+                    summary = summary,
+                    subType = subType
                 )
             }.getOrNull()
         }
 
         fun fromAwtImage(
             image: AwtImage,
-            summary: String = "[剪贴板图片]"
+            summary: String = "[剪贴板图片]",
+            subType: ImageSubType = ImageSubType.NORMAL
         ): OutgoingImageAttachment? {
             val resolved = when (image) {
                 is MultiResolutionImage -> {
@@ -111,7 +122,7 @@ data class OutgoingImageAttachment(
                 g2d.dispose()
                 bufferedImage
             }
-            return fromBufferedImage(buffered, summary)
+            return fromBufferedImage(buffered, summary, subType)
         }
 
         private fun detectMeta(raw: ByteArray): Triple<ImageFormat, Int, Int>? {

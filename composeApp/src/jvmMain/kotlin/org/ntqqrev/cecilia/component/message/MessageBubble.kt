@@ -582,7 +582,8 @@ private fun DisplayElement(
                 bitmap = item.bitmap,
                 isSent = isSent,
                 width = item.width,
-                height = item.height
+                height = item.height,
+                subType = item.subType
             )
         }
     }
@@ -593,13 +594,14 @@ private fun PendingImageThumbnail(
     bitmap: ImageBitmap,
     isSent: Boolean,
     width: Int,
-    height: Int
+    height: Int,
+    subType: ImageSubType
 ) {
     val (displayWidth, displayHeight) = remember(width, height) {
         val safeWidth = width.coerceAtLeast(1)
         val safeHeight = height.coerceAtLeast(1)
         val aspectRatio = safeWidth.toFloat() / safeHeight.toFloat()
-        val maxSize = 300.dp
+        val maxSize = if (subType == ImageSubType.STICKER) 200.dp else 300.dp
         var w = safeWidth.dp
         var h = safeHeight.dp
         if (w > maxSize) {

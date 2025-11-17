@@ -3,9 +3,13 @@ package org.ntqqrev.cecilia.component.view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +18,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.InsertEmoticon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -40,9 +45,8 @@ import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.component.message.GreyTip
 import org.ntqqrev.cecilia.component.message.MessageBubble
 import org.ntqqrev.cecilia.component.message.PlaceholderMessageBubble
-import org.ntqqrev.cecilia.core.LocalAllMessages
-import org.ntqqrev.cecilia.core.LocalBot
-import org.ntqqrev.cecilia.core.LocalConfig
+import org.ntqqrev.cecilia.core.*
+import org.ntqqrev.cecilia.core.CustomFaceCache.toAttachmentInstance
 import org.ntqqrev.cecilia.struct.*
 import org.ntqqrev.cecilia.struct.GroupMemberDisplayInfo.Companion.toDisplayInfo
 import org.ntqqrev.cecilia.util.*
@@ -54,6 +58,7 @@ import kotlin.random.Random
 fun ChatArea(conversation: Conversation) {
     val bot = LocalBot.current
     val config = LocalConfig.current
+    val httpClient = LocalHttpClient.current
     val logger = remember { bot.createLogger("ChatArea") }
 
     val coroutineScope = rememberCoroutineScope()
@@ -68,6 +73,10 @@ fun ChatArea(conversation: Conversation) {
 
     var replyToMessage by remember { mutableStateOf<BotIncomingMessage?>(null) }
     val pendingImages = remember { mutableStateListOf<OutgoingImageAttachment>() }
+    var showCustomFacePicker by remember { mutableStateOf(false) }
+    var customFaceUrls by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isCustomFaceLoading by remember { mutableStateOf(false) }
+    var customFaceLoadError by remember { mutableStateOf<String?>(null) }
 
     fun isUserAtBottom(): Boolean {
         val layoutInfo = listState.layoutInfo
@@ -88,6 +97,20 @@ fun ChatArea(conversation: Conversation) {
 
     suspend fun scrollToBottom() {
         listState.scrollToItem((messages.size - 1).coerceAtLeast(0))
+    }
+
+    fun loadCustomFaceList() {
+        if (isCustomFaceLoading) return
+        coroutineScope.launch {
+            isCustomFaceLoading = true
+            customFaceLoadError = null
+            runCatching { bot.getCustomFaceUrl() }
+                .onSuccess { customFaceUrls = it }
+                .onFailure { error ->
+                    customFaceLoadError = error.message ?: "加载自定义表情失败"
+                }
+            isCustomFaceLoading = false
+        }
     }
 
     suspend fun sendMessage(
@@ -120,9 +143,10 @@ fun ChatArea(conversation: Conversation) {
                     add(
                         DisplaySegment.PendingImage(
                             bitmap = attachment.preview,
-                            summary = "[图片]",
+                            summary = attachment.summary,
                             width = attachment.width,
-                            height = attachment.height
+                            height = attachment.height,
+                            subType = attachment.subType
                         )
                     )
                 }
@@ -152,7 +176,8 @@ fun ChatArea(conversation: Conversation) {
                             format = attachment.format,
                             width = attachment.width,
                             height = attachment.height,
-                            summary = "[图片]"
+                            summary = attachment.summary,
+                            subType = attachment.subType
                         )
                     }
                     if (content.isNotBlank()) {
@@ -194,7 +219,8 @@ fun ChatArea(conversation: Conversation) {
                             format = attachment.format,
                             width = attachment.width,
                             height = attachment.height,
-                            summary = "[图片]"
+                            summary = attachment.summary,
+                            subType = attachment.subType
                         )
                     }
                     if (content.isNotBlank()) {
@@ -204,6 +230,24 @@ fun ChatArea(conversation: Conversation) {
             }
 
             else -> {}
+        }
+    }
+
+    fun handleCustomFaceSelected(url: String) {
+        coroutineScope.launch {
+            val cached = CustomFaceCache.getOrLoad(url, httpClient) ?: return@launch
+            val replySeq = replyToMessage?.sequence
+            replyToMessage = null
+            val attachment = cached.toAttachmentInstance()
+            try {
+                sendMessage(
+                    content = "",
+                    replySeq = replySeq,
+                    imageAttachments = listOf(attachment)
+                )
+            } catch (e: Exception) {
+                logger.e(e) { "发送自定义表情失败" }
+            }
         }
     }
 
@@ -361,122 +405,150 @@ fun ChatArea(conversation: Conversation) {
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(config.theme.chatBackgroundColor)
     ) {
-        // 顶部标题栏
-        ChatHeader(conversation)
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // 顶部标题栏
+            ChatHeader(conversation)
 
-        Divider()
+            Divider()
 
-        // 消息列表
-        CompositionLocalProvider(LocalAllMessages provides messages) {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Bottom),
-                contentPadding = PaddingValues(top = 48.dp, bottom = 16.dp)
-            ) {
-                // 加载指示器
-                if (isLoadingMore) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
+            // 消息列表
+            CompositionLocalProvider(LocalAllMessages provides messages) {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Bottom),
+                    contentPadding = PaddingValues(top = 48.dp, bottom = 16.dp)
+                ) {
+                    // 加载指示器
+                    if (isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+                    }
+
+                    items(messages) { message ->
+                        when {
+                            message.real != null -> MessageBubble(
+                                message = message.real,
+                                onScrollToMessage = { seq ->
+                                    coroutineScope.launch {
+                                        scrollToSeq(seq)
+                                    }
+                                },
+                                onReplyToMessage = { replyToMessage = it }
+                            )
+
+                            message.placeholder != null -> PlaceholderMessageBubble(
+                                message = message.placeholder,
+                                isGroup = conversation.scene == MessageScene.GROUP
+                            )
+
+                            message.greyTip != null -> GreyTip(
+                                text = message.greyTip
                             )
                         }
                     }
                 }
+            }
 
-                items(messages) { message ->
-                    when {
-                        message.real != null -> MessageBubble(
-                            message = message.real,
-                            onScrollToMessage = { seq ->
-                                coroutineScope.launch {
-                                    scrollToSeq(seq)
-                                }
-                            },
-                            onReplyToMessage = { replyToMessage = it }
-                        )
-
-                        message.placeholder != null -> PlaceholderMessageBubble(
-                            message = message.placeholder,
-                            isGroup = conversation.scene == MessageScene.GROUP
-                        )
-
-                        message.greyTip != null -> GreyTip(
-                            text = message.greyTip
-                        )
-                    }
+            // 当回复预览显示/隐藏时，如果用户在底部，保持滚动到底部
+            LaunchedEffect(replyToMessage) {
+                if (replyToMessage != null) {
+                    // 双击消息时，请求输入框焦点
+                    inputFocusRequester.requestFocus()
+                }
+                if (isUserAtBottom()) {
+                    scrollToBottom()
                 }
             }
-        }
 
-        // 当回复预览显示/隐藏时，如果用户在底部，保持滚动到底部
-        LaunchedEffect(replyToMessage) {
+            Divider()
+
+            // 回复预览区域
             if (replyToMessage != null) {
-                // 双击消息时，请求输入框焦点
-                inputFocusRequester.requestFocus()
+                ReplyPreview(
+                    replyToMessage = replyToMessage!!,
+                    onCancelReply = { replyToMessage = null }
+                )
             }
-            if (isUserAtBottom()) {
-                scrollToBottom()
-            }
-        }
 
-        Divider()
+            // 输入框区域
+            val canSendMessage = messageText.text.isNotBlank() || pendingImages.isNotEmpty()
+            ChatInputArea(
+                messageText = messageText,
+                onMessageTextChange = { messageText = it },
+                useCtrlEnterToSend = config.useCtrlEnterToSend,
+                focusRequester = inputFocusRequester,
+                imageAttachments = pendingImages,
+                onRemoveAttachment = { attachmentId ->
+                    pendingImages.removeAll { it.id == attachmentId }
+                },
+                canSendMessage = canSendMessage,
+                onPasteImage = ::handleClipboardImage,
+                onOpenCustomFacePicker = {
+                    showCustomFacePicker = true
+                    if (customFaceUrls.isEmpty()) {
+                        loadCustomFaceList()
+                    }
+                },
+                onSendMessage = {
+                    if (!canSendMessage) return@ChatInputArea
+                    val content = messageText.text
+                    val replySeq = replyToMessage?.sequence
+                    val attachmentsSnapshot = pendingImages.toList()
 
-        // 回复预览区域
-        if (replyToMessage != null) {
-            ReplyPreview(
-                replyToMessage = replyToMessage!!,
-                onCancelReply = { replyToMessage = null }
+                    messageText = TextFieldValue("")
+                    pendingImages.clear()
+                    replyToMessage = null  // 立即隐藏回复UI
+
+                    coroutineScope.launch {
+                        try {
+                            sendMessage(content, replySeq, attachmentsSnapshot)
+                        } catch (e: Exception) {
+                            logger.e(e) { "消息发送失败" }
+                        }
+                    }
+                }
             )
         }
 
-        // 输入框区域
-        val canSendMessage = messageText.text.isNotBlank() || pendingImages.isNotEmpty()
-        ChatInputArea(
-            messageText = messageText,
-            onMessageTextChange = { messageText = it },
-            useCtrlEnterToSend = config.useCtrlEnterToSend,
-            focusRequester = inputFocusRequester,
-            imageAttachments = pendingImages,
-            onRemoveAttachment = { attachmentId ->
-                pendingImages.removeAll { it.id == attachmentId }
-            },
-            canSendMessage = canSendMessage,
-            onPasteImage = ::handleClipboardImage,
-            onSendMessage = {
-                if (!canSendMessage) return@ChatInputArea
-                val content = messageText.text
-                val replySeq = replyToMessage?.sequence
-                val attachmentsSnapshot = pendingImages.toList()
-
-                messageText = TextFieldValue("")
-                pendingImages.clear()
-                replyToMessage = null  // 立即隐藏回复UI
-
-                coroutineScope.launch {
-                    try {
-                        sendMessage(content, replySeq, attachmentsSnapshot)
-                    } catch (e: Exception) {
-                        logger.e(e) { "消息发送失败" }
-                    }
+        if (showCustomFacePicker) {
+            CustomFacePanel(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp),
+                urls = customFaceUrls,
+                isLoading = isCustomFaceLoading,
+                errorMessage = customFaceLoadError,
+                onClose = { showCustomFacePicker = false },
+                onRetry = { loadCustomFaceList() },
+                loadFace = { url -> CustomFaceCache.getOrLoad(url, httpClient) },
+                onSelect = { url ->
+                    handleCustomFaceSelected(url)
+                    showCustomFacePicker = false
                 }
-            }
-        )
+            )
+        }
     }
 }
 
@@ -603,6 +675,7 @@ private fun ChatInputArea(
     onRemoveAttachment: (String) -> Unit,
     canSendMessage: Boolean,
     onPasteImage: () -> Boolean,
+    onOpenCustomFacePicker: () -> Unit,
     onSendMessage: () -> Unit
 ) {
     val pasteHandler by rememberUpdatedState(onPasteImage)
@@ -635,6 +708,19 @@ private fun ChatInputArea(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Bottom
             ) {
+                IconButton(
+                    onClick = onOpenCustomFacePicker,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.InsertEmoticon,
+                        contentDescription = "自定义表情",
+                        tint = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = onMessageTextChange,
@@ -758,6 +844,203 @@ private fun AttachmentPreview(
                 contentDescription = "移除图片",
                 tint = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
             )
+        }
+    }
+}
+
+@Composable
+private fun CustomFacePanel(
+    modifier: Modifier = Modifier,
+    urls: List<String>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onClose: () -> Unit,
+    onRetry: () -> Unit,
+    loadFace: suspend (String) -> CustomFaceCache.CachedCustomFace?,
+    onSelect: (String) -> Unit
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        elevation = 6.dp,
+        color = MaterialTheme.colors.surface.copy(alpha = 0.98f)
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(min = 320.dp, max = 420.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "自定义表情",
+                    style = MaterialTheme.typography.subtitle1,
+                    fontWeight = FontWeight.Medium
+                )
+                TextButton(onClick = onClose) {
+                    Text("关闭")
+                }
+            }
+
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                errorMessage != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = errorMessage,
+                            color = MaterialTheme.colors.error
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRetry) {
+                            Text("重试")
+                        }
+                    }
+                }
+
+                urls.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "暂无自定义表情",
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+
+                else -> {
+                    CustomFaceGrid(
+                        urls = urls,
+                        loadFace = loadFace,
+                        onSelect = onSelect
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomFaceGrid(
+    urls: List<String>,
+    loadFace: suspend (String) -> CustomFaceCache.CachedCustomFace?,
+    onSelect: (String) -> Unit
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(5),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp, max = 220.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(urls) { url ->
+            CustomFaceGridItem(
+                url = url,
+                loadFace = loadFace,
+                onSelect = { onSelect(url) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CustomFaceGridItem(
+    url: String,
+    loadFace: suspend (String) -> CustomFaceCache.CachedCustomFace?,
+    onSelect: () -> Unit
+) {
+    var cachedFace by remember(url) { mutableStateOf<CustomFaceCache.CachedCustomFace?>(null) }
+    var isLoading by remember(url) { mutableStateOf(true) }
+    var hasError by remember(url) { mutableStateOf(false) }
+    var reloadSignal by remember { mutableStateOf(0) }
+
+    LaunchedEffect(url, reloadSignal) {
+        isLoading = true
+        hasError = false
+        cachedFace = loadFace(url)
+        if (cachedFace == null) {
+            hasError = true
+        }
+        isLoading = false
+    }
+
+    val clickModifier = when {
+        cachedFace != null -> Modifier.clickable { onSelect() }
+        hasError -> Modifier.clickable { reloadSignal++ }
+        else -> Modifier
+    }
+
+    Surface(
+        modifier = Modifier
+            .size(64.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .then(clickModifier),
+        color = MaterialTheme.colors.surface,
+        elevation = 2.dp
+    ) {
+        when {
+            cachedFace != null -> {
+                Image(
+                    bitmap = cachedFace!!.attachment.preview,
+                    contentDescription = "自定义表情",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            hasError -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "重试",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.error
+                    )
+                }
+            }
+
+            else -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
         }
     }
 }
