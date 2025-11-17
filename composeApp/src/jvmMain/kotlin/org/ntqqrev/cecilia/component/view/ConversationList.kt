@@ -12,6 +12,9 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +36,10 @@ fun ConversationList(
     onPinToggle: (Conversation, Boolean) -> Unit,
     width: Dp = 320.dp
 ) {
+
+    val displayedConversations by remember(conversations) {
+        derivedStateOf { conversations.toList() }
+    }
 
     Column(
         modifier = Modifier
@@ -67,7 +74,7 @@ fun ConversationList(
         LazyColumn(
             modifier = Modifier.fillMaxSize()
         ) {
-            items(conversations, key = { it.id }) { conversation ->
+            items(displayedConversations, key = { "${it.scene.name}:${it.id}" }) { conversation ->
                 ConversationItem(
                     conversation = conversation,
                     isSelected = conversation.id == selectedId,
