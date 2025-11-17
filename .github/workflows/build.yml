@@ -16,16 +16,19 @@ jobs:
         include:
           - os: ubuntu-latest
             gradle_command: ./gradlew
-            artifact_name: Cecilia-linux
-            archive_name: Cecilia-linux.zip
+            package_task: composeApp:packageReleaseDeb
+            artifact_name: Cecilia-linux-deb
+            artifact_glob: composeApp/build/compose/binaries/main/deb/*.deb
           - os: macos-latest
             gradle_command: ./gradlew
-            artifact_name: Cecilia-macos
-            archive_name: Cecilia-macos.zip
+            package_task: composeApp:packageReleaseDmg
+            artifact_name: Cecilia-macos-dmg
+            artifact_glob: composeApp/build/compose/binaries/main/dmg/*.dmg
           - os: windows-latest
             gradle_command: .\gradlew.bat
-            artifact_name: Cecilia-windows
-            archive_name: Cecilia-windows.zip
+            package_task: composeApp:packageReleaseExe
+            artifact_name: Cecilia-windows-exe
+            artifact_glob: composeApp/build/compose/binaries/main/exe/*.exe
 
     steps:
       - name: Checkout code
@@ -44,37 +47,14 @@ jobs:
         if: runner.os != 'Windows'
         run: chmod +x gradlew
 
-      - name: Build distributable
-        run: ./gradlew composeApp:createDistributable --no-daemon
-
-      - name: Package distributable (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          mkdir -p composeApp/build/distributions
-          cd composeApp/build/compose/binaries/main/app
-          zip -r "../../../../distributions/${{ matrix.archive_name }}" composeApp
-
-      - name: Package distributable (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          mkdir -p composeApp/build/distributions
-          cd composeApp/build/compose/binaries/main/app
-          zip -r "../../../../distributions/${{ matrix.archive_name }}" composeApp.app
-
-      - name: Package distributable (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path "composeApp/build/distributions" | Out-Null
-          Push-Location "composeApp/build/compose/binaries/main/app"
-          Compress-Archive -Path "composeApp" -DestinationPath "$env:GITHUB_WORKSPACE/composeApp/build/distributions/${{ matrix.archive_name }}" -Force
-          Pop-Location
+      - name: Build native package
+        run: ${{ matrix.gradle_command }} ${{ matrix.package_task }} --no-daemon
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: composeApp/build/distributions/${{ matrix.archive_name }}
+          path: ${{ matrix.artifact_glob }}
 
   release:
     runs-on: ubuntu-latest
@@ -103,7 +83,7 @@ jobs:
             
             构建时间: ${{ github.event.head_commit.timestamp }}
             提交: ${{ github.sha }}
-          files: dist/**/*.zip
+          files: dist/**/*
           prerelease: false
           draft: false
           make_latest: true

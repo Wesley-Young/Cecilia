@@ -1,3 +1,5 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.serialization)
@@ -39,9 +41,16 @@ kotlin {
     }
 }
 
-
 compose.desktop {
     application {
         mainClass = "org.ntqqrev.cecilia.Cecilia"
+        nativeDistributions {
+            targetFormats(
+                TargetFormat.Exe,
+                TargetFormat.Dmg,
+                TargetFormat.Deb,
+            )
+            packageName = "Cecilia"
+        }
     }
 }
