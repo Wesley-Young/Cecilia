@@ -20,27 +20,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 
-/**
- * 会话管理器
- *
- * 负责管理所有会话的状态，包括：
- * - 后台监听消息并更新会话列表
- * - 在内存中维护会话列表
- * - 缓存每个会话的消息
- * - 提供会话列表给 UI
- */
 class ConversationManager(
     private val bot: Bot,
     private val scope: CoroutineScope
 ) {
-    /**
-     * 会话列表（可观察的状态）
-     */
     val conversations: SnapshotStateList<Conversation> = mutableStateListOf()
 
-    /**
-     * 当前选中的会话 ID
-     */
     private var currentSelectedConversationId: String? = null
     private var selectedConversationIdState: String? by mutableStateOf(null)
     val selectedConversationId: String?
@@ -53,17 +38,11 @@ class ConversationManager(
         startMessageListener()
     }
 
-    /**
-     * 设置当前选中的会话
-     */
     fun setSelectedConversation(conversationId: String?) {
         currentSelectedConversationId = conversationId
         selectedConversationIdState = conversationId
     }
 
-    /**
-     * 启动后台消息监听
-     */
     private fun startMessageListener() {
         scope.launch {
             bot.eventFlow.filterIsInstance<MessageReceiveEvent>().collect { event ->
@@ -72,9 +51,6 @@ class ConversationManager(
         }
     }
 
-    /**
-     * 处理收到的消息（仅更新会话列表和预览）
-     */
     private suspend fun handleIncomingMessage(event: MessageReceiveEvent) {
         val message = event.message
         val conversationId = message.peerUin.toString()
@@ -196,9 +172,6 @@ class ConversationManager(
         }
     }
 
-    /**
-     * 清除指定会话的未读消息
-     */
     fun clearUnread(conversationId: String) {
         val index = conversations.indexOfFirst { it.id == conversationId }
         if (index != -1) {
@@ -209,12 +182,6 @@ class ConversationManager(
         }
     }
 
-    /**
-     * 查找或创建会话
-     * @param peerUin 对端的 UIN（QQ号或群号）
-     * @param scene 消息场景
-     * @return 会话 ID
-     */
     suspend fun findOrCreateConversation(peerUin: Long, scene: MessageScene): String {
         val conversationId = peerUin.toString()
 
@@ -277,9 +244,6 @@ class ConversationManager(
         }
     }
 
-    /**
-     * 格式化消息时间戳
-     */
     @Suppress("IDENTITY_SENSITIVE_OPERATIONS_WITH_VALUE_TYPE")
     private fun formatMessageTime(timestamp: Long): String {
         val zoneId = ZoneId.systemDefault()

@@ -19,19 +19,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import java.awt.Cursor
 
-/**
- * 可拖拽的垂直分界线组件
- *
- * 用于在左右布局中分隔两个区域，并允许用户通过拖拽调整左侧区域的宽度
- *
- * @param currentWidth 当前左侧区域的宽度
- * @param onWidthChange 宽度改变时的回调函数
- * @param minWidth 允许的最小宽度，默认 200.dp
- * @param maxWidth 允许的最大宽度，默认 600.dp
- * @param dividerWidth 分界线的可拖拽区域宽度，默认 6.dp
- * @param dividerLineWidth 分界线显示线条的宽度，默认 1.dp
- * @param modifier 额外的修饰符
- */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DraggableDivider(

@@ -12,9 +12,6 @@ import org.ntqqrev.acidify.entity.BotGroup
 import org.ntqqrev.acidify.struct.BotFriendData
 import org.ntqqrev.acidify.struct.BotGroupData
 
-/**
- * 维护好友与群聊列表的共享状态，方便 UI 与命令同时更新。
- */
 @Stable
 class ContactsState(private val bot: Bot) {
     var friends by mutableStateOf<List<BotFriendData>>(emptyList())

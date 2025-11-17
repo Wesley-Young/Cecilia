@@ -4,9 +4,6 @@ import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.createDirectories
 
-/**
- * Locate a writable directory that can survive macOS App Sandbox and other OS specific constraints.
- */
 fun getAppDataDirectory(): Path {
     val osName = System.getProperty("os.name")?.lowercase().orEmpty()
     val userHome = System.getProperty("user.home").orEmpty().ifBlank { "." }

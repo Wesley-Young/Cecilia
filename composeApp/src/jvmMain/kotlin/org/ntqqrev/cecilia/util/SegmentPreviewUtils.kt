@@ -3,9 +3,6 @@ package org.ntqqrev.cecilia.util
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 
-/**
- * 将消息转换为预览字符串
- */
 fun BotIncomingMessage.segmentsToPreviewString(): String {
     return segments.joinToString("") { segment ->
         when (segment) {
