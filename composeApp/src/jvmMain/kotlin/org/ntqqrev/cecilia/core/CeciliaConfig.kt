@@ -23,6 +23,7 @@ data class CeciliaConfig(
         val jsonModule = Json {
             encodeDefaults = true
             prettyPrint = true
+            ignoreUnknownKeys = true
         }
 
         fun fromPath(path: Path): CeciliaConfig {
