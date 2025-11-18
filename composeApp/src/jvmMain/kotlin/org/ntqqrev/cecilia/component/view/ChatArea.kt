@@ -107,7 +107,7 @@ fun ChatArea(conversation: Conversation) {
             isCustomFaceLoading = true
             customFaceLoadError = null
             runCatching { bot.getCustomFaceUrl() }
-                .onSuccess { customFaceUrls = it }
+                .onSuccess { customFaceUrls = it.reversed() }
                 .onFailure { error ->
                     customFaceLoadError = error.message ?: "加载自定义表情失败"
                 }
