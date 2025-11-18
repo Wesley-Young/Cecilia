@@ -269,20 +269,15 @@ private fun SettingSection(
     }
 }
 
-private fun isValidUrl(url: String): Boolean {
-    return try {
+private fun isValidUrl(url: String): Boolean =
+    runCatching {
         val trimmedUrl = url.trim()
-        if (trimmedUrl.isEmpty()) return false
+        if (trimmedUrl.isEmpty()) return@runCatching false
 
-        // 检查是否以 http:// 或 https:// 开头
         if (!trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://")) {
-            return false
+            return@runCatching false
         }
 
-        // 简单的URL格式检查
         val urlPattern = Regex("^https?://[a-zA-Z0-9.-]+(:[0-9]+)?(/.*)?$")
         urlPattern.matches(trimmedUrl)
-    } catch (e: Exception) {
-        false
-    }
-}
+    }.getOrElse { false }

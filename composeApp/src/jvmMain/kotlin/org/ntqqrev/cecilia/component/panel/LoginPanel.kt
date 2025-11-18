@@ -62,17 +62,15 @@ fun LoginPanel(
             }
 
             launch {
-                try {
-                    val avatarBitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    withContext(Dispatchers.IO) {
                         val response = httpClient.get("https://q1.qlogo.cn/g?b=qq&nk=${bot.sessionStore.uin}&s=640")
                         val imageBytes = response.readRawBytes()
                         Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
                     }
-                    // 存入缓存
+                }.onSuccess { avatarBitmap ->
                     AvatarCache.put(bot.sessionStore.uin, false, 640, avatarBitmap)
                     userAvatar = avatarBitmap
-                } catch (e: Exception) {
-                    // 加载头像失败，忽略
                 }
             }
         }
@@ -203,10 +201,10 @@ fun LoginPanel(
                                     }
 
                                     val onlineSucceeded = try {
-                                        try {
+                                        runCatching {
                                             bot.online()
                                             true
-                                        } catch (e: Exception) {
+                                        }.getOrElse {
                                             bot.sessionStore.refreshDeviceGuid()
                                             bot.online()
                                             true

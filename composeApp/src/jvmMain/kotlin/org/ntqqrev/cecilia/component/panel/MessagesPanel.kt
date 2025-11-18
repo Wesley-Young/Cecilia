@@ -60,7 +60,7 @@ fun MessagesPanel(
 
                         // 调用 bot 标记消息为已读
                         coroutineScope.launch {
-                            try {
+                            runCatching {
                                 when (conversation.scene) {
                                     MessageScene.FRIEND -> {
                                         bot.markFriendMessagesAsRead(
@@ -81,8 +81,6 @@ fun MessagesPanel(
                                         // 其他类型暂不处理
                                     }
                                 }
-                            } catch (e: Exception) {
-                                // 标记已读失败
                             }
                         }
                     }

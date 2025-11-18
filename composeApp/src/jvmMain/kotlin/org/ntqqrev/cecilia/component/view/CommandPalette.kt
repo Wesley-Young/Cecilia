@@ -176,7 +176,7 @@ fun CommandPalette(
                 isLoading = true
             )
         }
-        val suggestions = try {
+        val suggestions = runCatching {
             val completionContext = CommandCompletionContext(
                 bot = bot,
                 httpClient = httpClient,
@@ -185,9 +185,7 @@ fun CommandPalette(
                 contactsState = contactsState
             )
             parameter.suggestionsProvider.invoke(completionContext, currentArgumentValue)
-        } catch (e: Exception) {
-            emptyList()
-        }
+        }.getOrElse { emptyList() }
         if (currentParameterIndex == parameterSuggestionState.parameterIndex) {
             parameterSuggestionState = ParameterSuggestionState(
                 commandId = commandId,
@@ -702,20 +700,16 @@ private suspend fun resolveConversationParticipants(
     if (conversation == null) return ConversationParticipants()
     return when (conversation.scene) {
         MessageScene.FRIEND -> {
-            val friend = try {
+            val friend = runCatching {
                 bot.getFriend(conversation.peerUin, forceUpdate = false)
-            } catch (e: Exception) {
-                null
-            }
+            }.getOrNull()
             ConversationParticipants(friend = friend)
         }
 
         MessageScene.GROUP -> {
-            val group = try {
+            val group = runCatching {
                 bot.getGroup(conversation.peerUin, forceUpdate = false)
-            } catch (e: Exception) {
-                null
-            }
+            }.getOrNull()
             ConversationParticipants(group = group)
         }
 

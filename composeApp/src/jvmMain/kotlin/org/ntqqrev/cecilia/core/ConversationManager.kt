@@ -145,8 +145,9 @@ class ConversationManager(
             conversations.add(0, updated)
         } else {
             // 会话不存在，需要获取会话信息并创建新条目
-            try {
-                // 根据消息场景获取名称和头像
+            val isCurrentlySelected = conversationId == currentSelectedConversationId
+            val unreadCount = if (isCurrentlySelected) 0 else 1
+            val newConversation = runCatching {
                 val name = when (message.scene) {
                     MessageScene.FRIEND -> {
                         bot.getFriend(message.peerUin, forceUpdate = false)
@@ -164,13 +165,7 @@ class ConversationManager(
                         message.peerUin.toString()
                     }
                 }
-
-                // 判断是否需要设置未读数
-                val isCurrentlySelected = conversationId == currentSelectedConversationId
-                val unreadCount = if (isCurrentlySelected) 0 else 1
-
-                // 创建新会话并添加到列表最前面
-                val newConversation = Conversation(
+                Conversation(
                     id = conversationId,
                     peerUin = message.peerUin,
                     scene = message.scene,
@@ -182,27 +177,21 @@ class ConversationManager(
                     unreadCount = unreadCount,
                     isPinned = isPinned(message.scene, message.peerUin)
                 )
-                conversations.add(0, newConversation)
-            } catch (e: Exception) {
-                // 如果获取失败，使用默认信息
-                val isCurrentlySelected = conversationId == currentSelectedConversationId
-                val unreadCount = if (isCurrentlySelected) 0 else 1
-
-                conversations.add(
-                    0, Conversation(
-                        id = conversationId,
-                        peerUin = message.peerUin,
-                        scene = message.scene,
-                        name = message.peerUin.toString(),
-                        lastMessage = messagePreview,
-                        lastMessageSeq = message.sequence,
-                        lastMessageTimestamp = message.timestamp,
-                        time = timeStr,
-                        unreadCount = unreadCount,
-                        isPinned = isPinned(message.scene, message.peerUin)
-                    )
+            }.getOrElse {
+                Conversation(
+                    id = conversationId,
+                    peerUin = message.peerUin,
+                    scene = message.scene,
+                    name = message.peerUin.toString(),
+                    lastMessage = messagePreview,
+                    lastMessageSeq = message.sequence,
+                    lastMessageTimestamp = message.timestamp,
+                    time = timeStr,
+                    unreadCount = unreadCount,
+                    isPinned = isPinned(message.scene, message.peerUin)
                 )
             }
+            conversations.add(0, newConversation)
         }
         reorderConversations()
     }

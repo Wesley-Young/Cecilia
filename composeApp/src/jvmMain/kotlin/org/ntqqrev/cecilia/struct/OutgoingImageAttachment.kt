@@ -130,18 +130,14 @@ data class OutgoingImageAttachment(
                 val readers = ImageIO.getImageReaders(input)
                 if (!readers.hasNext()) return null
                 val reader = readers.next()
-                try {
+                return@use runCatching {
                     reader.input = input
                     val width = reader.getWidth(0)
                     val height = reader.getHeight(0)
                     val formatName = reader.formatName
-                    val format = formatName.toImageFormat() ?: return null
+                    val format = formatName.toImageFormat() ?: return@runCatching null
                     Triple(format, width, height)
-                } catch (e: Exception) {
-                    null
-                } finally {
-                    reader.dispose()
-                }
+                }.getOrNull().also { reader.dispose() }
             }
         }
 

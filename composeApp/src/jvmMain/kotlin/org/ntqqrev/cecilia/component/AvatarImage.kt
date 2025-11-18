@@ -78,8 +78,8 @@ fun AvatarImage(
         }
 
         launch {
-            try {
-                val bitmap = withContext(Dispatchers.IO) {
+            runCatching {
+                withContext(Dispatchers.IO) {
                     val url = if (isGroup) {
                         "https://p.qlogo.cn/gh/$uin/$uin/$quality"
                     } else {
@@ -89,14 +89,11 @@ fun AvatarImage(
                     val imageBytes = response.readRawBytes()
                     Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
                 }
-                // 存入缓存
+            }.onSuccess { bitmap ->
                 AvatarCache.put(uin, isGroup, quality, bitmap)
                 avatarBitmap = bitmap
-            } catch (e: Exception) {
-                // 加载失败，保持占位符
-            } finally {
-                isLoading = false
             }
+            isLoading = false
         }
     }
 
@@ -123,15 +120,14 @@ fun AvatarImage(
                             if (userInfo == null && !isLoadingUserInfo) {
                                 isLoadingUserInfo = true
                                 scope.launch {
-                                    try {
-                                        userInfo = withContext(Dispatchers.IO) {
+                                    runCatching {
+                                        withContext(Dispatchers.IO) {
                                             bot.fetchUserInfoByUin(uin)
                                         }
-                                    } catch (e: Exception) {
-                                        // 加载失败
-                                    } finally {
-                                        isLoadingUserInfo = false
+                                    }.onSuccess { info ->
+                                        userInfo = info
                                     }
+                                    isLoadingUserInfo = false
                                 }
                             }
                         }

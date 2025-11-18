@@ -94,12 +94,10 @@ fun appMain() = application {
                 newBot.launch {
                     newBot.eventFlow.collect { event ->
                         if (event is SessionStoreUpdatedEvent) {
-                            try {
+                            runCatching {
                                 sessionStorePath.writeText(
                                     Json.encodeToString(SessionStore.serializer(), event.sessionStore)
                                 )
-                            } catch (e: Exception) {
-                                // 忽略保存失败
                             }
                         }
                     }
@@ -121,11 +119,7 @@ fun appMain() = application {
             // 如果已登录，先调用 offline
             if (bot != null && isLoggedIn) {
                 runBlocking {
-                    try {
-                        bot?.offline()
-                    } catch (e: Exception) {
-                        // 忽略 offline 错误，继续退出
-                    }
+                    runCatching { bot?.offline() }
                 }
             }
             // 取消 scope

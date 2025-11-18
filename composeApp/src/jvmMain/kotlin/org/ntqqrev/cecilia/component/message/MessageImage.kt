@@ -60,8 +60,8 @@ fun MessageImage(
 
     LaunchedEffect(imageSegment.fileId) {
         launch {
-            try {
-                val bitmap = withContext(Dispatchers.IO) {
+            runCatching {
+                withContext(Dispatchers.IO) {
                     val cachedContent = MediaCache.getContentByFileId(imageSegment.fileId)
                     val imageBytes = if (cachedContent != null) {
                         cachedContent
@@ -92,16 +92,16 @@ fun MessageImage(
                         Triple(imageBytes, SkiaImage.makeFromEncoded(imageBytes).toComposeImageBitmap(), null)
                     }
                 }
+            }.onSuccess { bitmap ->
                 imageBytes = bitmap.first
                 imageBitmap = bitmap.second
                 val animatedData = bitmap.third
                 animatedFrames = animatedData?.first
                 animatedDurations = animatedData?.second ?: emptyList()
-                isLoading = false
-            } catch (e: Exception) {
+            }.onFailure {
                 hasError = true
-                isLoading = false
             }
+            isLoading = false
         }
     }
 

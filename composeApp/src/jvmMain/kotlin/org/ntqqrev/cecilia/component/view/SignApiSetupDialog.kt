@@ -94,13 +94,10 @@ fun SignApiSetupDialog(
     )
 }
 
-private fun String.isValidUrl(): Boolean {
-    return try {
-        if (isEmpty()) return false
-        if (!startsWith("http://") && !startsWith("https://")) return false
+private fun String.isValidUrl(): Boolean =
+    runCatching {
+        if (isEmpty()) return@runCatching false
+        if (!startsWith("http://") && !startsWith("https://")) return@runCatching false
         val urlPattern = Regex("^https?://[a-zA-Z0-9.-]+(:[0-9]+)?(/.*)?$")
         urlPattern.matches(this)
-    } catch (e: Exception) {
-        false
-    }
-}
+    }.getOrElse { false }

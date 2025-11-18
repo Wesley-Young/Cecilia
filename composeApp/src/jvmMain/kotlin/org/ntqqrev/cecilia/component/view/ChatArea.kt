@@ -1446,13 +1446,9 @@ private suspend fun Bot.safeGroupMember(groupUin: Long, memberUin: Long): BotGro
 }
 
 private suspend fun <T> runIgnoringCancellation(block: suspend () -> T): T? =
-    try {
-        block()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        null
-    }
+    runCatching { block() }
+        .onFailure { if (it is CancellationException) throw it }
+        .getOrNull()
 
 private val BotFriend.displayName: String
     get() = remark.takeIf { it.isNotBlank() } ?: nickname
