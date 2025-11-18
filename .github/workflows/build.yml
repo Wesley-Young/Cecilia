@@ -16,17 +16,17 @@ jobs:
         include:
           - os: ubuntu-latest
             gradle_command: ./gradlew
-            package_task: composeApp:packageReleaseDeb
+            package_task: composeApp:packageDeb
             artifact_name: Cecilia-linux-deb
             artifact_glob: composeApp/build/compose/binaries/main/deb/*.deb
           - os: macos-latest
             gradle_command: ./gradlew
-            package_task: composeApp:packageReleaseDmg
+            package_task: composeApp:packageDmg
             artifact_name: Cecilia-macos-dmg
             artifact_glob: composeApp/build/compose/binaries/main/dmg/*.dmg
           - os: windows-latest
             gradle_command: .\gradlew.bat
-            package_task: composeApp:packageReleaseExe
+            package_task: composeApp:packageExe
             artifact_name: Cecilia-windows-exe
             artifact_glob: composeApp/build/compose/binaries/main/exe/*.exe
 
