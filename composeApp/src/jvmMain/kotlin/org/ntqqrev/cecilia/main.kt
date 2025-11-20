@@ -11,6 +11,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import io.github.composefluent.FluentTheme
+import io.ktor.client.*
 import kotlinx.coroutines.*
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.common.AppInfo
@@ -18,6 +19,7 @@ import org.ntqqrev.acidify.common.SessionStore
 import org.ntqqrev.acidify.common.UrlSignProvider
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.cecilia.core.Config
+import org.ntqqrev.cecilia.core.LocalHttpClient
 import org.ntqqrev.cecilia.util.getAppDataDirectory
 import org.ntqqrev.cecilia.view.App
 import org.ntqqrev.cecilia.view.ConfigInitDialog
@@ -47,6 +49,8 @@ fun appMain() = application {
 
     val scope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob()) }
     var bot by remember { mutableStateOf<Bot?>(null) }
+
+    val httpClient = remember { HttpClient() }
 
     val scaleFactor = config.displayScale
     val originalDensity = LocalDensity.current
@@ -129,7 +133,8 @@ fun appMain() = application {
         }
 
         CompositionLocalProvider(
-            LocalDensity provides scaledDensity
+            LocalDensity provides scaledDensity,
+            LocalHttpClient provides httpClient,
         ) {
             FluentTheme {
                 ConfigInitDialog(
