@@ -1,56 +1,56 @@
 package org.ntqqrev.cecilia.view
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
-import org.jetbrains.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import io.github.composefluent.background.Mica
+import io.github.composefluent.component.ProgressRing
+import io.github.composefluent.component.Text
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.cecilia.core.Config
-import org.ntqqrev.cecilia.util.getAppDataDirectory
-import kotlin.io.path.div
-import kotlin.io.path.exists
 
 @Composable
-@Preview
-fun App() {
-    val appDataDirectory = remember { getAppDataDirectory() }
-    val configPath = appDataDirectory / "config.json"
-    var isConfigInitialized by remember { mutableStateOf(configPath.exists()) }
-    var isConfigRefining by remember { mutableStateOf(true) }
-    var config by remember {
-        mutableStateOf(
-            if (isConfigInitialized) Config.fromPath(configPath) else Config()
-        )
-    }
-    val scope = rememberCoroutineScope()
-    val bot = remember { mutableStateOf<Bot?>(null) }
+fun App(
+    config: Config,
+    bot: Bot?,
+) {
+    var isLoggedIn by remember { mutableStateOf(bot?.isLoggedIn ?: false) }
 
-    val scaleFactor = config.displayScale
-    val originalDensity = LocalDensity.current
-    val scaledDensity = Density(originalDensity.density * scaleFactor)
-
-    CompositionLocalProvider(
-        LocalDensity provides scaledDensity
-    ) {
-        ConfigInitDialog(
-            visible = isConfigRefining || !isConfigInitialized,
-            initialSignApiHttpProxy = config.signApiHttpProxy,
-            initialSignApiUrl = config.signApiUrl,
-            onConfirm = { signApiUrl, signApiHttpProxy ->
-                config = config.copy(
-                    signApiUrl = signApiUrl,
-                    signApiHttpProxy = signApiHttpProxy
-                )
-                config.writeToPath(configPath)
-                isConfigInitialized = true
-                if (isConfigRefining) {
-                    Runtime.getRuntime().exit(0)
+    Mica(Modifier.fillMaxSize()) {
+        when {
+            bot == null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        ProgressRing()
+                        Text("正在初始化")
+                    }
                 }
-            },
-            onDismissRequest = {
-                isConfigRefining = false
-            },
-            isRefining = isConfigRefining,
-        )
+            }
+
+            !isLoggedIn -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text("登录")
+                    }
+                }
+            }
+        }
     }
 }
