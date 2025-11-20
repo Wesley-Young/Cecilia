@@ -11,6 +11,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
 import io.ktor.client.*
 import kotlinx.coroutines.*
 import org.ntqqrev.acidify.Bot
@@ -38,6 +39,8 @@ fun main() {
 }
 
 fun appMain() = application {
+    var loadError by remember { mutableStateOf<Throwable?>(null) }
+
     val appDataDirectory = remember { getAppDataDirectory() }
     val configPath = appDataDirectory / "config.json"
     var isConfigInitialized by remember { mutableStateOf(configPath.exists()) }
@@ -100,7 +103,7 @@ fun appMain() = application {
 
             bot = newBot
         } catch (e: Exception) {
-            // loadingError = e.message ?: e::class.qualifiedName
+            loadError = e
         }
     }
 
@@ -157,6 +160,7 @@ fun appMain() = application {
                 App(
                     config = config,
                     bot = bot,
+                    loadError = loadError,
                     showConfigInitDialog = {
                         isConfigRefining = true
                     }
