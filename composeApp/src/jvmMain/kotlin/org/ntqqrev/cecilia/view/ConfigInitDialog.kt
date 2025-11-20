@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.ContentDialog
+import io.github.composefluent.component.ContentDialogButton
 import io.github.composefluent.component.Text
 import io.github.composefluent.component.TextField
 
@@ -17,7 +18,8 @@ fun ConfigInitDialog(
     initialSignApiUrl: String = "",
     initialSignApiHttpProxy: String = "",
     onConfirm: (String, String) -> Unit,
-    showRestartReminder: Boolean = false
+    onDismissRequest: () -> Unit,
+    isRefining: Boolean = false
 ) {
     var signApiUrl by remember { mutableStateOf(initialSignApiUrl) }
     var signApiHttpProxy by remember { mutableStateOf(initialSignApiHttpProxy) }
@@ -31,13 +33,13 @@ fun ConfigInitDialog(
         title = "配置签名服务",
         visible = visible,
         primaryButtonText = "保存",
-        closeButtonText = "取消",
+        closeButtonText = if (isRefining) "取消" else null,
         content = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (showRestartReminder) {
+                if (isRefining) {
                     Text(
                         text = "修改签名服务或代理需要重启应用后才会生效，点击保存后应用将会自动退出。",
                     )
@@ -76,7 +78,13 @@ fun ConfigInitDialog(
                 }
             }
         },
-        onButtonClick = { onConfirm(signApiUrl, signApiHttpProxy) }
+        onButtonClick = { button ->
+            when (button) {
+                ContentDialogButton.Primary -> onConfirm(signApiUrl, signApiHttpProxy)
+                ContentDialogButton.Close -> onDismissRequest()
+                else -> {} // Unexpected
+            }
+        }
     )
 }
 

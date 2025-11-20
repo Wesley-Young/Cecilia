@@ -16,7 +16,7 @@ fun App() {
     val appDataDirectory = remember { getAppDataDirectory() }
     val configPath = appDataDirectory / "config.json"
     var isConfigInitialized by remember { mutableStateOf(configPath.exists()) }
-    var isConfigRefining by remember { mutableStateOf(false) }
+    var isConfigRefining by remember { mutableStateOf(true) }
     var config by remember {
         mutableStateOf(
             if (isConfigInitialized) Config.fromPath(configPath) else Config()
@@ -47,7 +47,10 @@ fun App() {
                     Runtime.getRuntime().exit(0)
                 }
             },
-            showRestartReminder = isConfigRefining,
+            onDismissRequest = {
+                isConfigRefining = false
+            },
+            isRefining = isConfigRefining,
         )
     }
 }
