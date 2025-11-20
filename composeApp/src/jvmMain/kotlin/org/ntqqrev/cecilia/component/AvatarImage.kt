@@ -19,7 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
-import org.ntqqrev.cecilia.core.AvatarCache
+import org.ntqqrev.cecilia.core.LocalAvatarCache
 import org.ntqqrev.cecilia.core.LocalHttpClient
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -31,8 +31,9 @@ fun AvatarImage(
     quality: Int = 100,
 ) {
     val httpClient = LocalHttpClient.current
+    val avatarCache = LocalAvatarCache.current
     val cachedBitmap = remember(uin, isGroup, quality) {
-        AvatarCache.get(uin, isGroup, quality)
+        avatarCache.get(uin, isGroup, quality)
     }
     var avatarBitmap by remember(uin, isGroup, quality) {
         mutableStateOf(cachedBitmap)
@@ -59,7 +60,7 @@ fun AvatarImage(
                     Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
                 }
             }.onSuccess { bitmap ->
-                AvatarCache.put(uin, isGroup, quality, bitmap)
+                avatarCache.put(uin, isGroup, quality, bitmap)
                 avatarBitmap = bitmap
             }
             isLoading = false

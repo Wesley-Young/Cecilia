@@ -5,13 +5,13 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
-private data class CacheEntry(
-    val bitmap: ImageBitmap,
-    val timestamp: Long = System.currentTimeMillis()
-)
+class AvatarCache {
+    data class Entry(
+        val bitmap: ImageBitmap,
+        val timestamp: Long = System.currentTimeMillis()
+    )
 
-object AvatarCache {
-    private val cache = ConcurrentHashMap<String, CacheEntry>()
+    private val cache = ConcurrentHashMap<String, Entry>()
     private val maxAge: Duration = 1.hours
 
     fun get(uin: Long, isGroup: Boolean, quality: Int): ImageBitmap? {
@@ -27,7 +27,7 @@ object AvatarCache {
 
     fun put(uin: Long, isGroup: Boolean, quality: Int, bitmap: ImageBitmap) {
         val key = cacheKey(uin, isGroup, quality)
-        cache[key] = CacheEntry(bitmap)
+        cache[key] = Entry(bitmap)
     }
 
     private fun cacheKey(uin: Long, isGroup: Boolean, quality: Int): String {

@@ -13,6 +13,10 @@ val LocalConfig = compositionLocalOf<Config> {
     error("No Config provided")
 }
 
+val LocalAvatarCache = staticCompositionLocalOf<AvatarCache> {
+    error("No AvatarCache provided")
+}
+
 val LocalHttpClient = staticCompositionLocalOf<HttpClient> {
     error("No HttpClient provided")
 }
