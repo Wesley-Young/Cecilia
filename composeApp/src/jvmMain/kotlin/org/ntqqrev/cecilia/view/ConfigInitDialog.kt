@@ -80,7 +80,11 @@ fun ConfigInitDialog(
         },
         onButtonClick = { button ->
             when (button) {
-                ContentDialogButton.Primary -> onConfirm(signApiUrl, signApiHttpProxy)
+                ContentDialogButton.Primary -> {
+                    if (isFormValid) {
+                        onConfirm(trimmedUrl, trimmedProxy)
+                    }
+                }
                 ContentDialogButton.Close -> onDismissRequest()
                 else -> {} // Unexpected
             }
