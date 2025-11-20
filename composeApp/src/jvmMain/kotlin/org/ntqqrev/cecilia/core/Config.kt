@@ -9,7 +9,7 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 @Serializable
-class Config(
+data class Config(
     val signApiUrl: String = "",
     val signApiHttpProxy: String = "",
     val minLogLevel: LogLevel = LogLevel.DEBUG,
