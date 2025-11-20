@@ -18,7 +18,6 @@ import org.ntqqrev.cecilia.core.LocalBot
 
 @Composable
 fun App(
-    config: Config,
     bot: Bot?,
     loadError: Throwable?,
     showConfigInitDialog: () -> Unit

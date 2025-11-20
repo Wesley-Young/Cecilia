@@ -21,6 +21,7 @@ import org.ntqqrev.acidify.common.UrlSignProvider
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.logging.SimpleLogHandler
 import org.ntqqrev.cecilia.core.Config
+import org.ntqqrev.cecilia.core.LocalConfig
 import org.ntqqrev.cecilia.core.LocalHttpClient
 import org.ntqqrev.cecilia.util.getAppDataDirectory
 import org.ntqqrev.cecilia.view.App
@@ -134,6 +135,7 @@ fun appMain() = application {
 
         CompositionLocalProvider(
             LocalDensity provides scaledDensity,
+            LocalConfig provides config,
             LocalHttpClient provides httpClient,
         ) {
             FluentTheme {
@@ -158,7 +160,6 @@ fun appMain() = application {
                     isRefining = isConfigRefining,
                 )
                 App(
-                    config = config,
                     bot = bot,
                     loadError = loadError,
                     showConfigInitDialog = {
