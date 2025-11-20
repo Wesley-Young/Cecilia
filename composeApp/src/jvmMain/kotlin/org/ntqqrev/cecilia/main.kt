@@ -160,6 +160,9 @@ fun appMain() = application {
                 App(
                     config = config,
                     bot = bot,
+                    showConfigInitDialog = {
+                        isConfigRefining = true
+                    }
                 )
             }
         }

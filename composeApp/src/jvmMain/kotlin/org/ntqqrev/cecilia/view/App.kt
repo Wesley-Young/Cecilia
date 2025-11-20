@@ -19,6 +19,7 @@ import org.ntqqrev.cecilia.core.LocalBot
 fun App(
     config: Config,
     bot: Bot?,
+    showConfigInitDialog: () -> Unit
 ) {
     var isLoggedIn by remember { mutableStateOf(bot?.isLoggedIn ?: false) }
 
@@ -41,7 +42,9 @@ fun App(
                 LocalBot provides bot
             ) {
                 if (!isLoggedIn) {
-
+                    LoginView(
+                        showConfigInitDialog
+                    )
                 }
             }
         }
