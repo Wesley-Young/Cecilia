@@ -69,7 +69,8 @@ fun App(
             ) {
                 if (!isLoggedIn) {
                     LoginView(
-                        showConfigInitDialog
+                        onLoggedIn = { isLoggedIn = true },
+                        showConfigInitDialog = showConfigInitDialog
                     )
                 }
             }
