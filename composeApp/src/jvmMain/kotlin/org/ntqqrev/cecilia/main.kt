@@ -16,6 +16,7 @@ import org.ntqqrev.cecilia.util.getAppDataDirectory
 import org.ntqqrev.cecilia.view.App
 import java.awt.Dimension
 import java.io.PrintStream
+import kotlin.io.path.div
 import kotlin.io.path.exists
 
 fun main() {
@@ -26,7 +27,7 @@ fun main() {
 
 fun appMain() = application {
     val appDataDirectory = remember { getAppDataDirectory() }
-    val configPath = appDataDirectory.resolve("config.json")
+    val configPath = appDataDirectory / "config.json"
     var isConfigInitialized by remember { mutableStateOf(configPath.exists()) }
     var config by remember {
         mutableStateOf(
