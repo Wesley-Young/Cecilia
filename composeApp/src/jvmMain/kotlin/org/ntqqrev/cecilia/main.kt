@@ -18,6 +18,7 @@ import org.ntqqrev.acidify.common.AppInfo
 import org.ntqqrev.acidify.common.SessionStore
 import org.ntqqrev.acidify.common.UrlSignProvider
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
+import org.ntqqrev.acidify.logging.SimpleLogHandler
 import org.ntqqrev.cecilia.core.Config
 import org.ntqqrev.cecilia.core.LocalHttpClient
 import org.ntqqrev.cecilia.util.getAppDataDirectory
@@ -84,13 +85,9 @@ fun appMain() = application {
                 signProvider = signProvider,
                 scope = scope,
                 minLogLevel = config.minLogLevel,
-                logHandler = { level, tag, message, throwable ->
-                    println("[$level] [$tag] $message")
-                    throwable?.printStackTrace()
-                }
+                logHandler = SimpleLogHandler
             )
 
-            // 监听 SessionStore 更新事件并保存
             newBot.launch {
                 newBot.eventFlow.collect { event ->
                     if (event is SessionStoreUpdatedEvent) {
