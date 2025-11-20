@@ -85,6 +85,7 @@ fun ConfigInitDialog(
                         onConfirm(trimmedUrl, trimmedProxy)
                     }
                 }
+
                 ContentDialogButton.Close -> onDismissRequest()
                 else -> {} // Unexpected
             }

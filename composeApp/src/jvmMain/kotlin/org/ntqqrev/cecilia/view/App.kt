@@ -13,7 +13,6 @@ import io.github.composefluent.component.Text
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.Settings
 import org.ntqqrev.acidify.Bot
-import org.ntqqrev.cecilia.core.Config
 import org.ntqqrev.cecilia.core.LocalBot
 
 @Composable
@@ -39,8 +38,10 @@ fun App(
                         if (loadError == null) {
                             Text("正在初始化")
                         } else {
-                            Text("初始化失败：${loadError.localizedMessage}\n" +
-                                    "请检查配置文件，确保指定了有效的签名地址。")
+                            Text(
+                                "初始化失败：${loadError.localizedMessage}\n" +
+                                        "请检查配置文件，确保指定了有效的签名地址。"
+                            )
                         }
                     }
                 }
