@@ -11,6 +11,7 @@ import io.github.composefluent.component.ContentDialog
 import io.github.composefluent.component.ContentDialogButton
 import io.github.composefluent.component.Text
 import io.github.composefluent.component.TextField
+import org.ntqqrev.cecilia.util.isValidUrl
 
 @Composable
 fun ConfigInitDialog(
@@ -92,11 +93,3 @@ fun ConfigInitDialog(
         }
     )
 }
-
-private fun String.isValidUrl(): Boolean =
-    runCatching {
-        if (isEmpty()) return@runCatching false
-        if (!startsWith("http://") && !startsWith("https://")) return@runCatching false
-        val urlPattern = Regex("^https?://[a-zA-Z0-9.-]+(:[0-9]+)?(/.*)?$")
-        urlPattern.matches(this)
-    }.getOrElse { false }

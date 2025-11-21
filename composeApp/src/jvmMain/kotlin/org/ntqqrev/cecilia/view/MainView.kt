@@ -85,7 +85,7 @@ fun MainView() {
                     when (state) {
                         MainViewState.Chat -> ChatView()
                         MainViewState.Contacts -> {}
-                        MainViewState.Settings -> {}
+                        MainViewState.Settings -> SettingsView()
                     }
                 }
             }
