@@ -1,20 +1,20 @@
 package org.ntqqrev.cecilia.view
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import io.github.composefluent.ExperimentalFluentApi
 import io.github.composefluent.background.Layer
-import io.github.composefluent.component.Icon
-import io.github.composefluent.component.SideNav
-import io.github.composefluent.component.SideNavItem
-import io.github.composefluent.component.Text
+import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.Chat
 import io.github.composefluent.icons.regular.People
 import io.github.composefluent.icons.regular.Settings
+import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.core.LocalBot
 
 enum class MainViewState(
@@ -35,6 +35,7 @@ enum class MainViewState(
     ),
 }
 
+@OptIn(ExperimentalFluentApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainView() {
     val bot = LocalBot.current
@@ -50,13 +51,29 @@ fun MainView() {
 
     Row(Modifier.fillMaxWidth()) {
         SideNav(
+            indicatorState = rememberIndicatorState(),
             expanded = expanded,
             onExpandStateChange = { expanded = it },
             modifier = Modifier.fillMaxHeight()
                 .padding(top = 6.dp),
-            title = {
-                Text("$botNickname (${bot.uin})")
-            }
+            autoSuggestionBox = null,
+            header = {
+                SideNavHeaderArea(
+                    title = { Text("$botNickname (${bot.uin})") },
+                    backButton = {},
+                    expandButton = {
+                        NavigationDefaults.ExpandedButton(
+                            onClick = { expanded = !expanded },
+                            icon = {
+                                AvatarImage(
+                                    uin = bot.uin,
+                                    size = 32.dp,
+                                )
+                            }
+                        )
+                    }
+                )
+            },
         ) {
             MainViewState.entries.forEachIndexed { idx, state ->
                 SideNavItem(
