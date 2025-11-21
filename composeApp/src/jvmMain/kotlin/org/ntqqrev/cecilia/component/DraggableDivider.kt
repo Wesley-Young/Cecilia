@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -17,7 +16,6 @@ import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import java.awt.Cursor
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DraggableDivider(
     currentWidth: Dp,

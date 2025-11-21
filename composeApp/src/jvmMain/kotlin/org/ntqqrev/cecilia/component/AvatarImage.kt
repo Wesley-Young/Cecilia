@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -22,7 +21,6 @@ import org.jetbrains.skia.Image
 import org.ntqqrev.cecilia.core.LocalAvatarCache
 import org.ntqqrev.cecilia.core.LocalHttpClient
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AvatarImage(
     uin: Long,
