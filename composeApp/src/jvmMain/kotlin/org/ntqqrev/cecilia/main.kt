@@ -2,10 +2,12 @@
 
 package org.ntqqrev.cecilia
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
@@ -31,6 +33,7 @@ import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.logging.SimpleLogHandler
 import org.ntqqrev.cecilia.component.ConfigInitDialog
 import org.ntqqrev.cecilia.core.*
+import org.ntqqrev.cecilia.util.WallpaperProvider
 import org.ntqqrev.cecilia.util.getAppDataDirectory
 import org.ntqqrev.cecilia.view.LoginView
 import org.ntqqrev.cecilia.view.MainView
@@ -191,9 +194,18 @@ fun App(
     loadError: Throwable?,
     showConfigInitDialog: () -> Unit
 ) {
+    val screenshot = remember { WallpaperProvider.get().toComposeImageBitmap() }
     var isLoggedIn by remember { mutableStateOf(bot?.isLoggedIn ?: false) }
 
-    Mica(Modifier.fillMaxSize()) {
+    Mica(
+        modifier = Modifier.fillMaxSize(),
+        background = {
+            Image(
+                bitmap = screenshot,
+                contentDescription = null,
+            )
+        }
+    ) {
         if (bot == null) {
             Box(Modifier.fillMaxSize()) {
                 Box(
