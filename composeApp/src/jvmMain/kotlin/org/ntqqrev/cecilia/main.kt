@@ -33,6 +33,7 @@ import org.ntqqrev.cecilia.component.ConfigInitDialog
 import org.ntqqrev.cecilia.core.*
 import org.ntqqrev.cecilia.util.getAppDataDirectory
 import org.ntqqrev.cecilia.view.LoginView
+import org.ntqqrev.cecilia.view.MainView
 import java.awt.Dimension
 import java.io.PrintStream
 import kotlin.io.path.div
@@ -237,6 +238,8 @@ fun App(
                         onLoggedIn = { isLoggedIn = true },
                         showConfigInitDialog = showConfigInitDialog
                     )
+                } else {
+                    MainView()
                 }
             }
         }
