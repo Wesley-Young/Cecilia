@@ -1,4 +1,4 @@
-package org.ntqqrev.cecilia.view
+package org.ntqqrev.cecilia.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
