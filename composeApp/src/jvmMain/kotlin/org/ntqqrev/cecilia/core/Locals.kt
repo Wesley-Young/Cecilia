@@ -13,6 +13,10 @@ val LocalConfig = compositionLocalOf<Config> {
     error("No Config provided")
 }
 
+val LocalConfigSetter = compositionLocalOf<(Config) -> Unit> {
+    error("No Config setter provided")
+}
+
 val LocalAvatarCache = staticCompositionLocalOf<AvatarCache> {
     error("No AvatarCache provided")
 }

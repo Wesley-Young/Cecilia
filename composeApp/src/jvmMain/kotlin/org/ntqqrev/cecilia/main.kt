@@ -145,6 +145,10 @@ fun appMain() = application {
         CompositionLocalProvider(
             LocalDensity provides scaledDensity,
             LocalConfig provides config,
+            LocalConfigSetter provides { newConfig ->
+                config = newConfig
+                config.writeToPath(configPath)
+            },
             LocalAvatarCache provides avatarCache,
             LocalHttpClient provides httpClient,
         ) {
