@@ -34,8 +34,9 @@ fun LoginView(
 ) {
     val bot = LocalBot.current
     val qrCodeColorArgb = FluentTheme.colors.text.accent.primary.toArgb()
-    var hasSession by remember { mutableStateOf(bot.sessionStore.uin != 0L && bot.sessionStore.a2.isNotEmpty()) }
-    var usingQrCode by remember { mutableStateOf(!hasSession) }
+    var usingQrCode by remember {
+        mutableStateOf(bot.sessionStore.uin == 0L || bot.sessionStore.a2.isEmpty())
+    }
     var qrCodeImage by remember { mutableStateOf<ByteArray?>(null) }
     var qrCodeState by remember { mutableStateOf<QRCodeState?>(null) }
     var loginError by remember { mutableStateOf<String?>(null) }
@@ -82,7 +83,7 @@ fun LoginView(
                         style = FluentTheme.typography.title.copy(fontWeight = FontWeight.Bold),
                         color = FluentTheme.colors.text.accent.primary
                     )
-                    if (hasSession && !usingQrCode) {
+                    if (!usingQrCode) {
                         AvatarImage(
                             uin = bot.sessionStore.uin,
                             size = 160.dp,
@@ -105,8 +106,6 @@ fun LoginView(
                                     } catch (e: Throwable) {
                                         if (e is ServiceException && e.retCode == -10003) {
                                             // Session has been revoked
-                                            bot.sessionStore.clear()
-                                            hasSession = false
                                             usingQrCode = true
                                         }
                                         loginError = "登录失败：${e.localizedMessage}\n" +
@@ -120,16 +119,16 @@ fun LoginView(
                         }
                         Button(
                             onClick = {
+                                bot.sessionStore.clear()
                                 usingQrCode = true
-                                loginError = null
+                                loginError = "已清除内存中的登录信息。\n" +
+                                        "如果要使用原有账号登录，请重新启动应用。"
                             },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("使用二维码登录")
                         }
-                    }
-
-                    if (usingQrCode) {
+                    } else {
                         if (qrCodeImage != null) {
                             qrCodeImage?.let {
                                 Image(
@@ -163,7 +162,6 @@ fun LoginView(
                                         qrCodeImage = null
                                         qrCodeState = null
                                         loginError = null // an error has been thrown
-                                        usingQrCode = !hasSession
                                     }
                                 ) {
                                     Text("返回")
@@ -177,16 +175,7 @@ fun LoginView(
                                         bot.launch {
                                             loginError = null
                                             try {
-                                                try {
-                                                    bot.qrCodeLogin(1000L)
-                                                } catch (e: ServiceException) {
-                                                    if (e.retCode == -10003) {
-                                                        // Session has been revoked
-                                                        bot.sessionStore.clear()
-                                                        hasSession = false
-                                                    }
-                                                    bot.qrCodeLogin()
-                                                }
+                                                bot.qrCodeLogin(1000L)
                                                 onLoggedIn()
                                             } catch (e: Throwable) {
                                                 qrCodeImage = null
@@ -200,7 +189,6 @@ fun LoginView(
                             }
                         }
                     }
-
                     loginError?.let { Text(it) }
                 }
             }
