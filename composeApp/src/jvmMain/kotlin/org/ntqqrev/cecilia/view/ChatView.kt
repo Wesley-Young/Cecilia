@@ -37,27 +37,18 @@ fun ChatView() {
 
     LaunchedEffect(bot) {
         val pinnedChats = bot.getPins()
-        val initialConversations = pinnedChats.friendUins
-            .mapNotNull { bot.getFriend(it) }
-            .map { friend ->
-                Conversation(
-                    scene = MessageScene.FRIEND,
-                    peerUin = friend.uin,
-                    displayName = friend.remark
-                        .ifEmpty { friend.nickname }
-                        .ifEmpty { friend.uin.toString() },
-                    isPinned = true
-                )
-            } + pinnedChats.groupUins
-            .mapNotNull { bot.getGroup(it) }
-            .map { group ->
-                Conversation(
-                    scene = MessageScene.GROUP,
-                    peerUin = group.uin,
-                    displayName = group.name,
-                    isPinned = true
-                )
-            }
+        val initialConversations = buildList {
+            addAll(
+                pinnedChats.friendUins
+                    .mapNotNull { bot.getFriend(it) }
+                    .map { friend -> Conversation.fromFriend(friend, isPinned = true) }
+            )
+            addAll(
+                pinnedChats.groupUins
+                    .mapNotNull { bot.getGroup(it) }
+                    .map { group -> Conversation.fromGroup(group, isPinned = true) }
+            )
+        }
         initialConversations.forEach { conversation ->
             conversations[conversation.asKey] = conversation
         }

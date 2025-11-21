@@ -1,5 +1,7 @@
 package org.ntqqrev.cecilia.model
 
+import org.ntqqrev.acidify.entity.BotFriend
+import org.ntqqrev.acidify.entity.BotGroup
 import org.ntqqrev.acidify.message.MessageScene
 
 data class Conversation(
@@ -35,5 +37,27 @@ data class Conversation(
 
         // Then sort by peerUin as a tiebreaker
         return this.peerUin.compareTo(other.peerUin)
+    }
+
+    companion object {
+        fun fromFriend(friend: BotFriend, isPinned: Boolean = false): Conversation {
+            return Conversation(
+                scene = MessageScene.FRIEND,
+                peerUin = friend.uin,
+                displayName = friend.remark
+                    .ifEmpty { friend.nickname }
+                    .ifEmpty { friend.uin.toString() },
+                isPinned = isPinned
+            )
+        }
+
+        fun fromGroup(group: BotGroup, isPinned: Boolean = false): Conversation {
+            return Conversation(
+                scene = MessageScene.GROUP,
+                peerUin = group.uin,
+                displayName = group.name,
+                isPinned = isPinned
+            )
+        }
     }
 }
