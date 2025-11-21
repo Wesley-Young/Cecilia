@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image.Companion.makeFromEncoded
 import org.ntqqrev.acidify.event.QRCodeGeneratedEvent
 import org.ntqqrev.acidify.event.QRCodeStateQueryEvent
+import org.ntqqrev.acidify.exception.ServiceException
 import org.ntqqrev.acidify.struct.QRCodeState
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.core.LocalBot
@@ -32,8 +33,8 @@ fun LoginView(
     showConfigInitDialog: () -> Unit
 ) {
     val bot = LocalBot.current
-    val hasSession = bot.sessionStore.uin != 0L && bot.sessionStore.a2.isNotEmpty()
     val qrCodeColorArgb = FluentTheme.colors.text.accent.primary.toArgb()
+    var hasSession by remember { mutableStateOf(bot.sessionStore.uin != 0L && bot.sessionStore.a2.isNotEmpty()) }
     var usingQrCode by remember { mutableStateOf(!hasSession) }
     var qrCodeImage by remember { mutableStateOf<ByteArray?>(null) }
     var qrCodeState by remember { mutableStateOf<QRCodeState?>(null) }
@@ -102,6 +103,12 @@ fun LoginView(
                                         bot.online()
                                         onLoggedIn()
                                     } catch (e: Throwable) {
+                                        if (e is ServiceException && e.retCode == -10003) {
+                                            // Session has been revoked
+                                            bot.sessionStore.clear()
+                                            hasSession = false
+                                            usingQrCode = true
+                                        }
                                         loginError = "登录失败：${e.localizedMessage}\n" +
                                                 "请尝试使用二维码登录。"
                                     }
@@ -112,7 +119,10 @@ fun LoginView(
                             Text("快捷登录")
                         }
                         Button(
-                            onClick = { usingQrCode = true },
+                            onClick = {
+                                usingQrCode = true
+                                loginError = null
+                            },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("使用二维码登录")
@@ -165,10 +175,21 @@ fun LoginView(
                                     modifier = Modifier.fillMaxWidth(),
                                     onClick = {
                                         bot.launch {
+                                            loginError = null
                                             try {
-                                                bot.qrCodeLogin(1000L)
+                                                try {
+                                                    bot.qrCodeLogin(1000L)
+                                                } catch (e: ServiceException) {
+                                                    if (e.retCode == -10003) {
+                                                        // Session has been revoked
+                                                        bot.sessionStore.clear()
+                                                        hasSession = false
+                                                    }
+                                                    bot.qrCodeLogin()
+                                                }
                                                 onLoggedIn()
                                             } catch (e: Throwable) {
+                                                qrCodeImage = null
                                                 loginError = "登录失败：${e.localizedMessage}"
                                             }
                                         }
