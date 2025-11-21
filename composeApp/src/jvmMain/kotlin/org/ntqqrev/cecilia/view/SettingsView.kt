@@ -159,7 +159,7 @@ fun SettingsView() {
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(
+            AccentButton(
                 disabled = !canSave,
                 onClick = { setConfig(pendingConfig) }
             ) {
