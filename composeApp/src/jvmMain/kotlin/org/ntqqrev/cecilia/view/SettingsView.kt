@@ -11,9 +11,11 @@ import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.Layer
 import io.github.composefluent.component.*
 import org.ntqqrev.acidify.logging.LogLevel
+import org.ntqqrev.cecilia.component.ValidatorTextField
+import org.ntqqrev.cecilia.component.validateOptionalHttpUrl
+import org.ntqqrev.cecilia.component.validateRequiredHttpUrl
 import org.ntqqrev.cecilia.core.LocalConfig
 import org.ntqqrev.cecilia.core.LocalConfigSetter
-import org.ntqqrev.cecilia.util.isValidUrl
 import kotlin.math.roundToInt
 
 private val DefaultScaleRange = 0.85f..1.5f
@@ -36,8 +38,8 @@ fun SettingsView() {
 
     val trimmedUrl = signApiUrl.trim()
     val trimmedProxy = signApiHttpProxy.trim()
-    val urlValid = trimmedUrl.isNotEmpty() && trimmedUrl.isValidUrl()
-    val proxyValid = trimmedProxy.isEmpty() || trimmedProxy.isValidUrl()
+    val urlValidation = remember(trimmedUrl) { validateRequiredHttpUrl(trimmedUrl) }
+    val proxyValidation = remember(trimmedProxy) { validateOptionalHttpUrl(trimmedProxy) }
     val selectedLogLevel = logLevels.getOrElse(logLevelIndex.coerceIn(0, logLevels.lastIndex)) {
         logLevels.first()
     }
@@ -51,7 +53,7 @@ fun SettingsView() {
     )
 
     val isDirty = pendingConfig != config
-    val isFormValid = urlValid && proxyValid
+    val isFormValid = urlValidation.isValid && proxyValidation.isValid
     val canSave = isDirty && isFormValid
 
     Column(
@@ -71,32 +73,22 @@ fun SettingsView() {
                 title = "签名服务",
                 description = "配置签名服务地址和可选的 HTTP 代理。"
             ) {
-                TextField(
+                ValidatorTextField(
                     value = signApiUrl,
                     onValueChange = { signApiUrl = it },
                     header = { Text("签名服务地址") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    validation = urlValidation
                 )
-                if (!urlValid) {
-                    Text(
-                        text = "请输入有效的 http(s) 地址。",
-                        style = FluentTheme.typography.caption
-                    )
-                }
-                TextField(
+                ValidatorTextField(
                     value = signApiHttpProxy,
                     onValueChange = { signApiHttpProxy = it },
                     header = { Text("HTTP 代理（可选）") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    validation = proxyValidation
                 )
-                if (!proxyValid) {
-                    Text(
-                        text = "请输入有效的 http(s) 代理地址，或留空。",
-                        style = FluentTheme.typography.caption
-                    )
-                }
             }
 
             SettingsSection(

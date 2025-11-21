@@ -6,12 +6,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.ContentDialog
 import io.github.composefluent.component.ContentDialogButton
 import io.github.composefluent.component.Text
-import io.github.composefluent.component.TextField
-import org.ntqqrev.cecilia.util.isValidUrl
 
 @Composable
 fun ConfigInitDialog(
@@ -24,11 +21,13 @@ fun ConfigInitDialog(
 ) {
     var signApiUrl by remember { mutableStateOf(initialSignApiUrl) }
     var signApiHttpProxy by remember { mutableStateOf(initialSignApiHttpProxy) }
+
     val trimmedUrl = signApiUrl.trim()
     val trimmedProxy = signApiHttpProxy.trim()
-    val isUrlValid = trimmedUrl.isNotEmpty() && trimmedUrl.isValidUrl()
-    val isProxyValid = trimmedProxy.isEmpty() || trimmedProxy.isValidUrl()
-    val isFormValid = isUrlValid && isProxyValid
+
+    val urlValidation = remember(trimmedUrl) { validateRequiredHttpUrl(trimmedUrl) }
+    val proxyValidation = remember(trimmedProxy) { validateOptionalHttpUrl(trimmedProxy) }
+    val isFormValid = urlValidation.isValid && proxyValidation.isValid
 
     ContentDialog(
         title = "配置签名服务",
@@ -42,41 +41,29 @@ fun ConfigInitDialog(
             ) {
                 if (isRefining) {
                     Text(
-                        text = "修改签名服务或代理需要重启应用后才会生效，点击保存后应用将会自动退出。",
+                        text = "修改签名服务或代理需要重启应用后才会生效，点击保存后应用将会自动退出。"
                     )
                 } else {
                     Text(
-                        text = "首次启动需要提供 signApiUrl，完成后将写入 config.json。",
+                        text = "首次启动需要提供 signApiUrl，完成后将写入 config.json。"
                     )
                 }
-                TextField(
+                ValidatorTextField(
                     value = signApiUrl,
                     onValueChange = { signApiUrl = it },
                     header = { Text("签名服务地址") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    // isError = !isUrlValid
+                    validation = urlValidation
                 )
-                if (!isUrlValid) {
-                    Text(
-                        text = "请输入有效的 http(s) 地址。",
-                        style = FluentTheme.typography.caption
-                    )
-                }
-                TextField(
+                ValidatorTextField(
                     value = signApiHttpProxy,
                     onValueChange = { signApiHttpProxy = it },
                     modifier = Modifier.fillMaxWidth(),
                     header = { Text("HTTP 代理（可选）") },
                     singleLine = true,
-                    // isError = !isProxyValid
+                    validation = proxyValidation
                 )
-                if (!isProxyValid) {
-                    Text(
-                        text = "请输入有效的 http(s) 代理地址，或留空。",
-                        style = FluentTheme.typography.caption
-                    )
-                }
             }
         },
         onButtonClick = { button ->
