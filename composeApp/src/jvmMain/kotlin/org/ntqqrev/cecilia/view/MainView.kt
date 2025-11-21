@@ -52,7 +52,8 @@ fun MainView() {
         SideNav(
             expanded = expanded,
             onExpandStateChange = { expanded = it },
-            modifier = Modifier.fillMaxHeight(),
+            modifier = Modifier.fillMaxHeight()
+                .padding(top = 6.dp),
             title = {
                 Text("$botNickname (${bot.uin})")
             }
