@@ -31,9 +31,11 @@ import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.component.message.Bubble
+import org.ntqqrev.cecilia.component.message.GreyTip
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Conversation
 import org.ntqqrev.cecilia.model.Message
+import org.ntqqrev.cecilia.util.formatToConvenientTime
 import org.ntqqrev.cecilia.util.formatToShortTime
 import org.ntqqrev.cecilia.util.toModeledMessage
 import org.ntqqrev.cecilia.util.toShortPreview
@@ -437,7 +439,23 @@ private fun ChatArea(conversation: Conversation) {
                     "${message.scene}-${message.peerUin}-${message.sequence}"
                 }
             ) { index ->
-                Bubble(message = messageList[messageList.size - index - 1])
+                val currentMessage = messageList[messageList.size - index - 1]
+                Bubble(message = currentMessage)
+
+                // compare with prev timestamp
+                val shouldShowTimeTip = if (index + 1 < messageList.size) {
+                    val previousMessage = messageList[messageList.size - index - 2]
+                    currentMessage.timestamp - previousMessage.timestamp >= 300
+                } else {
+                    true
+                }
+                if (shouldShowTimeTip) {
+                    GreyTip(
+                        content = Instant.ofEpochSecond(currentMessage.timestamp)
+                            .formatToConvenientTime()
+                    )
+                    Spacer(Modifier.height(16.dp))
+                }
             }
         }
     }
