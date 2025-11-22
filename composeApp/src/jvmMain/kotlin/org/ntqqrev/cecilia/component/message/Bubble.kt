@@ -16,6 +16,7 @@ import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.Message
+import org.ntqqrev.cecilia.util.displayName
 
 @Composable
 fun Bubble(message: Message) {
@@ -27,8 +28,7 @@ fun Bubble(message: Message) {
     LaunchedEffect(bot, message) {
         if (isGroup) {
             val member = bot.getGroupMember(message.peerUin, message.senderUin)
-            displayName = member?.card?.ifEmpty { member.nickname }
-                ?: message.senderName.ifEmpty { message.senderUin.toString() }
+            member?.let { displayName = it.displayName }
         }
     }
 
@@ -46,7 +46,7 @@ fun Bubble(message: Message) {
                 )
             }
 
-            Column(horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start,) {
+            Column(horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start) {
                 val bubbleShape = remember { RoundedCornerShape(12.dp) }
                 if (isGroup) {
                     Text(

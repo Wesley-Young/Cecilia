@@ -1,17 +1,15 @@
 package org.ntqqrev.cecilia.util
 
+import org.ntqqrev.acidify.entity.BotGroupMember
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.Message
 
-fun BotIncomingMessage.toShortPreview() = buildString {
-    extraInfo?.let {
-        append(it.groupCard)
-        append(": ")
-    }
-    segments.forEach { append(it.toString()) }
-}
+val BotGroupMember.displayName: String
+    get() = this.card.ifEmpty { this.nickname }.ifEmpty { this.uin.toString() }
+
+fun BotIncomingMessage.toPreviewText() = segments.joinToString("")
 
 fun BotIncomingMessage.toModeledMessage(): Message = Message(
     scene = this.scene,

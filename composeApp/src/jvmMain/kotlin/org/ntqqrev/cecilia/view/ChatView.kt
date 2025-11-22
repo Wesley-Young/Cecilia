@@ -27,6 +27,7 @@ import io.github.composefluent.component.Text
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.filled.Pin
 import org.ntqqrev.acidify.event.MessageReceiveEvent
+import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
@@ -35,10 +36,7 @@ import org.ntqqrev.cecilia.component.message.GreyTip
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Conversation
 import org.ntqqrev.cecilia.model.Message
-import org.ntqqrev.cecilia.util.formatToConvenientTime
-import org.ntqqrev.cecilia.util.formatToShortTime
-import org.ntqqrev.cecilia.util.toModeledMessage
-import org.ntqqrev.cecilia.util.toShortPreview
+import org.ntqqrev.cecilia.util.*
 import java.time.Instant
 
 @Composable
@@ -49,6 +47,22 @@ fun ChatView() {
     val bot = LocalBot.current
     val conversations = remember { mutableStateMapOf<Conversation.Key, Conversation>() }
     var activeConversation by remember { mutableStateOf<Conversation.Key?>(null) }
+
+    suspend fun BotIncomingMessage.buildPreview() = buildString {
+        if (scene == MessageScene.GROUP) {
+            val groupMember = bot.getGroupMember(
+                groupUin = peerUin,
+                memberUin = senderUin
+            )
+            if (groupMember != null) {
+                append(groupMember.displayName)
+            } else {
+                append(senderUin)
+            }
+            append(": ")
+        }
+        append(toPreviewText())
+    }
 
     LaunchedEffect(bot) {
         val pinnedChats = bot.getPins()
@@ -77,23 +91,13 @@ fun ChatView() {
                         scene = event.message.scene,
                         peerUin = event.message.peerUin
                     )
-                    val existingConversation = conversations[conversationKey]
-                    val updatedConversation = existingConversation?.copy(
-                        lastMessageTime = event.message.timestamp,
-                        lastMessagePreview = event.message.toShortPreview(),
-                        unreadCount = if (activeConversation == conversationKey) 0
-                        else existingConversation.unreadCount + 1,
-                    ) ?: when (event.message.scene) {
+                    val prev = conversations[conversationKey] ?: when (event.message.scene) {
                         MessageScene.FRIEND -> {
                             val friend = bot.getFriend(event.message.peerUin)
                             friend?.let {
                                 Conversation.fromFriend(
                                     friend = it,
                                     isPinned = false
-                                ).copy(
-                                    lastMessageTime = event.message.timestamp,
-                                    lastMessagePreview = event.message.toShortPreview(),
-                                    unreadCount = 1,
                                 )
                             }
                         }
@@ -104,19 +108,19 @@ fun ChatView() {
                                 Conversation.fromGroup(
                                     group = it,
                                     isPinned = false
-                                ).copy(
-                                    lastMessageTime = event.message.timestamp,
-                                    lastMessagePreview = event.message.toShortPreview(),
-                                    unreadCount = 1,
                                 )
                             }
                         }
 
                         else -> null
                     }
-                    updatedConversation?.let {
-                        conversations[conversationKey] = it
-                    }
+                    val current = prev?.copy(
+                        lastMessageTime = event.message.timestamp,
+                        lastMessagePreview = event.message.buildPreview(),
+                        unreadCount = if (activeConversation == conversationKey) 0
+                        else prev.unreadCount + 1,
+                    )
+                    current?.let { conversations[conversationKey] = it }
                 }
             }
         }
