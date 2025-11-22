@@ -208,20 +208,20 @@ private fun ConversationDisplay(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    if (conversation.isPinned) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Filled.Pin,
-                            contentDescription = "置顶",
-                            modifier = Modifier.size(16.dp),
-                            tint = FluentTheme.colors.fillAccent.default
-                        )
-                    }
                     conversation.lastMessageTime?.let {
                         Text(
                             text = Instant.ofEpochSecond(it).formatToShortTime(),
                             style = FluentTheme.typography.caption,
                             color = FluentTheme.colors.text.text.secondary
+                        )
+                    }
+                    if (conversation.isPinned) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Filled.Pin,
+                            contentDescription = "置顶",
+                            modifier = Modifier.size(12.dp),
+                            tint = FluentTheme.colors.fillAccent.default
                         )
                     }
                 }
