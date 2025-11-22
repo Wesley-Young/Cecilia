@@ -1,13 +1,17 @@
 package org.ntqqrev.cecilia.view
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.Snapshot.Companion.withMutableSnapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -136,7 +140,11 @@ fun ChatView() {
                         isSelected = conversation.asKey == activeConversation,
                         onClick = {
                             withMutableSnapshot {
-                                activeConversation = conversation.asKey
+                                activeConversation = if (activeConversation != conversation.asKey) {
+                                    conversation.asKey
+                                } else {
+                                    null
+                                }
                                 conversations[conversation.asKey] = conversation.copy(unreadCount = 0)
                             }
                         }
@@ -170,19 +178,31 @@ private fun ConversationDisplay(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
     Box(
-        Modifier.onClick { onClick() }
+        Modifier.padding(start = 2.dp, top = 2.dp)
             .then(
                 if (isSelected) {
-                    Modifier.background(FluentTheme.colors.fillAccent.default.copy(alpha = 0.1f))
+                    Modifier.background(
+                        color = FluentTheme.colors.fillAccent.default.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                } else if (isHovered) {
+                    Modifier.background(
+                        color = Color(0f, 0f, 0f, 0.05f),
+                        shape = RoundedCornerShape(4.dp)
+                    )
                 } else {
                     Modifier
                 }
             )
+            .hoverable(interactionSource)
+            .onClick { onClick() }
     ) {
         Row(
             modifier = Modifier.fillMaxWidth()
-                .padding(12.dp),
+                .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AvatarImage(
