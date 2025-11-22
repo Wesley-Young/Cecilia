@@ -4,9 +4,11 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.Snapshot.Companion.withMutableSnapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -18,12 +20,14 @@ import io.github.composefluent.component.Icon
 import io.github.composefluent.component.Text
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.filled.Pin
+import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Conversation
 import org.ntqqrev.cecilia.util.formatToShortTime
+import org.ntqqrev.cecilia.util.toShortPreview
 import java.time.Instant
 
 @Composable
@@ -33,7 +37,7 @@ fun ChatView() {
 
     val bot = LocalBot.current
     val conversations = remember { mutableStateMapOf<Conversation.Key, Conversation>() }
-    val activeConversation = remember { mutableStateOf<Conversation.Key?>(null) }
+    var activeConversation by remember { mutableStateOf<Conversation.Key?>(null) }
 
     LaunchedEffect(bot) {
         val pinnedChats = bot.getPins()
@@ -49,8 +53,61 @@ fun ChatView() {
                     .map { group -> Conversation.fromGroup(group, isPinned = true) }
             )
         }
-        initialConversations.forEach { conversation ->
-            conversations[conversation.asKey] = conversation
+        withMutableSnapshot {
+            initialConversations.forEach { conversation ->
+                conversations[conversation.asKey] = conversation
+            }
+        }
+
+        bot.eventFlow.collect { event ->
+            if (event is MessageReceiveEvent) {
+                withMutableSnapshot {
+                    val conversationKey = Conversation.Key(
+                        scene = event.message.scene,
+                        peerUin = event.message.peerUin
+                    )
+                    val existingConversation = conversations[conversationKey]
+                    val updatedConversation = existingConversation?.copy(
+                        lastMessageTime = event.message.timestamp,
+                        lastMessagePreview = event.message.toShortPreview(),
+                        unreadCount = if (activeConversation == conversationKey) 0
+                        else existingConversation.unreadCount + 1,
+                    ) ?: when (event.message.scene) {
+                        MessageScene.FRIEND -> {
+                            val friend = bot.getFriend(event.message.peerUin)
+                            friend?.let {
+                                Conversation.fromFriend(
+                                    friend = it,
+                                    isPinned = false
+                                ).copy(
+                                    lastMessageTime = event.message.timestamp,
+                                    lastMessagePreview = event.message.toShortPreview(),
+                                    unreadCount = 1,
+                                )
+                            }
+                        }
+
+                        MessageScene.GROUP -> {
+                            val group = bot.getGroup(event.message.peerUin)
+                            group?.let {
+                                Conversation.fromGroup(
+                                    group = it,
+                                    isPinned = false
+                                ).copy(
+                                    lastMessageTime = event.message.timestamp,
+                                    lastMessagePreview = event.message.toShortPreview(),
+                                    unreadCount = 1,
+                                )
+                            }
+                        }
+
+                        else -> null
+                    }
+                    updatedConversation?.let {
+                        conversations[conversationKey] = it
+                    }
+                }
+            }
         }
     }
 
@@ -76,9 +133,12 @@ fun ChatView() {
                 conversations.values.sorted().forEach { conversation ->
                     ConversationDisplay(
                         conversation = conversation,
-                        isSelected = conversation.asKey == activeConversation.value,
+                        isSelected = conversation.asKey == activeConversation,
                         onClick = {
-                            activeConversation.value = conversation.asKey
+                            withMutableSnapshot {
+                                activeConversation = conversation.asKey
+                                conversations[conversation.asKey] = conversation.copy(unreadCount = 0)
+                            }
                         }
                     )
                 }
@@ -176,7 +236,7 @@ private fun ConversationDisplay(
                     conversation.lastMessagePreview?.let {
                         Text(
                             text = it,
-                            style = FluentTheme.typography.body,
+                            style = FluentTheme.typography.caption,
                             color = FluentTheme.colors.text.text.secondary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -197,6 +257,7 @@ private fun ConversationDisplay(
                                 text = conversation.unreadCount.toString(),
                                 fontSize = textSize,
                                 lineHeight = textSize,
+                                fontWeight = FontWeight.SemiBold,
                                 color = FluentTheme.colors.text.onAccent.primary,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.wrapContentSize(Alignment.Center)
