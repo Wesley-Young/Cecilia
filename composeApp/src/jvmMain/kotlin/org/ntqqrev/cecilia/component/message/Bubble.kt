@@ -4,8 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -23,6 +22,15 @@ fun Bubble(message: Message) {
     val bot = LocalBot.current
     val isSelf = message.senderUin == bot.uin
     val isGroup = message.scene == MessageScene.GROUP
+    var displayName by remember(message) { mutableStateOf(message.senderName) }
+
+    LaunchedEffect(bot, message) {
+        if (isGroup) {
+            val member = bot.getGroupMember(message.peerUin, message.senderUin)
+            displayName = member?.card?.ifEmpty { member.nickname }
+                ?: message.senderName.ifEmpty { message.senderUin.toString() }
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxWidth()
@@ -38,18 +46,16 @@ fun Bubble(message: Message) {
                 )
             }
 
-            Column(
-                horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+            Column(horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start,) {
+                val bubbleShape = remember { RoundedCornerShape(12.dp) }
                 if (isGroup) {
                     Text(
-                        text = message.senderName,
+                        text = displayName,
                         style = FluentTheme.typography.caption,
                         color = FluentTheme.colors.text.text.tertiary
                     )
                 }
-                val bubbleShape = remember { RoundedCornerShape(12.dp) }
+                Spacer(Modifier.height(2.dp))
                 Column(
                     Modifier
                         .elevation(
