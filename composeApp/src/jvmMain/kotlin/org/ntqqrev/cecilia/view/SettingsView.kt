@@ -59,7 +59,8 @@ fun SettingsView() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
+            .padding(end = 24.dp)
+            .padding(vertical = 24.dp)
     ) {
         val scrollState = rememberScrollState()
         Column(

@@ -118,15 +118,44 @@ fun ChatView() {
     Row(modifier = Modifier.fillMaxSize()) {
         Column(Modifier.width(leftPanelWidth)) {
             Layer {
-                Box(
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(
-                        text = "聊天",
-                        style = FluentTheme.typography.body
+                Column {
+                    val conversationListScrollState = rememberScrollState()
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = "聊天",
+                            fontSize = 16.sp,
+                        )
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .height(1.dp)
+                            .background(FluentTheme.colors.stroke.divider.default)
                     )
+                    Column(
+                        modifier = Modifier.fillMaxHeight()
+                            .verticalScroll(conversationListScrollState),
+                    ) {
+                        conversations.values.sorted().forEach { conversation ->
+                            ConversationDisplay(
+                                conversation = conversation,
+                                isSelected = conversation.asKey == activeConversation,
+                                onClick = {
+                                    withMutableSnapshot {
+                                        activeConversation = if (activeConversation != conversation.asKey) {
+                                            conversation.asKey
+                                        } else {
+                                            null
+                                        }
+                                        conversations[conversation.asKey] = conversation.copy(unreadCount = 0)
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
             }
             val conversationListScrollState = rememberScrollState()

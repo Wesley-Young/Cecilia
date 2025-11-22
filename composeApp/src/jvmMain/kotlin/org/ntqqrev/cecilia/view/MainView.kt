@@ -95,16 +95,11 @@ fun MainView() {
                 .padding(top = 8.dp)
                 .fillMaxHeight()
         ) {
-            Layer(
-                modifier = Modifier.fillMaxHeight(),
-                elevation = 8.dp
-            ) {
-                Crossfade(targetState = mainViewState) { state ->
-                    when (state) {
-                        MainViewState.Chat -> ChatView()
-                        MainViewState.Contacts -> {}
-                        MainViewState.Settings -> SettingsView()
-                    }
+            Crossfade(targetState = mainViewState) { state ->
+                when (state) {
+                    MainViewState.Chat -> ChatView()
+                    MainViewState.Contacts -> {}
+                    MainViewState.Settings -> SettingsView()
                 }
             }
         }
