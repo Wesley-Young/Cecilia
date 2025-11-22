@@ -35,9 +35,12 @@ import org.ntqqrev.cecilia.component.ConfigInitDialog
 import org.ntqqrev.cecilia.core.*
 import org.ntqqrev.cecilia.util.AppDataDirectoryProvider
 import org.ntqqrev.cecilia.util.WallpaperProvider
+import org.ntqqrev.cecilia.util.desaturate
 import org.ntqqrev.cecilia.view.LoginView
 import org.ntqqrev.cecilia.view.MainView
 import java.awt.Dimension
+import java.awt.event.WindowEvent
+import java.awt.event.WindowFocusListener
 import java.io.PrintStream
 import kotlin.io.path.div
 import kotlin.io.path.exists
@@ -61,6 +64,13 @@ fun appMain() = application {
         mutableStateOf(
             if (isConfigInitialized) Config.fromPath(configPath) else Config()
         )
+    }
+
+    val screenshot = remember {
+        WallpaperProvider.value.toComposeImageBitmap()
+    }
+    val screenshotDesaturated = remember {
+        WallpaperProvider.value.desaturate(0.5f).toComposeImageBitmap()
     }
 
     val scope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob()) }
@@ -130,10 +140,24 @@ fun appMain() = application {
             exitApplication()
         },
         title = "Cecilia",
-        state = rememberWindowState(size = DpSize(1000.dp, 750.dp)),
+        state = rememberWindowState(size = DpSize(1125.dp, 700.dp)),
     ) {
+        var isFocused by remember { mutableStateOf(window.isFocused) }
+
         LaunchedEffect(Unit) {
             window.minimumSize = Dimension(800, 600)
+        }
+
+        LaunchedEffect(Unit) {
+            window.addWindowFocusListener(object : WindowFocusListener {
+                override fun windowGainedFocus(e: WindowEvent) {
+                    isFocused = true
+                }
+
+                override fun windowLostFocus(e: WindowEvent) {
+                    isFocused = false
+                }
+            })
         }
 
         LaunchedEffect(bot) {
@@ -156,33 +180,43 @@ fun appMain() = application {
             LocalHttpClient provides httpClient,
         ) {
             FluentTheme {
-                ConfigInitDialog(
-                    visible = isConfigRefining || !isConfigInitialized,
-                    initialSignApiHttpProxy = config.signApiHttpProxy,
-                    initialSignApiUrl = config.signApiUrl,
-                    onConfirm = { signApiUrl, signApiHttpProxy ->
-                        config = config.copy(
-                            signApiUrl = signApiUrl,
-                            signApiHttpProxy = signApiHttpProxy
+                Mica(
+                    modifier = Modifier.fillMaxSize(),
+                    background = {
+                        Image(
+                            bitmap = if (isFocused) screenshot else screenshotDesaturated,
+                            contentDescription = null,
                         )
-                        config.writeToPath(configPath)
-                        isConfigInitialized = true
-                        if (isConfigRefining) {
-                            Runtime.getRuntime().exit(0)
-                        }
-                    },
-                    onDismissRequest = {
-                        isConfigRefining = false
-                    },
-                    isRefining = isConfigRefining,
-                )
-                App(
-                    bot = bot,
-                    loadError = loadError,
-                    showConfigInitDialog = {
-                        isConfigRefining = true
                     }
-                )
+                ) {
+                    ConfigInitDialog(
+                        visible = isConfigRefining || !isConfigInitialized,
+                        initialSignApiHttpProxy = config.signApiHttpProxy,
+                        initialSignApiUrl = config.signApiUrl,
+                        onConfirm = { signApiUrl, signApiHttpProxy ->
+                            config = config.copy(
+                                signApiUrl = signApiUrl,
+                                signApiHttpProxy = signApiHttpProxy
+                            )
+                            config.writeToPath(configPath)
+                            isConfigInitialized = true
+                            if (isConfigRefining) {
+                                Runtime.getRuntime().exit(0)
+                            }
+                        },
+                        onDismissRequest = {
+                            isConfigRefining = false
+                        },
+                        isRefining = isConfigRefining,
+                    )
+                    App(
+                        bot = bot,
+                        loadError = loadError,
+                        showConfigInitDialog = {
+                            isConfigRefining = true
+                        }
+                    )
+                }
             }
         }
     }
@@ -194,69 +228,59 @@ fun App(
     loadError: Throwable?,
     showConfigInitDialog: () -> Unit
 ) {
-    val screenshot = remember { WallpaperProvider.value.toComposeImageBitmap() }
     var isLoggedIn by remember { mutableStateOf(bot?.isLoggedIn ?: false) }
 
-    Mica(
-        modifier = Modifier.fillMaxSize(),
-        background = {
-            Image(
-                bitmap = screenshot,
-                contentDescription = null,
-            )
-        }
-    ) {
-        if (bot == null) {
-            Box(Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ProgressRing()
-                        if (loadError == null) {
-                            Text("正在初始化")
-                        } else {
-                            Text(
-                                "初始化失败：${loadError.localizedMessage}\n" +
-                                        "请检查配置文件，确保指定了有效的签名地址。"
-                            )
-                        }
-                    }
-                }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.BottomStart
+    if (bot == null) {
+        Box(Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Button(
-                        iconOnly = true,
-                        onClick = showConfigInitDialog
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "设置"
+                    ProgressRing()
+                    if (loadError == null) {
+                        Text("正在初始化")
+                    } else {
+                        Text(
+                            "初始化失败：${loadError.localizedMessage}\n" +
+                                    "请检查配置文件，确保指定了有效的签名地址。"
                         )
                     }
                 }
             }
-        } else {
-            CompositionLocalProvider(
-                LocalBot provides bot
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.BottomStart
             ) {
-                if (!isLoggedIn) {
-                    LoginView(
-                        onLoggedIn = { isLoggedIn = true },
-                        showConfigInitDialog = showConfigInitDialog
+                Button(
+                    iconOnly = true,
+                    onClick = showConfigInitDialog
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "设置"
                     )
-                } else {
-                    MainView()
                 }
+            }
+        }
+    } else {
+        CompositionLocalProvider(
+            LocalBot provides bot
+        ) {
+            if (!isLoggedIn) {
+                LoginView(
+                    onLoggedIn = { isLoggedIn = true },
+                    showConfigInitDialog = showConfigInitDialog
+                )
+            } else {
+                MainView()
             }
         }
     }
