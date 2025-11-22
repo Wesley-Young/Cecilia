@@ -1,6 +1,5 @@
 package org.ntqqrev.cecilia.view
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -8,7 +7,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.ExperimentalFluentApi
-import io.github.composefluent.background.Layer
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.Chat
@@ -95,12 +93,23 @@ fun MainView() {
                 .padding(top = 8.dp)
                 .fillMaxHeight()
         ) {
-            Crossfade(targetState = mainViewState) { state ->
-                when (state) {
-                    MainViewState.Chat -> ChatView()
-                    MainViewState.Contacts -> {}
-                    MainViewState.Settings -> SettingsView()
-                }
+            Box(
+                if (mainViewState == MainViewState.Chat) Modifier
+                else Modifier.size(0.dp)
+            ) {
+                ChatView()
+            }
+            Box(
+                if (mainViewState == MainViewState.Contacts) Modifier
+                else Modifier.size(0.dp)
+            ) {
+                // ContactsView()
+            }
+            Box(
+                if (mainViewState == MainViewState.Settings) Modifier
+                else Modifier.size(0.dp)
+            ) {
+                SettingsView()
             }
         }
     }
