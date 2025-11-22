@@ -33,8 +33,8 @@ import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.logging.SimpleLogHandler
 import org.ntqqrev.cecilia.component.ConfigInitDialog
 import org.ntqqrev.cecilia.core.*
+import org.ntqqrev.cecilia.util.AppDataDirectoryProvider
 import org.ntqqrev.cecilia.util.WallpaperProvider
-import org.ntqqrev.cecilia.util.getAppDataDirectory
 import org.ntqqrev.cecilia.view.LoginView
 import org.ntqqrev.cecilia.view.MainView
 import java.awt.Dimension
@@ -53,7 +53,7 @@ fun main() {
 fun appMain() = application {
     var loadError by remember { mutableStateOf<Throwable?>(null) }
 
-    val appDataDirectory = remember { getAppDataDirectory() }
+    val appDataDirectory = remember { AppDataDirectoryProvider.value }
     val configPath = appDataDirectory / "config.json"
     var isConfigInitialized by remember { mutableStateOf(configPath.exists()) }
     var isConfigRefining by remember { mutableStateOf(false) }
@@ -194,7 +194,7 @@ fun App(
     loadError: Throwable?,
     showConfigInitDialog: () -> Unit
 ) {
-    val screenshot = remember { WallpaperProvider.get().toComposeImageBitmap() }
+    val screenshot = remember { WallpaperProvider.value.toComposeImageBitmap() }
     var isLoggedIn by remember { mutableStateOf(bot?.isLoggedIn ?: false) }
 
     Mica(
