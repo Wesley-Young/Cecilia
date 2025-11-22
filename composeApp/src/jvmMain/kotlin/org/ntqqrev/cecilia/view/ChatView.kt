@@ -316,9 +316,11 @@ private fun ConversationDisplay(
 @Composable
 private fun ChatArea(conversation: Conversation) {
     val bot = LocalBot.current
-    val messageList = remember { mutableStateListOf<Message>() }
+    val messageList = remember(bot, conversation.asKey) {
+        mutableStateListOf<Message>()
+    }
 
-    LaunchedEffect(bot, conversation) {
+    LaunchedEffect(bot, conversation.asKey) {
         bot.eventFlow.collect { event ->
             if (event is MessageReceiveEvent) {
                 if (event.message.scene == conversation.scene &&
@@ -332,7 +334,7 @@ private fun ChatArea(conversation: Conversation) {
 
     Column {
         val scrollState = rememberScrollState()
-        Layer {
+        Layer(Modifier.padding(horizontal = 8.dp)) {
             Box(
                 modifier = Modifier.fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -345,11 +347,6 @@ private fun ChatArea(conversation: Conversation) {
                 )
             }
         }
-        Box(
-            modifier = Modifier.fillMaxWidth()
-                .height(1.dp)
-                .background(FluentTheme.colors.stroke.divider.default)
-        )
         Column(
             modifier = Modifier.fillMaxSize()
                 .verticalScroll(scrollState),
