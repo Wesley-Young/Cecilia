@@ -205,12 +205,25 @@ private fun ConversationDisplay(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AvatarImage(
-                uin = conversation.peerUin,
-                size = 48.dp,
-                isGroup = conversation.scene == MessageScene.GROUP,
-                quality = 100
-            )
+            Box(
+                modifier = Modifier.size(48.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                AvatarImage(
+                    uin = conversation.peerUin,
+                    size = 48.dp,
+                    isGroup = conversation.scene == MessageScene.GROUP,
+                    quality = 100
+                )
+                if (conversation.isPinned) {
+                    Icon(
+                        imageVector = Icons.Filled.Pin,
+                        contentDescription = "置顶",
+                        modifier = Modifier.size(12.dp),
+                        tint = FluentTheme.colors.fillAccent.default
+                    )
+                }
+            }
             Spacer(Modifier.width(12.dp))
             Column(
                 modifier = Modifier.fillMaxHeight(),
@@ -233,15 +246,6 @@ private fun ConversationDisplay(
                             text = Instant.ofEpochSecond(it).formatToShortTime(),
                             style = FluentTheme.typography.caption,
                             color = FluentTheme.colors.text.text.secondary
-                        )
-                    }
-                    if (conversation.isPinned) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Filled.Pin,
-                            contentDescription = "置顶",
-                            modifier = Modifier.size(12.dp),
-                            tint = FluentTheme.colors.fillAccent.default
                         )
                     }
                 }
