@@ -274,7 +274,7 @@ private fun ConversationDisplay(
                         ) {
                             val textSize = 11.sp
                             Text(
-                                text = conversation.unreadCount.toString(),
+                                text = conversation.unreadCount.coerceIn(1..99).toString(),
                                 fontSize = textSize,
                                 lineHeight = textSize,
                                 fontWeight = FontWeight.SemiBold,
