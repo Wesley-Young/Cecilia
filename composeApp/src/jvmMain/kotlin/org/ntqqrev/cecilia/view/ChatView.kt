@@ -125,6 +125,7 @@ fun ChatView() {
                     val conversationListScrollState = rememberScrollState()
                     Box(
                         modifier = Modifier.fillMaxWidth()
+                            .height(48.dp)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -316,8 +317,16 @@ private fun ConversationDisplay(
 @Composable
 private fun ChatArea(conversation: Conversation) {
     val bot = LocalBot.current
+    var groupMemberCount by remember(conversation.asKey) { mutableStateOf<Int?>(null) }
     val messageList = remember(bot, conversation.asKey) {
         mutableStateListOf<Message>()
+    }
+
+    LaunchedEffect(bot, conversation.asKey) {
+        if (conversation.scene == MessageScene.GROUP) {
+            val group = bot.getGroup(conversation.peerUin)
+            groupMemberCount = group?.memberCount
+        }
     }
 
     LaunchedEffect(bot, conversation.asKey) {
@@ -337,11 +346,17 @@ private fun ChatArea(conversation: Conversation) {
         Layer(Modifier.padding(horizontal = 8.dp)) {
             Box(
                 modifier = Modifier.fillMaxWidth()
+                    .height(48.dp)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
-                    text = conversation.displayName,
+                    text = buildString {
+                        append(conversation.displayName)
+                        if (groupMemberCount != null) {
+                            append(" ($groupMemberCount)")
+                        }
+                    },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
