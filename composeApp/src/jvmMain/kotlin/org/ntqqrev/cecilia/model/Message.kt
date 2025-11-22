@@ -10,4 +10,4 @@ data class Message(
     val senderName: String,
     val timestamp: Long,
     val elements: List<Element>,
-)
+) : MessageLike

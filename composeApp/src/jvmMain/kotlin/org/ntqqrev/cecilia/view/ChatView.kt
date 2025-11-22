@@ -26,6 +26,7 @@ import io.github.composefluent.component.Icon
 import io.github.composefluent.component.Text
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.filled.Pin
+import org.ntqqrev.acidify.event.MessageRecallEvent
 import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.MessageScene
@@ -36,6 +37,8 @@ import org.ntqqrev.cecilia.component.message.GreyTip
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Conversation
 import org.ntqqrev.cecilia.model.Message
+import org.ntqqrev.cecilia.model.MessageLike
+import org.ntqqrev.cecilia.model.Notification
 import org.ntqqrev.cecilia.util.*
 import java.time.Instant
 
@@ -326,8 +329,8 @@ private fun ConversationDisplay(
 private fun ChatArea(conversation: Conversation) {
     val bot = LocalBot.current
     var groupMemberCount by remember(conversation.asKey) { mutableStateOf<Int?>(null) }
-    val messageList = remember(bot, conversation.asKey) {
-        mutableStateListOf<Message>()
+    val messageLikeList = remember(bot, conversation.asKey) {
+        mutableStateListOf<MessageLike>()
     }
 
     val listState = rememberLazyListState()
@@ -337,6 +340,57 @@ private fun ChatArea(conversation: Conversation) {
         }
     }
     var isLoadingFurtherHistoryMessages by remember(conversation) { mutableStateOf(false) }
+
+    suspend fun resolveSubject(groupUin: Long, memberUin: Long): String {
+        return if (memberUin == bot.uin) {
+            "你"
+        } else {
+            val member = bot.getGroupMember(
+                groupUin = groupUin,
+                memberUin = memberUin
+            )
+            member?.displayName ?: memberUin.toString()
+        }
+    }
+
+    suspend fun MessageRecallEvent.buildRecallNotice(): String = when (this.scene) {
+        MessageScene.FRIEND -> buildString {
+            if (senderUin == bot.uin) {
+                append("你")
+            } else {
+                append("对方")
+            }
+            append("撤回了一条消息")
+        }
+
+        MessageScene.GROUP -> buildString {
+            // Subject
+            append(
+                resolveSubject(
+                    groupUin = peerUin,
+                    memberUin = operatorUin
+                )
+            )
+            // Action
+            append("撤回了")
+            // Optional - sender of the message, if sender != operator
+            if (operatorUin != senderUin) {
+                append(
+                    resolveSubject(
+                        groupUin = peerUin,
+                        memberUin = senderUin
+                    )
+                )
+                append("的")
+            }
+            append("一条消息")
+            displaySuffix.takeIf { it.isNotEmpty() }?.let {
+                append("，$it")
+            }
+        }
+
+        else -> "该消息已被撤回"
+    }
 
     LaunchedEffect(bot, conversation.asKey) {
         if (conversation.scene == MessageScene.GROUP) {
@@ -358,24 +412,39 @@ private fun ChatArea(conversation: Conversation) {
             ).messages
 
             else -> emptyList()
-        }.map { it.toModeledMessage() }
-        messageList.addAll(index = 0, elements = messages)
+        }.map { it.toModel() }
+        messageLikeList.addAll(index = 0, elements = messages)
 
         bot.eventFlow.collect { event ->
-            if (event is MessageReceiveEvent) {
-                if (event.message.scene == conversation.scene &&
-                    event.message.peerUin == conversation.peerUin
-                ) {
-                    messageList.add(event.message.toModeledMessage())
+            when (event) {
+                is MessageReceiveEvent -> {
+                    if (event.message.scene == conversation.scene &&
+                        event.message.peerUin == conversation.peerUin
+                    ) {
+                        messageLikeList.add(event.message.toModel())
+                    }
+                }
+
+                is MessageRecallEvent -> {
+                    // Search from end for better performance
+                    withMutableSnapshot {
+                        for (i in messageLikeList.size - 1 downTo 0) {
+                            val messageLike = messageLikeList[i]
+                            if ((messageLike as? Message)?.sequence == event.messageSeq) {
+                                messageLikeList[i] = Notification(event.buildRecallNotice())
+                                break
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
     LaunchedEffect(lastVisibleItemIndex) {
-        val oldestMessage = messageList.firstOrNull()
+        val oldestMessage = messageLikeList.firstOrNull { it is Message } as Message?
         if (
-            lastVisibleItemIndex == messageList.size - 1 &&
+            lastVisibleItemIndex == messageLikeList.size - 1 &&
             !isLoadingFurtherHistoryMessages &&
             oldestMessage != null &&
             oldestMessage.sequence > 1
@@ -396,9 +465,9 @@ private fun ChatArea(conversation: Conversation) {
                 ).messages
 
                 else -> emptyList()
-            }.map { it.toModeledMessage() }
+            }.map { it.toModel() }
             if (furtherMessages.isNotEmpty()) {
-                messageList.addAll(index = 0, elements = furtherMessages)
+                messageLikeList.addAll(index = 0, elements = furtherMessages)
                 isLoadingFurtherHistoryMessages = false
             } // otherwise reached the end of history, no longer load more
         }
@@ -436,29 +505,29 @@ private fun ChatArea(conversation: Conversation) {
             state = listState,
             reverseLayout = true,
         ) {
-            items(
-                count = messageList.size,
-                key = { index ->
-                    val message = messageList[messageList.size - index - 1]
-                    "${message.scene}-${message.peerUin}-${message.sequence}"
-                }
-            ) { index ->
-                val currentMessage = messageList[messageList.size - index - 1]
-                Bubble(message = currentMessage)
+            items(messageLikeList.size) { index ->
+                when (val currentMessageLike = messageLikeList[messageLikeList.size - index - 1]) {
+                    is Message -> {
+                        Bubble(message = currentMessageLike)
 
-                // compare with prev timestamp
-                val shouldShowTimeTip = if (index + 1 < messageList.size) {
-                    val previousMessage = messageList[messageList.size - index - 2]
-                    currentMessage.timestamp - previousMessage.timestamp >= 300
-                } else {
-                    true
-                }
-                if (shouldShowTimeTip) {
-                    GreyTip(
-                        content = Instant.ofEpochSecond(currentMessage.timestamp)
-                            .formatToConvenientTime()
-                    )
-                    Spacer(Modifier.height(16.dp))
+                        // compare with prev timestamp
+                        val previousMessage = messageLikeList.slice(0..messageLikeList.size - index - 2)
+                            .lastOrNull { it is Message } as Message?
+                        val shouldShowTimeTip = previousMessage?.let {
+                            currentMessageLike.timestamp - previousMessage.timestamp >= 300
+                        } ?: true
+                        if (shouldShowTimeTip) {
+                            GreyTip(
+                                content = Instant.ofEpochSecond(currentMessageLike.timestamp)
+                                    .formatToConvenientTime()
+                            )
+                            Spacer(Modifier.height(16.dp))
+                        }
+                    }
+
+                    is Notification -> {
+                        GreyTip(content = currentMessageLike.content)
+                    }
                 }
             }
         }
