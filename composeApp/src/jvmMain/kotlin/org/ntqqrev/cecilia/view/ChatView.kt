@@ -28,9 +28,12 @@ import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
+import org.ntqqrev.cecilia.component.message.Bubble
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Conversation
+import org.ntqqrev.cecilia.model.Message
 import org.ntqqrev.cecilia.util.formatToShortTime
+import org.ntqqrev.cecilia.util.toModeledMessage
 import org.ntqqrev.cecilia.util.toShortPreview
 import java.time.Instant
 
@@ -158,28 +161,6 @@ fun ChatView() {
                     }
                 }
             }
-            val conversationListScrollState = rememberScrollState()
-            Column(
-                modifier = Modifier.fillMaxHeight()
-                    .verticalScroll(conversationListScrollState),
-            ) {
-                conversations.values.sorted().forEach { conversation ->
-                    ConversationDisplay(
-                        conversation = conversation,
-                        isSelected = conversation.asKey == activeConversation,
-                        onClick = {
-                            withMutableSnapshot {
-                                activeConversation = if (activeConversation != conversation.asKey) {
-                                    conversation.asKey
-                                } else {
-                                    null
-                                }
-                                conversations[conversation.asKey] = conversation.copy(unreadCount = 0)
-                            }
-                        }
-                    )
-                }
-            }
         }
 
         DraggableDivider(
@@ -191,11 +172,17 @@ fun ChatView() {
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "选择一个会话开始聊天",
-                style = FluentTheme.typography.bodyLarge,
-                color = FluentTheme.colors.text.text.secondary
-            )
+            if (activeConversation != null) {
+                ChatArea(
+                    conversation = conversations[activeConversation]!!
+                )
+            } else {
+                Text(
+                    text = "选择一个会话开始聊天",
+                    style = FluentTheme.typography.bodyLarge,
+                    color = FluentTheme.colors.text.text.secondary
+                )
+            }
         }
     }
 }
@@ -321,6 +308,55 @@ private fun ConversationDisplay(
                         Box(Modifier.height(20.dp))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatArea(conversation: Conversation) {
+    val bot = LocalBot.current
+    val messageList = remember { mutableStateListOf<Message>() }
+
+    LaunchedEffect(bot, conversation) {
+        bot.eventFlow.collect { event ->
+            if (event is MessageReceiveEvent) {
+                if (event.message.scene == conversation.scene &&
+                    event.message.peerUin == conversation.peerUin
+                ) {
+                    messageList.add(event.message.toModeledMessage())
+                }
+            }
+        }
+    }
+
+    Column {
+        val scrollState = rememberScrollState()
+        Layer {
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = conversation.displayName,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+        Box(
+            modifier = Modifier.fillMaxWidth()
+                .height(1.dp)
+                .background(FluentTheme.colors.stroke.divider.default)
+        )
+        Column(
+            modifier = Modifier.fillMaxSize()
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            messageList.forEach { message ->
+                Bubble(message)
             }
         }
     }
