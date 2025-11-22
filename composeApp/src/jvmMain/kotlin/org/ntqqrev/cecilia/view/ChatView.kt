@@ -4,6 +4,8 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -322,6 +324,14 @@ private fun ChatArea(conversation: Conversation) {
         mutableStateListOf<Message>()
     }
 
+    val listState = rememberLazyListState()
+    val lastVisibleItemIndex by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex + listState.layoutInfo.visibleItemsInfo.size - 1
+        }
+    }
+    var isLoadingFurtherHistoryMessages by remember(conversation) { mutableStateOf(false) }
+
     LaunchedEffect(bot, conversation.asKey) {
         if (conversation.scene == MessageScene.GROUP) {
             val group = bot.getGroup(conversation.peerUin)
@@ -330,6 +340,21 @@ private fun ChatArea(conversation: Conversation) {
     }
 
     LaunchedEffect(bot, conversation.asKey) {
+        val messages = when (conversation.scene) {
+            MessageScene.FRIEND -> bot.getFriendHistoryMessages(
+                friendUin = conversation.peerUin,
+                limit = 30,
+            ).messages
+
+            MessageScene.GROUP -> bot.getGroupHistoryMessages(
+                groupUin = conversation.peerUin,
+                limit = 30,
+            ).messages
+
+            else -> emptyList()
+        }.map { it.toModeledMessage() }
+        messageList.addAll(index = 0, elements = messages)
+
         bot.eventFlow.collect { event ->
             if (event is MessageReceiveEvent) {
                 if (event.message.scene == conversation.scene &&
@@ -341,8 +366,46 @@ private fun ChatArea(conversation: Conversation) {
         }
     }
 
+    LaunchedEffect(lastVisibleItemIndex) {
+        val oldestMessage = messageList.firstOrNull()
+        if (
+            lastVisibleItemIndex == messageList.size - 1 &&
+            !isLoadingFurtherHistoryMessages &&
+            oldestMessage != null &&
+            oldestMessage.sequence > 1
+        ) {
+            isLoadingFurtherHistoryMessages = true
+
+            val furtherMessages = when (conversation.scene) {
+                MessageScene.FRIEND -> bot.getFriendHistoryMessages(
+                    friendUin = conversation.peerUin,
+                    startSequence = oldestMessage.sequence - 1,
+                    limit = 30,
+                ).messages
+
+                MessageScene.GROUP -> bot.getGroupHistoryMessages(
+                    groupUin = conversation.peerUin,
+                    startSequence = oldestMessage.sequence - 1,
+                    limit = 30,
+                ).messages
+
+                else -> emptyList()
+            }.map { it.toModeledMessage() }
+            if (furtherMessages.isNotEmpty()) {
+                messageList.addAll(index = 0, elements = furtherMessages)
+                isLoadingFurtherHistoryMessages = false
+            } // otherwise reached the end of history, no longer load more
+        }
+    }
+
+    LaunchedEffect(isLoadingFurtherHistoryMessages) {
+        if (listState.firstVisibleItemIndex > 0 && !isLoadingFurtherHistoryMessages) {
+            // make previously loaded history messages visible
+            listState.scrollToItem(listState.firstVisibleItemIndex + 1)
+        }
+    }
+
     Column {
-        val scrollState = rememberScrollState()
         Layer(Modifier.padding(horizontal = 8.dp)) {
             Box(
                 modifier = Modifier.fillMaxWidth()
@@ -362,13 +425,19 @@ private fun ChatArea(conversation: Conversation) {
                 )
             }
         }
-        Column(
-            modifier = Modifier.fillMaxSize()
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.Bottom
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            reverseLayout = true,
         ) {
-            messageList.forEach { message ->
-                Bubble(message)
+            items(
+                count = messageList.size,
+                key = { index ->
+                    val message = messageList[messageList.size - index - 1]
+                    "${message.scene}-${message.peerUin}-${message.sequence}"
+                }
+            ) { index ->
+                Bubble(message = messageList[messageList.size - index - 1])
             }
         }
     }
