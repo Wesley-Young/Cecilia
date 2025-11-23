@@ -142,7 +142,11 @@ fun appMain() = application {
         onCloseRequest = {
             if (bot?.isLoggedIn ?: false) {
                 runCatching {
-                    runBlocking { bot?.offline() }
+                    runBlocking {
+                        withTimeout(2000L) {
+                            bot?.offline()
+                        }
+                    }
                 }
             }
             exitApplication()
