@@ -177,7 +177,8 @@ fun ChatView() {
 
         DraggableDivider(
             currentWidth = leftPanelWidth,
-            onWidthChange = { leftPanelWidth = it }
+            onWidthChange = { leftPanelWidth = it },
+            showDivider = false,
         )
 
         Box(
@@ -400,20 +401,22 @@ private fun ChatArea(conversation: Conversation) {
     }
 
     LaunchedEffect(bot, conversation.asKey) {
-        val messages = when (conversation.scene) {
-            MessageScene.FRIEND -> bot.getFriendHistoryMessages(
-                friendUin = conversation.peerUin,
-                limit = 30,
-            ).messages
+        runCatching {
+            val messages = when (conversation.scene) {
+                MessageScene.FRIEND -> bot.getFriendHistoryMessages(
+                    friendUin = conversation.peerUin,
+                    limit = 30,
+                ).messages
 
-            MessageScene.GROUP -> bot.getGroupHistoryMessages(
-                groupUin = conversation.peerUin,
-                limit = 30,
-            ).messages
+                MessageScene.GROUP -> bot.getGroupHistoryMessages(
+                    groupUin = conversation.peerUin,
+                    limit = 30,
+                ).messages
 
-            else -> emptyList()
-        }.map { it.toModel() }
-        messageLikeList.addAll(index = 0, elements = messages)
+                else -> emptyList()
+            }.map { it.toModel() }
+            messageLikeList.addAll(index = 0, elements = messages)
+        }
 
         bot.eventFlow.collect { event ->
             when (event) {
@@ -451,25 +454,27 @@ private fun ChatArea(conversation: Conversation) {
         ) {
             isLoadingFurtherHistoryMessages = true
 
-            val furtherMessages = when (conversation.scene) {
-                MessageScene.FRIEND -> bot.getFriendHistoryMessages(
-                    friendUin = conversation.peerUin,
-                    startSequence = oldestMessage.sequence - 1,
-                    limit = 30,
-                ).messages
+            runCatching {
+                val furtherMessages = when (conversation.scene) {
+                    MessageScene.FRIEND -> bot.getFriendHistoryMessages(
+                        friendUin = conversation.peerUin,
+                        startSequence = oldestMessage.sequence - 1,
+                        limit = 30,
+                    ).messages
 
-                MessageScene.GROUP -> bot.getGroupHistoryMessages(
-                    groupUin = conversation.peerUin,
-                    startSequence = oldestMessage.sequence - 1,
-                    limit = 30,
-                ).messages
+                    MessageScene.GROUP -> bot.getGroupHistoryMessages(
+                        groupUin = conversation.peerUin,
+                        startSequence = oldestMessage.sequence - 1,
+                        limit = 30,
+                    ).messages
 
-                else -> emptyList()
-            }.map { it.toModel() }
-            if (furtherMessages.isNotEmpty()) {
-                messageLikeList.addAll(index = 0, elements = furtherMessages)
-                isLoadingFurtherHistoryMessages = false
-            } // otherwise reached the end of history, no longer load more
+                    else -> emptyList()
+                }.map { it.toModel() }
+                if (furtherMessages.isNotEmpty()) {
+                    messageLikeList.addAll(index = 0, elements = furtherMessages)
+                    isLoadingFurtherHistoryMessages = false
+                } // otherwise reached the end of history, no longer load more
+            }
         }
     }
 

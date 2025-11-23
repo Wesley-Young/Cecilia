@@ -22,6 +22,7 @@ fun DraggableDivider(
     minWidth: Dp = 200.dp,
     maxWidth: Dp = 600.dp,
     dividerWidth: Dp = 3.dp,
+    showDivider: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val currentWidthState = rememberUpdatedState(currentWidth)
@@ -50,11 +51,13 @@ fun DraggableDivider(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                Modifier.fillMaxHeight()
-                    .width(1.dp)
-                    .background(FluentTheme.colors.stroke.divider.default)
-            )
+            if (showDivider) {
+                Box(
+                    Modifier.fillMaxHeight()
+                        .width(1.dp)
+                        .background(FluentTheme.colors.stroke.divider.default)
+                )
+            }
         }
     }
 }
