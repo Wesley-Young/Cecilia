@@ -489,6 +489,13 @@ private fun ChatArea(conversation: Conversation) {
         }
     }
 
+    LaunchedEffect(messageLikeList.size) {
+        // auto scroll to bottom when new message arrives
+        if (listState.firstVisibleItemIndex <= 2) {
+            listState.animateScrollToItem(0)
+        }
+    }
+
     Column {
         Layer(Modifier.padding(horizontal = 8.dp)) {
             Box(
@@ -514,7 +521,15 @@ private fun ChatArea(conversation: Conversation) {
             state = listState,
             reverseLayout = true,
         ) {
-            items(messageLikeList.size) { index ->
+            items(
+                count = messageLikeList.size,
+                key = { index ->
+                    when (val messageLike = messageLikeList[messageLikeList.size - index - 1]) {
+                        is Message -> "message-${messageLike.sequence}"
+                        is Notification -> "notification-$index-${messageLike.hashCode()}"
+                    }
+                }
+            ) { index ->
                 if (index == 0) {
                     // Additional spacing at the bottom
                     Spacer(Modifier.height(16.dp))
