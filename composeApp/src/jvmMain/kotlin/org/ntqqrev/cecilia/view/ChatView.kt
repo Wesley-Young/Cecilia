@@ -404,7 +404,7 @@ private fun ChatArea(conversation: Conversation) {
 
     LaunchedEffect(bot, conversation.asKey) {
         runCatching {
-            val messages = when (conversation.scene) {
+            when (conversation.scene) {
                 MessageScene.FRIEND -> bot.getFriendHistoryMessages(
                     friendUin = conversation.peerUin,
                     limit = 30,
@@ -417,7 +417,8 @@ private fun ChatArea(conversation: Conversation) {
 
                 else -> emptyList()
             }.map { it.toModel() }
-            messageLikeList.addAll(index = 0, elements = messages)
+        }.onSuccess { messageLikes ->
+            messageLikeList.addAll(index = 0, elements = messageLikes)
         }
 
         bot.eventFlow.collect { event ->
@@ -457,7 +458,7 @@ private fun ChatArea(conversation: Conversation) {
             isLoadingFurtherHistoryMessages = true
 
             runCatching {
-                val furtherMessages = when (conversation.scene) {
+                when (conversation.scene) {
                     MessageScene.FRIEND -> bot.getFriendHistoryMessages(
                         friendUin = conversation.peerUin,
                         startSequence = oldestMessage.sequence - 1,
@@ -472,8 +473,9 @@ private fun ChatArea(conversation: Conversation) {
 
                     else -> emptyList()
                 }.map { it.toModel() }
-                if (furtherMessages.isNotEmpty()) {
-                    messageLikeList.addAll(index = 0, elements = furtherMessages)
+            }.onSuccess { furtherMessageLikes ->
+                if (furtherMessageLikes.isNotEmpty()) {
+                    messageLikeList.addAll(index = 0, elements = furtherMessageLikes)
                     isLoadingFurtherHistoryMessages = false
                 } // otherwise reached the end of history, no longer load more
             }
