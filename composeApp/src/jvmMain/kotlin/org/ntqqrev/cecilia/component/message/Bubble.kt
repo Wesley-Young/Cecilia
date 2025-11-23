@@ -54,7 +54,6 @@ fun Bubble(message: Message) {
             }
 
             Column(horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start) {
-                val bubbleShape = remember { RoundedCornerShape(12.dp) }
                 if (isGroup) {
                     Text(
                         text = displayName,
@@ -62,71 +61,15 @@ fun Bubble(message: Message) {
                         color = FluentTheme.colors.text.text.tertiary
                     )
                 }
-                Spacer(Modifier.height(2.dp))
-                Column(
-                    Modifier
-                        .elevation(
-                            elevation = 4.dp,
-                            shape = bubbleShape
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = FluentTheme.colors.stroke.divider.default,
-                            shape = bubbleShape
-                        )
-                        .background(
-                            color = if (isSelf) {
-                                FluentTheme.colors.fillAccent.secondary
-                            } else {
-                                FluentTheme.colors.background.layer.default
-                            },
-                            shape = bubbleShape
-                        )
-                        .padding(12.dp)
-                ) {
-                    message.elements.forEach { e ->
-                        when (e) {
-                            is Element.RichText -> {
-                                Text(
-                                    text = e.content,
-                                    color = if (isSelf) {
-                                        FluentTheme.colors.text.onAccent.primary
-                                    } else {
-                                        FluentTheme.colors.text.text.primary
-                                    },
-                                    inlineContent = LocalEmojiImages.current
-                                        ?.map { (k, v) ->
-                                            "face/$k" to InlineTextContent(
-                                                Placeholder(
-                                                    width = 16.sp,
-                                                    height = 16.sp,
-                                                    PlaceholderVerticalAlign.Center
-                                                )
-                                            ) {
-                                                if (v.apng != null) {
-                                                    AnimatedImage(
-                                                        frames = v.apng,
-                                                        contentDescription = "表情 $k",
-                                                        modifier = Modifier.size(16.sp.value.dp)
-                                                    )
-                                                } else {
-                                                    Image(
-                                                        bitmap = v.png,
-                                                        contentDescription = "表情 $k",
-                                                        modifier = Modifier.size(16.sp.value.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        ?.associate { it }
-                                        ?: emptyMap()
-                                )
-                            }
+                when (message.elements.size) {
+                    1 if (message.elements[0] is Element.Image) -> {
+                        Spacer(Modifier.height(4.dp))
+                        MessageImage(image = message.elements[0] as Element.Image)
+                    }
 
-                            is Element.Image -> {
-                                Text(e.summary)
-                            }
-                        }
+                    else -> {
+                        Spacer(Modifier.height(2.dp))
+                        BubbleBody(message = message, isSelf = isSelf)
                     }
                 }
             }
@@ -137,6 +80,80 @@ fun Bubble(message: Message) {
                     uin = message.senderUin,
                     size = 32.dp,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BubbleBody(
+    message: Message,
+    isSelf: Boolean,
+) {
+    val bubbleShape = remember { RoundedCornerShape(12.dp) }
+    Column(
+        Modifier
+            .elevation(
+                elevation = 4.dp,
+                shape = bubbleShape
+            )
+            .border(
+                width = 1.dp,
+                color = FluentTheme.colors.stroke.divider.default,
+                shape = bubbleShape
+            )
+            .background(
+                color = if (isSelf) {
+                    FluentTheme.colors.fillAccent.secondary
+                } else {
+                    FluentTheme.colors.background.layer.default
+                },
+                shape = bubbleShape
+            )
+            .padding(12.dp)
+    ) {
+        message.elements.forEach { e ->
+            when (e) {
+                is Element.RichText -> {
+                    Text(
+                        text = e.content,
+                        color = if (isSelf) {
+                            FluentTheme.colors.text.onAccent.primary
+                        } else {
+                            FluentTheme.colors.text.text.primary
+                        },
+                        inlineContent = LocalEmojiImages.current
+                            ?.map { (k, v) ->
+                                "face/$k" to InlineTextContent(
+                                    Placeholder(
+                                        width = 16.sp,
+                                        height = 16.sp,
+                                        PlaceholderVerticalAlign.Center
+                                    )
+                                ) {
+                                    if (v.apng != null) {
+                                        AnimatedImage(
+                                            frames = v.apng,
+                                            contentDescription = "表情 $k",
+                                            modifier = Modifier.size(16.sp.value.dp)
+                                        )
+                                    } else {
+                                        Image(
+                                            bitmap = v.png,
+                                            contentDescription = "表情 $k",
+                                            modifier = Modifier.size(16.sp.value.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            ?.associate { it }
+                            ?: emptyMap()
+                    )
+                }
+
+                is Element.Image -> {
+                    MessageImage(image = e)
+                }
             }
         }
     }

@@ -79,6 +79,7 @@ fun appMain() = application {
 
     val httpClient = remember { HttpClient() }
     val avatarCache = remember { AvatarCache() }
+    val mediaCache = remember { MediaCache() }
 
     val scaleFactor = config.displayScale
     val originalDensity = LocalDensity.current
@@ -185,6 +186,7 @@ fun appMain() = application {
             },
             LocalEmojiImages provides emojiImages,
             LocalAvatarCache provides avatarCache,
+            LocalMediaCache provides mediaCache,
             LocalHttpClient provides httpClient,
         ) {
             FluentTheme {

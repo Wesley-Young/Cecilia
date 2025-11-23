@@ -23,6 +23,10 @@ val LocalAvatarCache = staticCompositionLocalOf<AvatarCache> {
     error("No AvatarCache provided")
 }
 
+val LocalMediaCache = staticCompositionLocalOf<MediaCache> {
+    error("No MediaCache provided")
+}
+
 val LocalHttpClient = staticCompositionLocalOf<HttpClient> {
     error("No HttpClient provided")
 }
