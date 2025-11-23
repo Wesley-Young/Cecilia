@@ -6,6 +6,7 @@ import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroupMember
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
+import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.Message
 import org.ntqqrev.cecilia.model.MessageLike
@@ -67,6 +68,19 @@ fun BotIncomingMessage.toModel(): MessageLike = if (senderUin != 0L) {
                                 width = it.width,
                                 height = it.height,
                                 subType = it.subType,
+                                summary = it.summary,
+                            )
+                        )
+                    }
+
+                    is BotIncomingSegment.MarketFace -> {
+                        flush()
+                        add(
+                            Element.Image(
+                                fileId = it.url,
+                                width = 300,
+                                height = 300,
+                                subType = ImageSubType.STICKER,
                                 summary = it.summary,
                             )
                         )
