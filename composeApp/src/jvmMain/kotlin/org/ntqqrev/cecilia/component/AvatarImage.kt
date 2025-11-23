@@ -45,24 +45,22 @@ fun AvatarImage(
             return@LaunchedEffect
         }
 
-        launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    val url = if (isGroup) {
-                        "https://p.qlogo.cn/gh/$uin/$uin/$quality"
-                    } else {
-                        "https://q1.qlogo.cn/g?b=qq&nk=$uin&s=$quality"
-                    }
-                    val response = httpClient.get(url)
-                    val imageBytes = response.readRawBytes()
-                    Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
+        runCatching {
+            withContext(Dispatchers.IO) {
+                val url = if (isGroup) {
+                    "https://p.qlogo.cn/gh/$uin/$uin/$quality"
+                } else {
+                    "https://q1.qlogo.cn/g?b=qq&nk=$uin&s=$quality"
                 }
-            }.onSuccess { bitmap ->
-                avatarCache.put(uin, isGroup, quality, bitmap)
-                avatarBitmap = bitmap
+                val response = httpClient.get(url)
+                val imageBytes = response.readRawBytes()
+                Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
             }
-            isLoading = false
+        }.onSuccess { bitmap ->
+            avatarCache.put(uin, isGroup, quality, bitmap)
+            avatarBitmap = bitmap
         }
+        isLoading = false
     }
 
     Box {
