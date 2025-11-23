@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -25,6 +26,7 @@ import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.Settings
 import io.ktor.client.*
 import kotlinx.coroutines.*
+import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.common.AppInfo
 import org.ntqqrev.acidify.common.SessionStore
@@ -36,6 +38,7 @@ import org.ntqqrev.cecilia.core.*
 import org.ntqqrev.cecilia.util.AppDataDirectoryProvider
 import org.ntqqrev.cecilia.util.WallpaperProvider
 import org.ntqqrev.cecilia.util.desaturate
+import org.ntqqrev.cecilia.util.isNumeric
 import org.ntqqrev.cecilia.view.LoginView
 import org.ntqqrev.cecilia.view.MainView
 import java.awt.Dimension
@@ -75,6 +78,7 @@ fun appMain() = application {
 
     val scope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob()) }
     var bot by remember { mutableStateOf<Bot?>(null) }
+    var emojiImages by remember { mutableStateOf<Map<String, ImageBitmap>?>(null) }
 
     val httpClient = remember { HttpClient() }
     val avatarCache = remember { AvatarCache() }
@@ -82,6 +86,25 @@ fun appMain() = application {
     val scaleFactor = config.displayScale
     val originalDensity = LocalDensity.current
     val scaledDensity = Density(originalDensity.density * scaleFactor)
+
+    LaunchedEffect(Unit) {
+        // deferred loading of emoji images
+        val fallback = this::class.java.classLoader
+            .getResourceAsStream("assets/default.png")
+            .readBytes()
+        emojiImages = FaceEntry.all
+            .filter { it.emojiId.isNumeric() }
+            .associate {
+                "face/${it.emojiId}" to Image.makeFromEncoded(
+                    this::class.java.classLoader
+                        .getResourceAsStream(
+                            "assets/qq_emoji/${it.emojiId}/png/${it.emojiId}.png"
+                        )
+                        ?.readBytes()
+                        ?: fallback
+                ).toComposeImageBitmap()
+            }
+    }
 
     LaunchedEffect(isConfigInitialized) {
         if (!isConfigInitialized) {
@@ -176,6 +199,7 @@ fun appMain() = application {
                 config = newConfig
                 config.writeToPath(configPath)
             },
+            LocalEmojiImages provides emojiImages,
             LocalAvatarCache provides avatarCache,
             LocalHttpClient provides httpClient,
         ) {

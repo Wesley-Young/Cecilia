@@ -6,3 +6,5 @@ fun String.isValidUrl(): Boolean = runCatching {
     val urlPattern = Regex("^https?://[a-zA-Z0-9.-]+(:[0-9]+)?(/.*)?$")
     urlPattern.matches(this)
 }.getOrElse { false }
+
+fun String.isNumeric(): Boolean = this.all { it.isDigit() } && this.isNotEmpty()

@@ -1,19 +1,25 @@
 package org.ntqqrev.cecilia.component.message
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.elevation
 import io.github.composefluent.component.Text
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.core.LocalBot
+import org.ntqqrev.cecilia.core.LocalEmojiImages
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.Message
 import org.ntqqrev.cecilia.util.displayName
@@ -79,14 +85,29 @@ fun Bubble(message: Message) {
                 ) {
                     message.elements.forEach { e ->
                         when (e) {
-                            is Element.Text -> {
+                            is Element.RichText -> {
                                 Text(
                                     text = e.content,
                                     color = if (isSelf) {
                                         FluentTheme.colors.text.onAccent.primary
                                     } else {
                                         FluentTheme.colors.text.text.primary
-                                    }
+                                    },
+                                    inlineContent = LocalEmojiImages.current?.mapValues { (_, v) ->
+                                        InlineTextContent(
+                                            Placeholder(
+                                                width = 16.sp,
+                                                height = 16.sp,
+                                                PlaceholderVerticalAlign.Center
+                                            )
+                                        ) {
+                                            Image(
+                                                bitmap = v,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    } ?: emptyMap()
                                 )
                             }
 

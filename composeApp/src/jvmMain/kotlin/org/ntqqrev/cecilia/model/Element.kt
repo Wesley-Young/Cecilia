@@ -1,10 +1,11 @@
 package org.ntqqrev.cecilia.model
 
+import androidx.compose.ui.text.AnnotatedString
 import org.ntqqrev.acidify.message.ImageSubType
 
 sealed class Element {
-    data class Text(
-        val content: String
+    data class RichText(
+        val content: AnnotatedString
     ) : Element()
 
     data class Image(
