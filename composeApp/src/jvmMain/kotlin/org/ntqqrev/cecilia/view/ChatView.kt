@@ -530,10 +530,6 @@ private fun ChatArea(conversation: Conversation) {
                     }
                 }
             ) { index ->
-                if (index == 0) {
-                    // Additional spacing at the bottom
-                    Spacer(Modifier.height(16.dp))
-                }
                 when (val currentMessageLike = messageLikeList[messageLikeList.size - index - 1]) {
                     is Message -> {
                         Bubble(message = currentMessageLike)
