@@ -26,7 +26,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.cio)
+            implementation(libs.ktor.client.apache5)
             implementation(libs.qrcode.kotlin)
             implementation(libs.acidify.core)
             implementation(libs.pinyin4j)
