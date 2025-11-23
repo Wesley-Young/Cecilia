@@ -152,7 +152,9 @@ fun ChatView() {
                     )
                     Column(
                         modifier = Modifier.fillMaxHeight()
+                            .padding(top = 4.dp)
                             .verticalScroll(conversationListScrollState),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         conversations.values.sorted().forEach { conversation ->
                             ConversationDisplay(
@@ -210,7 +212,7 @@ private fun ConversationDisplay(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     Box(
-        Modifier.padding(start = 2.dp, top = 2.dp)
+        Modifier.padding(horizontal = 4.dp)
             .then(
                 if (isSelected) {
                     Modifier.background(
