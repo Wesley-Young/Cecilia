@@ -78,7 +78,7 @@ fun appMain() = application {
 
     val scope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob()) }
     var bot by remember { mutableStateOf<Bot?>(null) }
-    var emojiImages by remember { mutableStateOf<Map<String, ImageBitmap>?>(null) }
+    var emojiImages by remember { mutableStateOf<Map<String, FaceEntry>?>(null) }
 
     val httpClient = remember { HttpClient() }
     val avatarCache = remember { AvatarCache() }
@@ -88,22 +88,9 @@ fun appMain() = application {
     val scaledDensity = Density(originalDensity.density * scaleFactor)
 
     LaunchedEffect(Unit) {
-        // deferred loading of emoji images
-        val fallback = this::class.java.classLoader
-            .getResourceAsStream("assets/default.png")
-            .readBytes()
-        emojiImages = FaceEntry.all
-            .filter { it.emojiId.isNumeric() }
-            .associate {
-                "face/${it.emojiId}" to Image.makeFromEncoded(
-                    this::class.java.classLoader
-                        .getResourceAsStream(
-                            "assets/qq_emoji/${it.emojiId}/png/${it.emojiId}.png"
-                        )
-                        ?.readBytes()
-                        ?: fallback
-                ).toComposeImageBitmap()
-            }
+        withContext(Dispatchers.IO) {
+            emojiImages = FaceEntry.all
+        }
     }
 
     LaunchedEffect(isConfigInitialized) {

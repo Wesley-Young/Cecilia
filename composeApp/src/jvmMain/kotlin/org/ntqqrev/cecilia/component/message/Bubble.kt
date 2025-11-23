@@ -17,6 +17,7 @@ import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.elevation
 import io.github.composefluent.component.Text
 import org.ntqqrev.acidify.message.MessageScene
+import org.ntqqrev.cecilia.component.AnimatedImage
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.core.LocalEmojiImages
@@ -93,21 +94,32 @@ fun Bubble(message: Message) {
                                     } else {
                                         FluentTheme.colors.text.text.primary
                                     },
-                                    inlineContent = LocalEmojiImages.current?.mapValues { (_, v) ->
-                                        InlineTextContent(
-                                            Placeholder(
-                                                width = 16.sp,
-                                                height = 16.sp,
-                                                PlaceholderVerticalAlign.Center
-                                            )
-                                        ) {
-                                            Image(
-                                                bitmap = v,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
+                                    inlineContent = LocalEmojiImages.current
+                                        ?.map { (k, v) ->
+                                            "face/$k" to InlineTextContent(
+                                                Placeholder(
+                                                    width = 16.sp,
+                                                    height = 16.sp,
+                                                    PlaceholderVerticalAlign.Center
+                                                )
+                                            ) {
+                                                if (v.apng != null) {
+                                                    AnimatedImage(
+                                                        frames = v.apng,
+                                                        contentDescription = "表情 $k",
+                                                        modifier = Modifier.size(16.sp.value.dp)
+                                                    )
+                                                } else {
+                                                    Image(
+                                                        bitmap = v.png,
+                                                        contentDescription = "表情 $k",
+                                                        modifier = Modifier.size(16.sp.value.dp)
+                                                    )
+                                                }
+                                            }
                                         }
-                                    } ?: emptyMap()
+                                        ?.associate { it }
+                                        ?: emptyMap()
                                 )
                             }
 

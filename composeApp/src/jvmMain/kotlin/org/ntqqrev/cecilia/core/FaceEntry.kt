@@ -1,41 +1,75 @@
 package org.ntqqrev.cecilia.core
 
-import kotlinx.serialization.ExperimentalSerializationApi
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
+import org.jetbrains.skia.Image
+import org.ntqqrev.apng.ApngReader
+import org.ntqqrev.cecilia.util.isNumeric
 
-@Serializable
-data class FaceEntry(
-    val emojiId: String,
-    val describe: String,
-    val qzoneCode: String,
-    val qcid: Int,
-    val emojiType: Int,
-    val aniStickerPackId: Int,
-    val aniStickerId: Int,
-    val associateWords: List<String>,
-    val isHide: Boolean,
-    val startTime: String,
-    val endTime: String,
-    val animationWidth: Int,
-    val animationHeigh: Int,
-    val assets: List<FaceAsset>,
+class FaceEntry(
+    val png: ImageBitmap,
+    val apng: List<AnimationFrame>?,
 ) {
     @Serializable
-    data class FaceAsset(
-        val type: Int,
-        val name: String,
-        val path: String,
-    )
+    data class JsonModel(
+        val emojiId: String,
+        val describe: String,
+        val qzoneCode: String,
+        val qcid: Int,
+        val emojiType: Int,
+        val aniStickerPackId: Int,
+        val aniStickerId: Int,
+        val associateWords: List<String>,
+        val isHide: Boolean,
+        val startTime: String,
+        val endTime: String,
+        val animationWidth: Int,
+        val animationHeigh: Int,
+        val assets: List<FaceAsset>,
+    ) {
+        @Serializable
+        data class FaceAsset(
+            val type: Int,
+            val name: String,
+            val path: String,
+        )
+    }
 
     companion object {
-        @OptIn(ExperimentalSerializationApi::class)
-        val all by lazy {
-            Json.decodeFromStream<List<FaceEntry>>(
+        val all: Map<String, FaceEntry> by lazy {
+            fun getResourceBytes(path: String): ByteArray? =
                 this::class.java.classLoader
-                    .getResourceAsStream("assets/qq_emoji/_index.json")
+                    .getResourceAsStream(path)
+                    ?.readBytes()
+
+            val indexedEmojis = Json.decodeFromString<List<JsonModel>>(
+                getResourceBytes("assets/qq_emoji/_index.json")!!.decodeToString()
             )
+            val fallback = getResourceBytes("assets/default.png")!!
+
+            indexedEmojis.parallelStream()
+                .filter { it.emojiId.isNumeric() }
+                .map {
+                    val pngBytes = getResourceBytes("assets/qq_emoji/${it.emojiId}/png/${it.emojiId}.png") ?: fallback
+                    val apngBytes = getResourceBytes("assets/qq_emoji/${it.emojiId}/apng/${it.emojiId}.png")
+                    it.emojiId to FaceEntry(
+                        png = Image.makeFromEncoded(pngBytes).toComposeImageBitmap(),
+                        apng = apngBytes?.let {
+                            runCatching {
+                                ApngReader(apngBytes).frames.map { apngFrame ->
+                                    AnimationFrame(
+                                        durationMillis = apngFrame.delayMillis,
+                                        imageData = apngFrame.image.toComposeImageBitmap()
+                                    )
+                                }
+                            }.getOrNull()
+                        }
+                    )
+                }
+                .toList()
+                .toMap()
         }
     }
 }
