@@ -8,11 +8,13 @@
 
 ## Usage
 
-从 [Releases](https://github.com/Wesley-Young/Cecilia/releases/) 页面下载最新版本的 `zip` 或 `tar.gz` 压缩包，解压后运行即可。
+从 [Releases](https://github.com/Wesley-Young/Cecilia/releases/) 页面下载最新版本的安装包，解压后运行即可。
 
-## Tech Stack
+## Featuring
 
-Cecilia 使用 [Acidify](https://github.com/LagrangeDev/acidify/) 作为协议后端，使用 [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/) 作为 UI 框架。
+- [Acidify](https://github.com/LagrangeDev/acidify/)
+- [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/)
+- [QFace](https://github.com/koishijs/QFace)
 
 ## See Also
 

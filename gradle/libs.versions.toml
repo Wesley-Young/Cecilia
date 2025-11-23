@@ -2,6 +2,7 @@
 androidx-lifecycle = "2.9.6"
 composeHotReload = "1.0.0-rc03"
 composeMultiplatform = "1.9.3"
+fluent = "v0.1.0"
 kotlin = "2.3.0-Beta2"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
@@ -11,6 +12,8 @@ acidify = "0.4.1"
 pinyin4j = "2.5.1"
 
 [libraries]
+fluent-ui = { module = "io.github.compose-fluent:fluent", version.ref = "fluent" }
+fluent-iconsExtended = { module = "io.github.compose-fluent:fluent-icons-extended", version.ref = "fluent" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
