@@ -53,7 +53,10 @@ fun Bubble(message: Message) {
                 )
             }
 
-            Column(horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start) {
+            Column(
+                modifier = Modifier.widthIn(max = 400.dp),
+                horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start
+            ) {
                 if (isGroup) {
                     Text(
                         text = displayName,
@@ -153,6 +156,18 @@ private fun BubbleBody(
 
                 is Element.Image -> {
                     MessageImage(image = e)
+                }
+
+                is Element.Reply -> {
+                    MessageReply(
+                        repliedSequence = e.sequence,
+                        peerUin = message.peerUin,
+                        scene = message.scene,
+                        isSelf = isSelf,
+                        onJumpToMessage = {
+
+                        }
+                    )
                 }
             }
         }

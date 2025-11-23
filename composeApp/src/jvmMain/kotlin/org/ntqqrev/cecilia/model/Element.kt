@@ -15,4 +15,8 @@ sealed class Element {
         val subType: ImageSubType,
         val summary: String,
     ) : Element()
+
+    data class Reply(
+        val sequence: Long,
+    ) : Element()
 }

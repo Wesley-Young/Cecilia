@@ -2,6 +2,7 @@ package org.ntqqrev.cecilia.util
 
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.text.AnnotatedString
+import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroupMember
 import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
@@ -9,6 +10,9 @@ import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.Message
 import org.ntqqrev.cecilia.model.MessageLike
 import org.ntqqrev.cecilia.model.Notification
+
+val BotFriend.displayName: String
+    get() = this.remark.ifEmpty { this.nickname }.ifEmpty { this.uin.toString() }
 
 val BotGroupMember.displayName: String
     get() = this.card.ifEmpty { this.nickname }.ifEmpty { this.uin.toString() }
@@ -39,11 +43,20 @@ fun BotIncomingMessage.toModel(): MessageLike = if (senderUin != 0L) {
                         buffer.append(it.text)
                     }
 
+                    is BotIncomingSegment.Mention -> {
+                        buffer.append(it.name)
+                    }
+
                     is BotIncomingSegment.Face -> {
                         buffer.appendInlineContent(
                             id = "face/${it.faceId}",
                             alternateText = it.summary,
                         )
+                    }
+
+                    is BotIncomingSegment.Reply -> {
+                        flush()
+                        add(Element.Reply(sequence = it.sequence))
                     }
 
                     is BotIncomingSegment.Image -> {
