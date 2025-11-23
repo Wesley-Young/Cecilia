@@ -15,7 +15,6 @@ import io.github.composefluent.component.ProgressRing
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
 import org.ntqqrev.cecilia.core.LocalAvatarCache

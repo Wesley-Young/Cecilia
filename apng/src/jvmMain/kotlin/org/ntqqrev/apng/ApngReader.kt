@@ -58,17 +58,20 @@ class ApngReader(bytes: ByteArray) {
                     }
                     builder = FrameBuilder(parseFrameControl(data), mutableListOf())
                 }
+
                 "IDAT" -> {
                     seenIdat = true
                     requireNotNull(builder) { "Encountered IDAT before frame control (fcTL)" }
                     builder.dataChunks.add(data)
                 }
+
                 "fdAT" -> {
                     seenIdat = true
                     requireNotNull(builder) { "Encountered fdAT before frame control (fcTL)" }
                     // Strip the first 4 bytes (sequence number) and treat as IDAT data.
                     builder.dataChunks.add(data.copyOfRange(4, data.size))
                 }
+
                 "IEND" -> {
                     if (builder != null) {
                         frameBuilders.add(builder)
@@ -76,6 +79,7 @@ class ApngReader(bytes: ByteArray) {
                     }
                     iendChunk = makeChunk(typeBytes, ByteArray(0))
                 }
+
                 else -> {
                     // Store non-animation ancillary chunks that appear before the first IDAT.
                     if (!seenIdat && type !in ANIMATION_CHUNKS) {
@@ -133,6 +137,7 @@ class ApngReader(bytes: ByteArray) {
                     g.composite = AlphaComposite.Src
                     g.drawImage(frameImage, frame.control.xOffset, frame.control.yOffset, null)
                 }
+
                 else -> {
                     g.composite = AlphaComposite.SrcOver
                     g.drawImage(frameImage, frame.control.xOffset, frame.control.yOffset, null)
@@ -157,9 +162,15 @@ class ApngReader(bytes: ByteArray) {
                 DISPOSE_BACKGROUND -> {
                     val clear = canvas.createGraphics()
                     clear.composite = AlphaComposite.Clear
-                    clear.fillRect(frame.control.xOffset, frame.control.yOffset, frame.control.width, frame.control.height)
+                    clear.fillRect(
+                        frame.control.xOffset,
+                        frame.control.yOffset,
+                        frame.control.width,
+                        frame.control.height
+                    )
                     clear.dispose()
                 }
+
                 DISPOSE_PREVIOUS -> {
                     if (beforeForPrevious != null) {
                         val restore = canvas.createGraphics()
