@@ -1,5 +1,6 @@
 package org.ntqqrev.apng
 
+import java.awt.AlphaComposite
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -9,7 +10,22 @@ import java.util.zip.CRC32
 import javax.imageio.ImageIO
 
 class ApngReader(bytes: ByteArray) {
-    val frames = parseApng(bytes)
+    private val parsedFrames: List<ApngFrame>
+    private var index = 0
+
+    val frames: List<ApngFrame>
+        get() = parsedFrames
+
+    init {
+        parsedFrames = parseApng(bytes)
+    }
+
+    fun hasNextFrame(): Boolean = index < parsedFrames.size
+
+    fun nextFrame(): ApngFrame {
+        require(hasNextFrame()) { "No more frames" }
+        return parsedFrames[index++]
+    }
 
     private fun parseApng(bytes: ByteArray): List<ApngFrame> {
         val stream = ByteArrayInputStream(bytes)
@@ -76,42 +92,86 @@ class ApngReader(bytes: ByteArray) {
         val ihdr = ihdrData ?: error("Missing IHDR chunk")
         val iend = iendChunk ?: makeChunk("IEND".toByteArray(Charsets.US_ASCII), ByteArray(0))
 
-        return frameBuilders.map { buildFrame(it, ihdr, sharedChunks, iend) }
+        return compositeFrames(frameBuilders, ihdr, sharedChunks, iend)
     }
 
-    private fun buildFrame(
-        frame: FrameBuilder,
+    private fun compositeFrames(
+        frameBuilders: List<FrameBuilder>,
         baseIhdr: ByteArray,
         sharedChunks: List<ByteArray>,
         iendChunk: ByteArray
-    ): ApngFrame {
-        val ihdrChunk = makeChunk(
-            IHDR_BYTES,
-            patchIhdr(baseIhdr, frame.control.width, frame.control.height)
-        )
+    ): List<ApngFrame> {
+        val canvasWidth = ByteBuffer.wrap(baseIhdr, 0, 4).order(ByteOrder.BIG_ENDIAN).int
+        val canvasHeight = ByteBuffer.wrap(baseIhdr, 4, 4).order(ByteOrder.BIG_ENDIAN).int
+        val canvas = BufferedImage(canvasWidth, canvasHeight, BufferedImage.TYPE_INT_ARGB)
 
-        val output = ByteArrayOutputStream()
-        output.write(PNG_SIGNATURE)
-        output.write(ihdrChunk)
-        sharedChunks.forEach { output.write(it) }
-        frame.dataChunks.forEach { data ->
-            output.write(makeChunk(IDAT_BYTES, data))
+        val result = mutableListOf<ApngFrame>()
+        for (frame in frameBuilders) {
+            val ihdrChunk = makeChunk(
+                IHDR_BYTES,
+                patchIhdr(baseIhdr, frame.control.width, frame.control.height)
+            )
+
+            val output = ByteArrayOutputStream()
+            output.write(PNG_SIGNATURE)
+            output.write(ihdrChunk)
+            sharedChunks.forEach { output.write(it) }
+            frame.dataChunks.forEach { data ->
+                output.write(makeChunk(IDAT_BYTES, data))
+            }
+            output.write(iendChunk)
+
+            val frameImage: BufferedImage = ImageIO.read(ByteArrayInputStream(output.toByteArray()))
+                ?: error("Failed to decode APNG frame")
+
+            val beforeForPrevious =
+                if (frame.control.disposeOp == DISPOSE_PREVIOUS) deepCopy(canvas) else null
+
+            val g = canvas.createGraphics()
+            when (frame.control.blendOp) {
+                BLEND_SOURCE -> {
+                    g.composite = AlphaComposite.Src
+                    g.drawImage(frameImage, frame.control.xOffset, frame.control.yOffset, null)
+                }
+                else -> {
+                    g.composite = AlphaComposite.SrcOver
+                    g.drawImage(frameImage, frame.control.xOffset, frame.control.yOffset, null)
+                }
+            }
+            g.dispose()
+
+            result.add(
+                ApngFrame(
+                    image = deepCopy(canvas),
+                    delayMillis = calculateDelay(frame.control.delayNum, frame.control.delayDen),
+                    width = canvasWidth,
+                    height = canvasHeight,
+                    xOffset = frame.control.xOffset,
+                    yOffset = frame.control.yOffset,
+                    disposeOp = frame.control.disposeOp,
+                    blendOp = frame.control.blendOp
+                )
+            )
+
+            when (frame.control.disposeOp) {
+                DISPOSE_BACKGROUND -> {
+                    val clear = canvas.createGraphics()
+                    clear.composite = AlphaComposite.Clear
+                    clear.fillRect(frame.control.xOffset, frame.control.yOffset, frame.control.width, frame.control.height)
+                    clear.dispose()
+                }
+                DISPOSE_PREVIOUS -> {
+                    if (beforeForPrevious != null) {
+                        val restore = canvas.createGraphics()
+                        restore.composite = AlphaComposite.Src
+                        restore.drawImage(beforeForPrevious, 0, 0, null)
+                        restore.dispose()
+                    }
+                }
+            }
         }
-        output.write(iendChunk)
 
-        val image: BufferedImage = ImageIO.read(ByteArrayInputStream(output.toByteArray()))
-            ?: error("Failed to decode APNG frame")
-
-        return ApngFrame(
-            image = image,
-            delayMillis = calculateDelay(frame.control.delayNum, frame.control.delayDen),
-            width = frame.control.width,
-            height = frame.control.height,
-            xOffset = frame.control.xOffset,
-            yOffset = frame.control.yOffset,
-            disposeOp = frame.control.disposeOp,
-            blendOp = frame.control.blendOp
-        )
+        return result
     }
 
     private fun patchIhdr(ihdr: ByteArray, width: Int, height: Int): ByteArray {
@@ -173,6 +233,15 @@ class ApngReader(bytes: ByteArray) {
     private fun intToBytes(value: Int): ByteArray =
         ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(value).array()
 
+    private fun deepCopy(src: BufferedImage): BufferedImage {
+        val copy = BufferedImage(src.width, src.height, BufferedImage.TYPE_INT_ARGB)
+        val g = copy.createGraphics()
+        g.composite = AlphaComposite.Src
+        g.drawImage(src, 0, 0, null)
+        g.dispose()
+        return copy
+    }
+
     private data class FrameBuilder(
         val control: FrameControl,
         val dataChunks: MutableList<ByteArray>
@@ -197,5 +266,8 @@ class ApngReader(bytes: ByteArray) {
         private val IHDR_BYTES = "IHDR".toByteArray(Charsets.US_ASCII)
         private val IDAT_BYTES = "IDAT".toByteArray(Charsets.US_ASCII)
         private val ANIMATION_CHUNKS = setOf("acTL", "fcTL", "fdAT")
+        private const val BLEND_SOURCE = 0
+        private const val DISPOSE_BACKGROUND = 1
+        private const val DISPOSE_PREVIOUS = 2
     }
 }
