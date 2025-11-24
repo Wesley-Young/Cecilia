@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.composefluent.FluentTheme
@@ -61,7 +62,9 @@ fun Bubble(message: Message) {
                     Text(
                         text = displayName,
                         style = FluentTheme.typography.caption,
-                        color = FluentTheme.colors.text.text.tertiary
+                        color = FluentTheme.colors.text.text.tertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 when (message.elements.size) {
