@@ -8,6 +8,10 @@ sealed class Element {
         val content: AnnotatedString
     ) : Element()
 
+    data class LargeFace(
+        val faceId: Int,
+    ) : Element()
+
     data class Image(
         val fileId: String,
         val width: Int,

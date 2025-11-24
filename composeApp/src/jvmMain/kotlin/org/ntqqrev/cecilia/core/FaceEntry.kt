@@ -1,5 +1,6 @@
 package org.ntqqrev.cecilia.core
 
+import androidx.compose.animation.core.Animation
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import kotlinx.serialization.Serializable
@@ -11,6 +12,7 @@ import org.ntqqrev.cecilia.util.isNumeric
 class FaceEntry(
     val png: ImageBitmap,
     val apng: List<AnimationFrame>?,
+    val lottie: String? = null,
 ) {
     @Serializable
     data class JsonModel(
@@ -54,6 +56,7 @@ class FaceEntry(
                 .map {
                     val pngBytes = getResourceBytes("assets/qq_emoji/${it.emojiId}/png/${it.emojiId}.png") ?: fallback
                     val apngBytes = getResourceBytes("assets/qq_emoji/${it.emojiId}/apng/${it.emojiId}.png")
+                    val lottieString = getResourceBytes("assets/qq_emoji/${it.emojiId}/lottie/${it.emojiId}.json")?.decodeToString()
                     it.emojiId to FaceEntry(
                         png = Image.makeFromEncoded(pngBytes).toComposeImageBitmap(),
                         apng = apngBytes?.let {
@@ -65,7 +68,8 @@ class FaceEntry(
                                     )
                                 }
                             }.getOrNull()
-                        }
+                        },
+                        lottie = lottieString
                     )
                 }
                 .toList()

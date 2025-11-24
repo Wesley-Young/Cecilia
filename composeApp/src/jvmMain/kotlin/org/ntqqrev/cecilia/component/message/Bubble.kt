@@ -70,6 +70,12 @@ fun Bubble(message: Message) {
                         MessageImage(image = message.elements[0] as Element.Image)
                     }
 
+                    1 if (message.elements[0] is Element.LargeFace) -> {
+                        Spacer(Modifier.height(4.dp))
+                        val largeFace = message.elements[0] as Element.LargeFace
+                        MessageLargeFace(faceId = largeFace.faceId)
+                    }
+
                     else -> {
                         Spacer(Modifier.height(2.dp))
                         BubbleBody(message = message, isSelf = isSelf)
@@ -152,6 +158,10 @@ private fun BubbleBody(
                             ?.associate { it }
                             ?: emptyMap()
                     )
+                }
+
+                is Element.LargeFace -> {
+                    // It should not be here
                 }
 
                 is Element.Image -> {

@@ -49,10 +49,15 @@ fun BotIncomingMessage.toModel(): MessageLike = if (senderUin != 0L) {
                     }
 
                     is BotIncomingSegment.Face -> {
-                        buffer.appendInlineContent(
-                            id = "face/${it.faceId}",
-                            alternateText = it.summary,
-                        )
+                        if (it.isLarge) {
+                            flush()
+                            add(Element.LargeFace(faceId = it.faceId))
+                        } else {
+                            buffer.appendInlineContent(
+                                id = "face/${it.faceId}",
+                                alternateText = it.summary,
+                            )
+                        }
                     }
 
                     is BotIncomingSegment.Reply -> {
