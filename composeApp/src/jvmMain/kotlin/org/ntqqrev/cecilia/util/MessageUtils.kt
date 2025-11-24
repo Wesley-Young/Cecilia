@@ -26,7 +26,7 @@ fun BotIncomingMessage.toModel(): MessageLike = if (senderUin != 0L) {
         peerUin = this.peerUin,
         sequence = this.sequence,
         senderUin = this.senderUin,
-        senderName = this.extraInfo?.groupCard ?: "",
+        senderName = this.extraInfo?.groupCard ?: this.extraInfo?.nick ?: this.senderUin.toString(),
         timestamp = this.timestamp,
         elements = buildList {
             var buffer = AnnotatedString.Builder()
