@@ -152,7 +152,7 @@ fun appMain() = application {
             exitApplication()
         },
         title = "Cecilia",
-        state = rememberWindowState(size = DpSize(1125.dp, 700.dp)),
+        state = rememberWindowState(size = DpSize(1000.dp, 700.dp)),
     ) {
         var isFocused by remember { mutableStateOf(window.isFocused) }
 
