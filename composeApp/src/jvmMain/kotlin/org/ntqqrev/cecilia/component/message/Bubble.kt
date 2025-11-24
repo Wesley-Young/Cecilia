@@ -9,15 +9,19 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.elevation
 import io.github.composefluent.component.Text
+import org.ntqqrev.acidify.entity.BotGroupMember
 import org.ntqqrev.acidify.message.MessageScene
+import org.ntqqrev.acidify.struct.GroupMemberRole
 import org.ntqqrev.cecilia.component.AnimatedImage
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.core.LocalBot
@@ -31,12 +35,11 @@ fun Bubble(message: Message) {
     val bot = LocalBot.current
     val isSelf = message.senderUin == bot.uin
     val isGroup = message.scene == MessageScene.GROUP
-    var displayName by remember(message) { mutableStateOf(message.senderName) }
+    var member by remember(message) { mutableStateOf<BotGroupMember?>(null) }
 
     LaunchedEffect(bot, message) {
         if (isGroup) {
-            val member = bot.getGroupMember(message.peerUin, message.senderUin)
-            member?.let { displayName = it.displayName }
+            member = bot.getGroupMember(message.peerUin, message.senderUin)
         }
     }
 
@@ -59,13 +62,20 @@ fun Bubble(message: Message) {
                 horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start
             ) {
                 if (isGroup) {
-                    Text(
-                        text = displayName,
-                        style = FluentTheme.typography.caption,
-                        color = FluentTheme.colors.text.text.tertiary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (member != null) {
+                        SenderHeader(
+                            member = member!!,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    } else {
+                        Text(
+                            text = message.senderName,
+                            style = FluentTheme.typography.caption,
+                            color = FluentTheme.colors.text.text.tertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 when (message.elements.size) {
                     1 if (message.elements[0] is Element.Image) -> {
@@ -94,6 +104,76 @@ fun Bubble(message: Message) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SenderHeader(
+    member: BotGroupMember,
+    modifier: Modifier = Modifier,
+) {
+    val bot = LocalBot.current
+    val isSent = member.uin == bot.uin
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!isSent) {
+            MemberBadge(member)
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = member.displayName,
+                style = FluentTheme.typography.caption,
+                color = FluentTheme.colors.text.text.tertiary
+            )
+        } else {
+            Text(
+                text = member.displayName,
+                style = FluentTheme.typography.caption,
+                color = FluentTheme.colors.text.text.tertiary
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            MemberBadge(member)
+        }
+    }
+}
+
+@Composable
+private fun MemberBadge(member: BotGroupMember) {
+    Box(
+        Modifier.background(
+            color = when (member.role) {
+                GroupMemberRole.OWNER -> Color(0xFFFFB74D)
+                GroupMemberRole.ADMIN -> Color(0xFF26C6DA)
+                GroupMemberRole.MEMBER -> {
+                    if (member.specialTitle.isNotBlank()) {
+                        Color(0xFFD269DA)
+                    } else {
+                        Color(0xFF90A4AE)
+                    }
+                }
+            },
+            shape = RoundedCornerShape(999.dp),
+        )
+    ) {
+        Text(
+            text = buildString {
+                val titlePart = member.specialTitle.takeIf { it.isNotBlank() } ?: when (member.role) {
+                    GroupMemberRole.OWNER -> "群主"
+                    GroupMemberRole.ADMIN -> "管理员"
+                    else -> null
+                }
+                append("Lv")
+                append(member.level)
+                if (titlePart != null) {
+                    append(" ")
+                    append(titlePart)
+                }
+            },
+            style = FluentTheme.typography.caption,
+            color = FluentTheme.colors.text.onAccent.secondary,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+        )
     }
 }
 
