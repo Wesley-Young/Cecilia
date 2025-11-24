@@ -49,23 +49,25 @@ class FaceEntry(
             val fallback = getResourceBytes("assets/default.png")!!
 
             indexedEmojis.parallelStream().filter { it.emojiId.isNumeric() }.map {
-                    val pngBytes = getResourceBytes("assets/qq_emoji/${it.emojiId}/png/${it.emojiId}.png") ?: fallback
-                    val apngBytes = getResourceBytes("assets/qq_emoji/${it.emojiId}/apng/${it.emojiId}.png")
-                    val lottieString =
-                        getResourceBytes("assets/qq_emoji/${it.emojiId}/lottie/${it.emojiId}.json")?.decodeToString()
-                    it.emojiId to FaceEntry(
-                        png = Image.makeFromEncoded(pngBytes).toComposeImageBitmap(), apng = apngBytes?.let {
-                            runCatching {
-                                ApngReader(apngBytes).frames.map { apngFrame ->
-                                    AnimationFrame(
-                                        durationMillis = apngFrame.delayMillis,
-                                        imageData = apngFrame.image.toComposeImageBitmap()
-                                    )
-                                }
-                            }.getOrNull()
-                        }, lottie = lottieString
-                    )
-                }.toList().toMap()
+                val pngBytes = getResourceBytes("assets/qq_emoji/${it.emojiId}/png/${it.emojiId}.png") ?: fallback
+                val apngBytes = getResourceBytes("assets/qq_emoji/${it.emojiId}/apng/${it.emojiId}.png")
+                val lottieString =
+                    getResourceBytes("assets/qq_emoji/${it.emojiId}/lottie/${it.emojiId}.json")?.decodeToString()
+                it.emojiId to FaceEntry(
+                    png = Image.makeFromEncoded(pngBytes).toComposeImageBitmap(),
+                    apng = apngBytes?.let {
+                        runCatching {
+                            ApngReader(apngBytes).frames.map { apngFrame ->
+                                AnimationFrame(
+                                    durationMillis = apngFrame.delayMillis,
+                                    imageData = apngFrame.image.toComposeImageBitmap()
+                                )
+                            }
+                        }.getOrNull()
+                    },
+                    lottie = lottieString
+                )
+            }.toList().toMap()
         }
     }
 }
