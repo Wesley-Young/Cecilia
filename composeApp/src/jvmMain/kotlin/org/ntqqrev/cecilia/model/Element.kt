@@ -22,5 +22,7 @@ sealed class Element {
 
     data class Reply(
         val sequence: Long,
+        val senderName: String,
+        val content: String,
     ) : Element()
 }

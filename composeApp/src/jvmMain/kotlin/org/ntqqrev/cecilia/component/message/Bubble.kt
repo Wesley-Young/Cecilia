@@ -6,13 +6,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,13 +35,7 @@ fun Bubble(message: Message) {
     val bot = LocalBot.current
     val isSelf = message.senderUin == bot.uin
     val isGroup = message.scene == MessageScene.GROUP
-    var member by remember(message) { mutableStateOf<BotGroupMember?>(null) }
-
-    LaunchedEffect(bot, message) {
-        if (isGroup) {
-            member = bot.getGroupMember(message.peerUin, message.senderUin)
-        }
-    }
+    val member = message.member
 
     Box(
         modifier = Modifier.fillMaxWidth()
@@ -64,7 +58,7 @@ fun Bubble(message: Message) {
                 if (isGroup) {
                     if (member != null) {
                         SenderHeader(
-                            member = member!!,
+                            member = member,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
                     } else {
@@ -253,9 +247,7 @@ private fun BubbleBody(
 
                 is Element.Reply -> {
                     MessageReply(
-                        repliedSequence = e.sequence,
-                        peerUin = message.peerUin,
-                        scene = message.scene,
+                        reply = e,
                         isSelf = isSelf,
                         onJumpToMessage = {
 

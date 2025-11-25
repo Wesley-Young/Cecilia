@@ -8,12 +8,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.Snapshot.Companion.withMutableSnapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,20 +28,24 @@ import io.github.composefluent.component.Icon
 import io.github.composefluent.component.Text
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.filled.Pin
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import org.ntqqrev.acidify.event.MessageRecallEvent
 import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.BotIncomingMessage
+import org.ntqqrev.acidify.message.BotIncomingSegment
+import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.component.message.Bubble
 import org.ntqqrev.cecilia.component.message.GreyTip
 import org.ntqqrev.cecilia.core.LocalBot
-import org.ntqqrev.cecilia.model.Conversation
-import org.ntqqrev.cecilia.model.Message
-import org.ntqqrev.cecilia.model.MessageLike
-import org.ntqqrev.cecilia.model.Notification
-import org.ntqqrev.cecilia.util.*
+import org.ntqqrev.cecilia.model.*
+import org.ntqqrev.cecilia.util.displayName
+import org.ntqqrev.cecilia.util.formatToConvenientTime
+import org.ntqqrev.cecilia.util.formatToShortTime
+import org.ntqqrev.cecilia.util.toPreviewText
 import java.time.Instant
 
 @Composable
@@ -356,6 +362,148 @@ private fun ChatArea(conversation: Conversation) {
         }
     }
 
+    suspend fun BotIncomingMessage.toModel(): MessageLike = if (senderUin != 0L) {
+        Message(
+            scene = this.scene,
+            peerUin = this.peerUin,
+            sequence = this.sequence,
+            senderUin = this.senderUin,
+            senderName = this.extraInfo?.groupCard ?: this.extraInfo?.nick ?: this.senderUin.toString(),
+            timestamp = this.timestamp,
+            elements = buildList {
+                var buffer = AnnotatedString.Builder()
+
+                fun flush() {
+                    if (buffer.length > 0) {
+                        add(Element.RichText(buffer.toAnnotatedString()))
+                        buffer = AnnotatedString.Builder()
+                    }
+                }
+
+                segments.forEach {
+                    when (it) {
+                        is BotIncomingSegment.Text -> {
+                            buffer.append(it.text)
+                        }
+
+                        is BotIncomingSegment.Mention -> {
+                            buffer.append(it.name)
+                        }
+
+                        is BotIncomingSegment.Face -> {
+                            if (it.isLarge) {
+                                flush()
+                                add(Element.LargeFace(faceId = it.faceId))
+                            } else {
+                                buffer.appendInlineContent(
+                                    id = "face/${it.faceId}",
+                                    alternateText = it.summary,
+                                )
+                            }
+                        }
+
+                        is BotIncomingSegment.Reply -> {
+                            flush()
+                            when (this@toModel.scene) {
+                                MessageScene.FRIEND -> {
+                                    val message = bot.getFriendHistoryMessages(
+                                        friendUin = this@toModel.peerUin,
+                                        limit = 1,
+                                        startSequence = it.sequence,
+                                    ).messages.firstOrNull()
+                                    if (message != null) {
+                                        add(
+                                            Element.Reply(
+                                                sequence = it.sequence,
+                                                senderName = message.senderUin.let { senderUin ->
+                                                    bot.getFriend(senderUin)
+                                                        ?.displayName
+                                                        ?: senderUin.toString()
+                                                },
+                                                content = message.toPreviewText(),
+                                            )
+                                        )
+                                    } else {
+                                        add(
+                                            Element.Reply(
+                                                sequence = it.sequence,
+                                                senderName = "引用消息",
+                                                content = "#${it.sequence}",
+                                            )
+                                        )
+                                    }
+                                }
+
+                                MessageScene.GROUP -> {
+                                    val message = bot.getGroupHistoryMessages(
+                                        groupUin = this@toModel.peerUin,
+                                        limit = 1,
+                                        startSequence = it.sequence,
+                                    ).messages.firstOrNull()
+                                    if (message != null) {
+                                        add(
+                                            Element.Reply(
+                                                sequence = it.sequence,
+                                                senderName = resolveSubject(
+                                                    groupUin = message.peerUin,
+                                                    memberUin = message.senderUin,
+                                                ),
+                                                content = message.toPreviewText(),
+                                            )
+                                        )
+                                    }
+                                }
+
+                                else -> {}
+                            }
+                        }
+
+                        is BotIncomingSegment.Image -> {
+                            flush()
+                            add(
+                                Element.Image(
+                                    fileId = it.fileId,
+                                    width = it.width,
+                                    height = it.height,
+                                    subType = it.subType,
+                                    summary = it.summary,
+                                )
+                            )
+                        }
+
+                        is BotIncomingSegment.MarketFace -> {
+                            flush()
+                            add(
+                                Element.Image(
+                                    fileId = it.url,
+                                    width = 300,
+                                    height = 300,
+                                    subType = ImageSubType.STICKER,
+                                    summary = it.summary,
+                                )
+                            )
+                        }
+
+                        else -> {
+                            buffer.append("[${it::class.simpleName}]")
+                        }
+                    }
+                }
+                flush()
+            },
+            member = if (this.scene == MessageScene.GROUP) {
+                bot.getGroupMember(
+                    groupUin = this.peerUin,
+                    memberUin = this.senderUin
+                )
+            } else {
+                null
+            }
+        )
+    } else {
+        Notification("该消息已被撤回")
+    }
+
     suspend fun MessageRecallEvent.buildRecallNotice(): String = when (this.scene) {
         MessageScene.FRIEND -> buildString {
             if (senderUin == bot.uin) {
@@ -416,7 +564,9 @@ private fun ChatArea(conversation: Conversation) {
                 ).messages
 
                 else -> emptyList()
-            }.map { it.toModel() }
+            }
+                .map { async { it.toModel() } }
+                .awaitAll()
         }.onSuccess { messageLikes ->
             messageLikeList.addAll(index = 0, elements = messageLikes)
         }
@@ -472,7 +622,9 @@ private fun ChatArea(conversation: Conversation) {
                     ).messages
 
                     else -> emptyList()
-                }.map { it.toModel() }
+                }
+                    .map { async { it.toModel() } }
+                    .awaitAll()
             }.onSuccess { furtherMessageLikes ->
                 if (furtherMessageLikes.isNotEmpty()) {
                     messageLikeList.addAll(index = 0, elements = furtherMessageLikes)

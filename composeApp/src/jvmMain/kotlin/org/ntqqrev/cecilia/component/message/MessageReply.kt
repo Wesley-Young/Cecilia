@@ -1,7 +1,9 @@
 package org.ntqqrev.cecilia.component.message
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -12,68 +14,16 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.Text
-import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.cecilia.core.LocalBot
-import org.ntqqrev.cecilia.util.displayName
-import org.ntqqrev.cecilia.util.toPreviewText
+import org.ntqqrev.cecilia.model.Element
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MessageReply(
-    scene: MessageScene,
-    peerUin: Long,
-    repliedSequence: Long,
+    reply: Element.Reply,
     isSelf: Boolean,
     onJumpToMessage: (Long) -> Unit,
 ) {
-    val bot = LocalBot.current
-    var isHovering by remember(repliedSequence) { mutableStateOf(false) }
-    var actualMessageSenderName by remember(repliedSequence) { mutableStateOf("引用消息") }
-    var actualMessagePreview by remember(repliedSequence) { mutableStateOf("#$repliedSequence") }
-
-    LaunchedEffect(repliedSequence) {
-        runCatching {
-            when (scene) {
-                MessageScene.FRIEND -> {
-                    val message = bot.getFriendHistoryMessages(
-                        friendUin = peerUin,
-                        limit = 1,
-                        startSequence = repliedSequence,
-                    ).messages.firstOrNull()
-                    message?.let {
-                        if (it.senderUin == bot.uin) {
-                            "You"
-                        } else {
-                            bot.getFriend(it.senderUin)?.displayName
-                        }?.let {
-                            actualMessageSenderName = it
-                        }
-                        actualMessagePreview = it.toPreviewText()
-                    }
-                }
-
-                MessageScene.GROUP -> {
-                    val message = bot.getGroupHistoryMessages(
-                        groupUin = peerUin,
-                        limit = 1,
-                        startSequence = repliedSequence,
-                    ).messages.firstOrNull()
-                    message?.let {
-                        if (it.senderUin == bot.uin) {
-                            "You"
-                        } else {
-                            bot.getGroupMember(peerUin, it.senderUin)?.displayName
-                        }?.let {
-                            actualMessageSenderName = it
-                        }
-                        actualMessagePreview = it.toPreviewText()
-                    }
-                }
-
-                else -> {}
-            }
-        }
-    }
+    var isHovering by remember { mutableStateOf(false) }
 
     Box(
         Modifier.fillMaxWidth()
@@ -87,17 +37,20 @@ fun MessageReply(
             )
             .onPointerEvent(PointerEventType.Enter) { isHovering = true }
             .onPointerEvent(PointerEventType.Exit) { isHovering = false }
+            .onClick {
+                onJumpToMessage(reply.sequence)
+            }
             .padding(8.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = actualMessageSenderName,
+                text = reply.senderName,
                 style = FluentTheme.typography.caption,
                 color = if (isSelf) FluentTheme.colors.text.onAccent.secondary
                 else FluentTheme.colors.text.text.tertiary,
             )
             Text(
-                text = actualMessagePreview,
+                text = reply.content,
                 style = FluentTheme.typography.caption,
                 color = if (isSelf) FluentTheme.colors.text.onAccent.secondary
                 else FluentTheme.colors.text.text.tertiary,
