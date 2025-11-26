@@ -14,6 +14,7 @@ import io.github.composefluent.background.Layer
 import io.github.composefluent.component.AccentButton
 import io.github.composefluent.component.Button
 import io.github.composefluent.component.Icon
+import io.github.composefluent.component.ProgressRing
 import io.github.composefluent.component.Text
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.Settings
@@ -34,6 +35,7 @@ fun LoginView(
 ) {
     val bot = LocalBot.current
     val qrCodeColorArgb = FluentTheme.colors.text.accent.primary.toArgb()
+    var isSessionLoggingIn by remember { mutableStateOf(false) }
     var usingQrCode by remember {
         mutableStateOf(bot.sessionStore.uin == 0L || bot.sessionStore.a2.isEmpty())
     }
@@ -95,38 +97,49 @@ fun LoginView(
                             color = FluentTheme.colors.text.text.secondary
                         )
                         Spacer(Modifier.height(8.dp))
-                        AccentButton(
-                            disabled = false,
-                            onClick = {
-                                loginError = null
-                                bot.launch {
-                                    try {
-                                        bot.online()
-                                        onLoggedIn()
-                                    } catch (e: Throwable) {
-                                        if (e is ServiceException && e.retCode == -10003) {
-                                            // Session has been revoked
-                                            usingQrCode = true
+                        if (!isSessionLoggingIn) {
+                            AccentButton(
+                                disabled = false,
+                                onClick = {
+                                    isSessionLoggingIn = true
+                                    loginError = null
+                                    bot.launch {
+                                        try {
+                                            bot.online()
+                                            onLoggedIn()
+                                        } catch (e: Throwable) {
+                                            if (e is ServiceException && e.retCode == -10003) {
+                                                // Session has been revoked
+                                                usingQrCode = true
+                                            }
+                                            isSessionLoggingIn = false
+                                            loginError = "登录失败：${e.localizedMessage}\n" +
+                                                    "请尝试使用二维码登录。"
                                         }
-                                        loginError = "登录失败：${e.localizedMessage}\n" +
-                                                "请尝试使用二维码登录。"
                                     }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("快捷登录")
-                        }
-                        Button(
-                            onClick = {
-                                bot.sessionStore.clear()
-                                usingQrCode = true
-                                loginError = "已清除内存中的登录信息。\n" +
-                                        "如果要使用原有账号登录，请重新启动应用。"
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("使用二维码登录")
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("快捷登录")
+                            }
+                            Button(
+                                onClick = {
+                                    bot.sessionStore.clear()
+                                    usingQrCode = true
+                                    loginError = "已清除内存中的登录信息。\n" +
+                                            "如果要使用原有账号登录，请重新启动应用。"
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("使用二维码登录")
+                            }
+                        } else {
+                            ProgressRing()
+                            Text(
+                                text = "欢迎",
+                                style = FluentTheme.typography.bodyLarge,
+                                color = FluentTheme.colors.text.accent.primary
+                            )
                         }
                     } else {
                         if (qrCodeImage != null) {
