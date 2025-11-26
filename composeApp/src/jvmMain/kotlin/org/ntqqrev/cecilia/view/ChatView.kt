@@ -405,54 +405,29 @@ private fun ChatArea(conversation: Conversation) {
                         is BotIncomingSegment.Reply -> {
                             flush()
                             when (this@toModel.scene) {
-                                MessageScene.FRIEND -> {
-                                    val message = bot.getFriendHistoryMessages(
-                                        friendUin = this@toModel.peerUin,
-                                        limit = 1,
-                                        startSequence = it.sequence,
-                                    ).messages.firstOrNull()
-                                    if (message != null) {
-                                        add(
-                                            Element.Reply(
-                                                sequence = it.sequence,
-                                                senderName = message.senderUin.let { senderUin ->
-                                                    bot.getFriend(senderUin)
-                                                        ?.displayName
-                                                        ?: senderUin.toString()
-                                                },
-                                                content = message.toPreviewText(),
-                                            )
-                                        )
-                                    } else {
-                                        add(
-                                            Element.Reply(
-                                                sequence = it.sequence,
-                                                senderName = "引用消息",
-                                                content = "#${it.sequence}",
-                                            )
-                                        )
-                                    }
-                                }
+                                MessageScene.FRIEND -> add (
+                                    Element.Reply(
+                                        sequence = it.sequence,
+                                        senderName = if (it.senderUin == bot.uin) {
+                                            "你"
+                                        } else {
+                                            val friend = bot.getFriend(it.senderUin)
+                                            friend?.displayName ?: it.senderUin.toString()
+                                        },
+                                        content = it.segments.toPreviewText()
+                                    )
+                                )
 
-                                MessageScene.GROUP -> {
-                                    val message = bot.getGroupHistoryMessages(
-                                        groupUin = this@toModel.peerUin,
-                                        limit = 1,
-                                        startSequence = it.sequence,
-                                    ).messages.firstOrNull()
-                                    if (message != null) {
-                                        add(
-                                            Element.Reply(
-                                                sequence = it.sequence,
-                                                senderName = resolveSubject(
-                                                    groupUin = message.peerUin,
-                                                    memberUin = message.senderUin,
-                                                ),
-                                                content = message.toPreviewText(),
-                                            )
-                                        )
-                                    }
-                                }
+                                MessageScene.GROUP -> add (
+                                    Element.Reply(
+                                        sequence = it.sequence,
+                                        senderName = resolveSubject(
+                                            groupUin = peerUin,
+                                            memberUin = it.senderUin
+                                        ),
+                                        content = it.segments.toPreviewText()
+                                    )
+                                )
 
                                 else -> {}
                             }
