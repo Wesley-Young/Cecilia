@@ -18,8 +18,15 @@ import io.github.composefluent.component.ProgressRing
 import io.github.composefluent.component.Text
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.contentLength
+import io.ktor.utils.io.core.writeFully
+import io.ktor.utils.io.exhausted
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.io.Buffer
+import kotlinx.io.readByteArray
 import org.jetbrains.skia.Codec
 import org.jetbrains.skia.Data
 import org.ntqqrev.acidify.message.ImageSubType
@@ -40,6 +47,7 @@ fun MessageImage(
     val bot = LocalBot.current
     val httpClient = LocalHttpClient.current
     val mediaCache = LocalMediaCache.current
+    var progress by remember { mutableStateOf(0f) }
     var imageBytes by remember { mutableStateOf<ByteArray?>(null) }
     var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var animationFrames by remember { mutableStateOf<List<AnimationFrame>?>(null) }
@@ -54,10 +62,23 @@ fun MessageImage(
                 val url = bot.getDownloadUrl(image.fileId)
                 withContext(Dispatchers.IO) {
                     val response = httpClient.get(url)
-                    val bytes = response.readRawBytes()
-                    bytes.also {
-                        mediaCache.putFileIdAndContent(image.fileId, url, bytes)
+                    val contentLength = response.contentLength()
+                    if (contentLength != null) {
+                        val channel = response.bodyAsChannel()
+                        val bytes = ByteArray(contentLength.toInt())
+                        var totalRead = 0
+                        while (!channel.isClosedForRead) {
+                            val read = channel.readAvailable(bytes, totalRead, bytes.size - totalRead)
+                            if (read == -1) break
+                            totalRead += read
+                            progress = totalRead.toFloat() / contentLength
+                        }
+                        bytes
+                    } else {
+                        response.readRawBytes()
                     }
+                }.also {
+                    mediaCache.putFileIdAndContent(image.fileId, url, it)
                 }
             }
             imageBytes = bytes
@@ -147,8 +168,11 @@ fun MessageImage(
             }
 
             else -> {
-                // is loading
-                ProgressRing()
+                if (progress == 0f || progress > 1f) {
+                    ProgressRing()
+                } else {
+                    ProgressRing(progress = progress)
+                }
             }
         }
     }
