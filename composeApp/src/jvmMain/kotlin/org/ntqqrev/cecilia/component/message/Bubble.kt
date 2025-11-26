@@ -31,7 +31,10 @@ import org.ntqqrev.cecilia.model.Message
 import org.ntqqrev.cecilia.util.displayName
 
 @Composable
-fun Bubble(message: Message) {
+fun Bubble(
+    message: Message,
+    blink: Boolean = false,
+) {
     val bot = LocalBot.current
     val isSelf = message.senderUin == bot.uin
     val isGroup = message.scene == MessageScene.GROUP
@@ -39,6 +42,13 @@ fun Bubble(message: Message) {
 
     Box(
         modifier = Modifier.fillMaxWidth()
+            .background(
+                color = if (blink) {
+                    Color(0f, 0f, 0f, 0.05f)
+                } else {
+                    Color.Transparent
+                }
+            )
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = if (isSelf) Alignment.CenterEnd else Alignment.CenterStart
     ) {
@@ -249,9 +259,6 @@ private fun BubbleBody(
                     MessageReply(
                         reply = e,
                         isSelf = isSelf,
-                        onJumpToMessage = {
-
-                        }
                     )
                 }
             }

@@ -30,6 +30,8 @@ import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.filled.Pin
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.event.MessageRecallEvent
 import org.ntqqrev.acidify.event.MessageReceiveEvent
 import org.ntqqrev.acidify.message.BotIncomingMessage
@@ -47,6 +49,8 @@ import org.ntqqrev.cecilia.util.formatToConvenientTime
 import org.ntqqrev.cecilia.util.formatToShortTime
 import org.ntqqrev.cecilia.util.toPreviewText
 import java.time.Instant
+
+val LocalJumpToMessage = compositionLocalOf<((Long) -> Unit)?> { null }
 
 @Composable
 fun ChatView() {
@@ -337,6 +341,8 @@ private fun ConversationDisplay(
 @Composable
 private fun ChatArea(conversation: Conversation) {
     val bot = LocalBot.current
+    val scope = rememberCoroutineScope()
+    var blinkSequence by remember { mutableStateOf<Long?>(null) }
     var groupMemberCount by remember(conversation.asKey) { mutableStateOf<Int?>(null) }
     val messageLikeList = remember(bot, conversation.asKey) {
         mutableStateListOf<MessageLike>()
@@ -643,41 +649,70 @@ private fun ChatArea(conversation: Conversation) {
                 )
             }
         }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = listState,
-            reverseLayout = true,
-        ) {
-            items(
-                count = messageLikeList.size,
-                key = { index ->
-                    when (val messageLike = messageLikeList[messageLikeList.size - index - 1]) {
-                        is Message -> "message-${messageLike.sequence}"
-                        is Notification -> "notification-$index-${messageLike.hashCode()}"
+        CompositionLocalProvider(
+            LocalJumpToMessage provides { sequence ->
+                val currentOldestSequence = messageLikeList.firstOrNull { it is Message }?.let {
+                    (it as Message).sequence
+                } ?: 0L
+                if (sequence >= currentOldestSequence) {
+                    val targetIndex = messageLikeList.indexOfFirst {
+                        (it as? Message)?.sequence == sequence
                     }
-                }
-            ) { index ->
-                when (val currentMessageLike = messageLikeList[messageLikeList.size - index - 1]) {
-                    is Message -> {
-                        Bubble(message = currentMessageLike)
-
-                        // compare with prev timestamp
-                        val previousMessage = messageLikeList.slice(0..messageLikeList.size - index - 2)
-                            .lastOrNull { it is Message } as Message?
-                        val shouldShowTimeTip = previousMessage?.let {
-                            currentMessageLike.timestamp - previousMessage.timestamp >= 300
-                        } ?: true
-                        if (shouldShowTimeTip) {
-                            GreyTip(
-                                content = Instant.ofEpochSecond(currentMessageLike.timestamp)
-                                    .formatToConvenientTime()
+                    if (targetIndex >= 0) {
+                        scope.launch {
+                            val itemIndex = messageLikeList.size - targetIndex - 1
+                            listState.scrollToItem(
+                                (itemIndex - listState.layoutInfo.visibleItemsInfo.size / 2)
+                                    .coerceAtLeast(0)
+                                // make the target message at center of the viewport
                             )
-                            Spacer(Modifier.height(16.dp))
+                            blinkSequence = sequence
+                            delay(1500L)
+                            blinkSequence = null
                         }
                     }
+                }
+            }
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                reverseLayout = true,
+            ) {
+                items(
+                    count = messageLikeList.size,
+                    key = { index ->
+                        when (val messageLike = messageLikeList[messageLikeList.size - index - 1]) {
+                            is Message -> "message-${messageLike.sequence}"
+                            is Notification -> "notification-$index-${messageLike.hashCode()}"
+                        }
+                    }
+                ) { index ->
+                    when (val currentMessageLike = messageLikeList[messageLikeList.size - index - 1]) {
+                        is Message -> {
+                            Bubble(
+                                message = currentMessageLike,
+                                blink = currentMessageLike.sequence == blinkSequence
+                            )
 
-                    is Notification -> {
-                        GreyTip(content = currentMessageLike.content)
+                            // compare with prev timestamp
+                            val previousMessage = messageLikeList.slice(0..messageLikeList.size - index - 2)
+                                .lastOrNull { it is Message } as Message?
+                            val shouldShowTimeTip = previousMessage?.let {
+                                currentMessageLike.timestamp - previousMessage.timestamp >= 300
+                            } ?: true
+                            if (shouldShowTimeTip) {
+                                GreyTip(
+                                    content = Instant.ofEpochSecond(currentMessageLike.timestamp)
+                                        .formatToConvenientTime()
+                                )
+                                Spacer(Modifier.height(16.dp))
+                            }
+                        }
+
+                        is Notification -> {
+                            GreyTip(content = currentMessageLike.content)
+                        }
                     }
                 }
             }

@@ -15,14 +15,15 @@ import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.Text
 import org.ntqqrev.cecilia.model.Element
+import org.ntqqrev.cecilia.view.LocalJumpToMessage
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MessageReply(
     reply: Element.Reply,
     isSelf: Boolean,
-    onJumpToMessage: (Long) -> Unit,
 ) {
+    val onJumpToMessage = LocalJumpToMessage.current
     var isHovering by remember { mutableStateOf(false) }
 
     Box(
@@ -38,7 +39,7 @@ fun MessageReply(
             .onPointerEvent(PointerEventType.Enter) { isHovering = true }
             .onPointerEvent(PointerEventType.Exit) { isHovering = false }
             .onClick {
-                onJumpToMessage(reply.sequence)
+                onJumpToMessage?.invoke(reply.sequence)
             }
             .padding(8.dp)
     ) {
