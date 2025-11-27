@@ -10,12 +10,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.foundation.text.input.delete
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.Snapshot.Companion.withMutableSnapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
@@ -29,6 +32,7 @@ import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.Layer
 import io.github.composefluent.component.Icon
 import io.github.composefluent.component.Text
+import io.github.composefluent.component.TextField
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.filled.Pin
 import kotlinx.coroutines.async
@@ -37,16 +41,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.event.MessageRecallEvent
 import org.ntqqrev.acidify.event.MessageReceiveEvent
-import org.ntqqrev.acidify.message.BotIncomingMessage
-import org.ntqqrev.acidify.message.BotIncomingSegment
-import org.ntqqrev.acidify.message.ImageSubType
-import org.ntqqrev.acidify.message.MessageScene
+import org.ntqqrev.acidify.message.*
 import org.ntqqrev.cecilia.component.AnimatedImage
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.component.message.Bubble
 import org.ntqqrev.cecilia.component.message.GreyTip
 import org.ntqqrev.cecilia.core.LocalBot
+import org.ntqqrev.cecilia.core.LocalConfig
 import org.ntqqrev.cecilia.core.LocalEmojiImageFallback
 import org.ntqqrev.cecilia.core.LocalEmojiImages
 import org.ntqqrev.cecilia.model.*
@@ -673,7 +675,7 @@ private fun ChatArea(conversation: Conversation) {
         }
     }
 
-    Column {
+    Column(Modifier.fillMaxSize()) {
         Layer(Modifier.padding(horizontal = 8.dp)) {
             Box(
                 modifier = Modifier.fillMaxWidth()
@@ -719,7 +721,9 @@ private fun ChatArea(conversation: Conversation) {
             }
         ) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 state = listState,
                 reverseLayout = true,
             ) {
@@ -761,5 +765,121 @@ private fun ChatArea(conversation: Conversation) {
                 }
             }
         }
+        Layer(Modifier.padding(horizontal = 8.dp)) {
+            Box(Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) {
+                ChatInput(
+                    conversationKey = conversation.asKey,
+                    onSendMessage = {
+
+                    }
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun ChatInput(
+    modifier: Modifier = Modifier,
+    conversationKey: Conversation.Key,
+    onSendMessage: (text: String) -> Unit
+) {
+    val bot = LocalBot.current
+    val config = LocalConfig.current
+    val state = rememberTextFieldState()
+    var enterStartedWithModifier by remember { mutableStateOf(false) }
+    var enterConsumedForSend by remember { mutableStateOf(false) }
+
+    suspend fun sendMessage() {
+        if (state.text.isBlank()) return
+
+        val sendText = state.text.toString().trim()
+        onSendMessage(
+            sendText,
+            // more types of rich content can be supported here
+        )
+
+        val sendMessageBlock: suspend BotOutgoingMessageBuilder.() -> Unit = {
+            text(sendText)
+        }
+        state.edit { delete(0, length) }
+
+        when (conversationKey.scene) {
+            MessageScene.FRIEND -> {
+                bot.sendFriendMessage(
+                    friendUin = conversationKey.peerUin,
+                    build = sendMessageBlock,
+                )
+            }
+
+            MessageScene.GROUP -> {
+                bot.sendGroupMessage(
+                    groupUin = conversationKey.peerUin,
+                    build = sendMessageBlock,
+                )
+            }
+
+            else -> {}
+        }
+    }
+
+    TextField(
+        state = state,
+        modifier = modifier.fillMaxWidth()
+            .onPreviewKeyEvent { event ->
+                if (event.key != Key.Enter) return@onPreviewKeyEvent false
+
+                if (config.useCtrlEnterToSend) {
+                    when (event.type) {
+                        KeyEventType.KeyDown -> {
+                            enterStartedWithModifier = event.isCtrlPressed || event.isMetaPressed
+                            false
+                        }
+
+                        KeyEventType.KeyUp -> {
+                            val hasModifierNow = event.isCtrlPressed || event.isMetaPressed
+                            val effectiveHasModifier = hasModifierNow || enterStartedWithModifier
+                            enterStartedWithModifier = false
+                            if (effectiveHasModifier) {
+                                bot.launch { sendMessage() }
+                                true
+                            } else {
+                                false
+                            }
+                        }
+
+                        else -> false
+                    }
+                } else {
+                    when (event.type) {
+                        KeyEventType.KeyDown -> {
+                            val hasModifier = event.isCtrlPressed || event.isMetaPressed
+                            return@onPreviewKeyEvent if (!hasModifier) {
+                                // Enter alone: send message, do not insert newline.
+                                bot.launch { sendMessage() }
+                                enterConsumedForSend = true
+                                true
+                            } else {
+                                // Ctrl/Cmd + Enter: manually insert newline.
+                                state.edit { append('\n') }
+                                enterConsumedForSend = false
+                                true
+                            }
+                        }
+
+                        KeyEventType.KeyUp -> {
+                            // If Enter was already used to send, also consume KeyUp.
+                            return@onPreviewKeyEvent if (enterConsumedForSend) {
+                                enterConsumedForSend = false
+                                true
+                            } else {
+                                false
+                            }
+                        }
+
+                        else -> false
+                    }
+                }
+            },
+    )
 }
