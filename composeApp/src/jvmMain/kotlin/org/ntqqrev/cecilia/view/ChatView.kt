@@ -47,6 +47,7 @@ import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.component.message.Bubble
 import org.ntqqrev.cecilia.component.message.GreyTip
+import org.ntqqrev.cecilia.component.message.LocalBubble
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.core.LocalConfig
 import org.ntqqrev.cecilia.core.LocalEmojiImageFallback
@@ -57,6 +58,7 @@ import org.ntqqrev.cecilia.util.formatToConvenientTime
 import org.ntqqrev.cecilia.util.formatToShortTime
 import org.ntqqrev.cecilia.util.toPreviewText
 import java.time.Instant
+import kotlin.random.Random
 
 val LocalJumpToMessage = compositionLocalOf<((Long) -> Unit)?> { null }
 
@@ -602,7 +604,8 @@ private fun ChatArea(conversation: Conversation) {
             when (event) {
                 is MessageReceiveEvent -> {
                     if (event.message.scene == conversation.scene &&
-                        event.message.peerUin == conversation.peerUin
+                        event.message.peerUin == conversation.peerUin &&
+                        event.message.senderUin != bot.uin
                     ) {
                         messageLikeList.add(event.message.toModel())
                     }
@@ -702,7 +705,8 @@ private fun ChatArea(conversation: Conversation) {
                 } ?: 0L
                 if (sequence >= currentOldestSequence) {
                     val targetIndex = messageLikeList.indexOfFirst {
-                        (it as? Message)?.sequence == sequence
+                        (it as? Message)?.sequence == sequence ||
+                                (it as? LocalMessage)?.sequence == sequence
                     }
                     if (targetIndex >= 0) {
                         scope.launch {
@@ -732,26 +736,53 @@ private fun ChatArea(conversation: Conversation) {
                     key = { index ->
                         when (val messageLike = messageLikeList[messageLikeList.size - index - 1]) {
                             is Message -> "message-${messageLike.sequence}"
+                            is LocalMessage -> "local-message-${messageLike.random}-${messageLike.timestamp}"
                             is Notification -> "notification-$index-${messageLike.hashCode()}"
                         }
                     }
                 ) { index ->
                     when (val currentMessageLike = messageLikeList[messageLikeList.size - index - 1]) {
-                        is Message -> {
-                            Bubble(
-                                message = currentMessageLike,
-                                blink = currentMessageLike.sequence == blinkSequence
-                            )
+                        is Message, is LocalMessage -> {
+                            when (currentMessageLike) {
+                                is Message -> {
+                                    Bubble(
+                                        message = currentMessageLike,
+                                        blink = currentMessageLike.sequence == blinkSequence
+                                    )
+                                }
+
+                                is LocalMessage -> {
+                                    LocalBubble(
+                                        message = currentMessageLike,
+                                        blink = currentMessageLike.sequence != null
+                                                && currentMessageLike.sequence == blinkSequence
+                                    )
+                                }
+
+                                else -> {}
+                            }
 
                             // compare with prev timestamp
-                            val previousMessage = messageLikeList.slice(0..messageLikeList.size - index - 2)
-                                .lastOrNull { it is Message } as Message?
-                            val shouldShowTimeTip = previousMessage?.let {
-                                currentMessageLike.timestamp - previousMessage.timestamp >= 300
+                            val currentMessageTimestamp = when (currentMessageLike) {
+                                is Message -> currentMessageLike.timestamp
+                                is LocalMessage -> currentMessageLike.timestamp
+                                else -> 0L
+                            }
+                            val previousMessageTimestamp = messageLikeList.slice(0..messageLikeList.size - index - 2)
+                                .lastOrNull { it is Message || it is LocalMessage }
+                                ?.let {
+                                    when (it) {
+                                        is Message -> it.timestamp
+                                        is LocalMessage -> it.timestamp
+                                        else -> 0L
+                                    }
+                                }
+                            val shouldShowTimeTip = previousMessageTimestamp?.let {
+                                currentMessageTimestamp - previousMessageTimestamp >= 300
                             } ?: true
                             if (shouldShowTimeTip) {
                                 GreyTip(
-                                    content = Instant.ofEpochSecond(currentMessageLike.timestamp)
+                                    content = Instant.ofEpochSecond(currentMessageTimestamp)
                                         .formatToConvenientTime()
                                 )
                                 Spacer(Modifier.height(16.dp))
@@ -769,8 +800,16 @@ private fun ChatArea(conversation: Conversation) {
             Box(Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) {
                 ChatInput(
                     conversationKey = conversation.asKey,
-                    onSendMessage = {
-
+                    onSendMessage = { messageLikeList += it },
+                    onSendMessageComplete = {
+                        withMutableSnapshot {
+                            val lastIndex = messageLikeList.indexOfLast { ml ->
+                                ml is LocalMessage && ml.random == it.random && ml.timestamp == it.timestamp
+                            }
+                            if (lastIndex >= 0) {
+                                messageLikeList[lastIndex] = it
+                            }
+                        }
                     }
                 )
             }
@@ -782,7 +821,8 @@ private fun ChatArea(conversation: Conversation) {
 private fun ChatInput(
     modifier: Modifier = Modifier,
     conversationKey: Conversation.Key,
-    onSendMessage: (text: String) -> Unit
+    onSendMessage: (LocalMessage) -> Unit,
+    onSendMessageComplete: (LocalMessage) -> Unit,
 ) {
     val bot = LocalBot.current
     val config = LocalConfig.current
@@ -794,17 +834,21 @@ private fun ChatInput(
         if (state.text.isBlank()) return
 
         val sendText = state.text.toString().trim()
-        onSendMessage(
-            sendText,
-            // more types of rich content can be supported here
+        val localMessage = LocalMessage(
+            scene = conversationKey.scene,
+            peerUin = conversationKey.peerUin,
+            random = Random.nextInt(),
+            timestamp = Instant.now().epochSecond,
+            text = sendText,
         )
+        onSendMessage(localMessage)
 
         val sendMessageBlock: suspend BotOutgoingMessageBuilder.() -> Unit = {
             text(sendText)
         }
         state.edit { delete(0, length) }
 
-        when (conversationKey.scene) {
+        val result = when (conversationKey.scene) {
             MessageScene.FRIEND -> {
                 bot.sendFriendMessage(
                     friendUin = conversationKey.peerUin,
@@ -819,8 +863,9 @@ private fun ChatInput(
                 )
             }
 
-            else -> {}
+            else -> null
         }
+        result?.let { onSendMessageComplete(localMessage.copy(sequence = result.sequence)) }
     }
 
     TextField(

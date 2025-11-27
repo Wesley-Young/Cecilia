@@ -4,11 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -21,6 +21,7 @@ import org.ntqqrev.acidify.struct.GroupMemberRole
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Element
+import org.ntqqrev.cecilia.model.LocalMessage
 import org.ntqqrev.cecilia.model.Message
 import org.ntqqrev.cecilia.util.displayName
 import org.ntqqrev.cecilia.util.zipIntoSingleLine
@@ -90,7 +91,7 @@ fun Bubble(
 
                     else -> {
                         Spacer(Modifier.height(2.dp))
-                        BubbleBody(message = message, isSelf = isSelf)
+                        BubbleBody(elements = message.elements, isSelf = isSelf)
                     }
                 }
             }
@@ -102,6 +103,77 @@ fun Bubble(
                     size = 32.dp,
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun LocalBubble(
+    message: LocalMessage,
+    blink: Boolean
+) {
+    val bot = LocalBot.current
+    val isGroup = message.scene == MessageScene.GROUP
+    var selfAsMember by remember { mutableStateOf<BotGroupMember?>(null) }
+
+    LaunchedEffect(message) {
+        if (isGroup) {
+            selfAsMember = bot.getGroupMember(message.peerUin, bot.uin)
+        }
+    }
+
+    Box(
+        modifier = Modifier.fillMaxWidth()
+            .background(
+                color = if (blink) {
+                    Color(0f, 0f, 0f, 0.05f)
+                } else {
+                    Color.Transparent
+                }
+            )
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.widthIn(max = 400.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                if (selfAsMember != null) {
+                    SenderHeader(
+                        member = selfAsMember!!,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                } else {
+                    Text(
+                        text = "你",
+                        style = FluentTheme.typography.caption,
+                        color = FluentTheme.colors.text.text.tertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                if (message.text == null) {
+                    // currently nothing
+                } else {
+                    BubbleBody(
+                        elements = buildList {
+                            add(
+                                Element.RichText(
+                                    content = buildAnnotatedString { append(message.text) },
+                                    inlines = mapOf()
+                                )
+                            )
+                        },
+                        isSelf = true,
+                    )
+                }
+            }
+            AvatarImage(
+                uin = bot.uin,
+                size = 32.dp,
+            )
         }
     }
 }
@@ -185,7 +257,7 @@ private fun MemberBadge(member: BotGroupMember) {
 
 @Composable
 private fun BubbleBody(
-    message: Message,
+    elements: List<Element>,
     isSelf: Boolean,
 ) {
     val bubbleShape = remember { RoundedCornerShape(12.dp) }
@@ -210,7 +282,7 @@ private fun BubbleBody(
             )
             .padding(12.dp)
     ) {
-        message.elements.forEach { e ->
+        elements.forEach { e ->
             when (e) {
                 is Element.RichText -> {
                     Text(
