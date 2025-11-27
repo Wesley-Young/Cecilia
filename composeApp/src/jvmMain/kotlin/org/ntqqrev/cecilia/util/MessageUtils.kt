@@ -11,6 +11,9 @@ val BotFriend.displayName: String
 val BotGroupMember.displayName: String
     get() = this.card.ifEmpty { this.nickname }.ifEmpty { this.uin.toString() }
 
-fun BotIncomingMessage.toPreviewText() = segments.joinToString("")
+fun String.zipIntoSingleLine() = replace('\n', ' ')
+    .replace('\r', ' ')
 
-fun List<BotIncomingSegment>.toPreviewText() = joinToString("")
+fun BotIncomingMessage.toPreviewText() = segments.toPreviewText()
+
+fun List<BotIncomingSegment>.toPreviewText() = joinToString("").zipIntoSingleLine()

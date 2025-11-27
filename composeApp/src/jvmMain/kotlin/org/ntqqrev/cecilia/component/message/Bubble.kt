@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,6 +30,7 @@ import org.ntqqrev.cecilia.core.LocalEmojiImages
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.Message
 import org.ntqqrev.cecilia.util.displayName
+import org.ntqqrev.cecilia.util.zipIntoSingleLine
 
 @Composable
 fun Bubble(
@@ -73,7 +75,7 @@ fun Bubble(
                         )
                     } else {
                         Text(
-                            text = message.senderName,
+                            text = message.senderName.zipIntoSingleLine(),
                             style = FluentTheme.typography.caption,
                             color = FluentTheme.colors.text.text.tertiary,
                             maxLines = 1,
@@ -126,15 +128,19 @@ private fun SenderHeader(
             MemberBadge(member)
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = member.displayName,
+                text = member.displayName.zipIntoSingleLine(),
                 style = FluentTheme.typography.caption,
-                color = FluentTheme.colors.text.text.tertiary
+                color = FluentTheme.colors.text.text.tertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         } else {
             Text(
-                text = member.displayName,
+                text = member.displayName.zipIntoSingleLine(),
                 style = FluentTheme.typography.caption,
-                color = FluentTheme.colors.text.text.tertiary
+                color = FluentTheme.colors.text.text.tertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.width(4.dp))
             MemberBadge(member)
@@ -174,9 +180,12 @@ private fun MemberBadge(member: BotGroupMember) {
                     append(titlePart)
                 }
             },
-            style = FluentTheme.typography.caption,
-            color = FluentTheme.colors.text.onAccent.secondary,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+            style = FluentTheme.typography.caption.copy(
+                fontSize = FluentTheme.typography.caption.fontSize * 0.9f,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = FluentTheme.colors.text.onAccent.primary.copy(alpha = 0.8f),
+            modifier = Modifier.padding(horizontal = 6.dp)
         )
     }
 }
