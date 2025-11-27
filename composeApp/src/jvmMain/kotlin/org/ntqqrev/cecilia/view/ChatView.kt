@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.Snapshot.Companion.withMutableSnapshot
@@ -16,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,11 +41,14 @@ import org.ntqqrev.acidify.message.BotIncomingMessage
 import org.ntqqrev.acidify.message.BotIncomingSegment
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.acidify.message.MessageScene
+import org.ntqqrev.cecilia.component.AnimatedImage
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.component.message.Bubble
 import org.ntqqrev.cecilia.component.message.GreyTip
 import org.ntqqrev.cecilia.core.LocalBot
+import org.ntqqrev.cecilia.core.LocalEmojiImageFallback
+import org.ntqqrev.cecilia.core.LocalEmojiImages
 import org.ntqqrev.cecilia.model.*
 import org.ntqqrev.cecilia.util.displayName
 import org.ntqqrev.cecilia.util.formatToConvenientTime
@@ -378,10 +384,16 @@ private fun ChatArea(conversation: Conversation) {
             timestamp = this.timestamp,
             elements = buildList {
                 var buffer = AnnotatedString.Builder()
+                val inlines = mutableMapOf<String, InlineTextContent>()
 
                 fun flush() {
                     if (buffer.length > 0) {
-                        add(Element.RichText(buffer.toAnnotatedString()))
+                        add(
+                            Element.RichText(
+                                content = buffer.toAnnotatedString(),
+                                inlines = inlines
+                            )
+                        )
                         buffer = AnnotatedString.Builder()
                     }
                 }
@@ -405,6 +417,38 @@ private fun ChatArea(conversation: Conversation) {
                                     id = "face/${it.faceId}",
                                     alternateText = it.summary,
                                 )
+                                inlines["face/${it.faceId}"] = InlineTextContent(
+                                    placeholder = Placeholder(
+                                        width = 16.sp,
+                                        height = 16.sp,
+                                        PlaceholderVerticalAlign.Center
+                                    )
+                                ) { _ ->
+                                    val emojiImages = LocalEmojiImages.current
+                                    if (emojiImages != null) {
+                                        emojiImages[it.faceId.toString()]?.let { v ->
+                                            if (v.apng != null) {
+                                                AnimatedImage(
+                                                    frames = v.apng,
+                                                    contentDescription = "表情 ${it.faceId}",
+                                                    modifier = Modifier.size(16.sp.value.dp)
+                                                )
+                                            } else {
+                                                Image(
+                                                    bitmap = v.png,
+                                                    contentDescription = "表情 ${it.faceId}",
+                                                    modifier = Modifier.size(16.sp.value.dp)
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        Image(
+                                            bitmap = LocalEmojiImageFallback.current,
+                                            contentDescription = "表情 ${it.faceId}",
+                                            modifier = Modifier.size(16.sp.value.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
 

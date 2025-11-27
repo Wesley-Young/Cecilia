@@ -1,11 +1,13 @@
 package org.ntqqrev.cecilia.model
 
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.ui.text.AnnotatedString
 import org.ntqqrev.acidify.message.ImageSubType
 
 sealed class Element {
     data class RichText(
-        val content: AnnotatedString
+        val content: AnnotatedString,
+        val inlines: Map<String, InlineTextContent>,
     ) : Element()
 
     data class LargeFace(

@@ -2,6 +2,7 @@ package org.ntqqrev.cecilia.core
 
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.ImageBitmap
 import io.ktor.client.*
 import org.ntqqrev.acidify.Bot
 
@@ -18,6 +19,10 @@ val LocalConfigSetter = compositionLocalOf<(Config) -> Unit> {
 }
 
 val LocalEmojiImages = compositionLocalOf<Map<String, FaceEntry>?> { null }
+
+val LocalEmojiImageFallback = compositionLocalOf<ImageBitmap> {
+    error("No EmojiImageFallback provided")
+}
 
 val LocalAvatarCache = staticCompositionLocalOf<AvatarCache> {
     error("No AvatarCache provided")

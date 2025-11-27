@@ -9,6 +9,13 @@ import javax.imageio.ImageIO
 import kotlin.io.path.Path
 import kotlin.io.path.div
 
+object ResourceLoader {
+    fun getResourceBytes(path: String): ByteArray? =
+        this::class.java.classLoader.getResourceAsStream(path)?.use {
+            it.readBytes()
+        }
+}
+
 object AppDataDirectoryProvider {
     val value by lazy {
         val osName = System.getProperty("os.name")?.lowercase().orEmpty()

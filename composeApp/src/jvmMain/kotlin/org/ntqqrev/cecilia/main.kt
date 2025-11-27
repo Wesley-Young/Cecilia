@@ -25,6 +25,7 @@ import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.Settings
 import io.ktor.client.*
 import kotlinx.coroutines.*
+import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.common.AppInfo
 import org.ntqqrev.acidify.common.SessionStore
@@ -34,6 +35,7 @@ import org.ntqqrev.acidify.logging.SimpleLogHandler
 import org.ntqqrev.cecilia.component.ConfigInitDialog
 import org.ntqqrev.cecilia.core.*
 import org.ntqqrev.cecilia.util.AppDataDirectoryProvider
+import org.ntqqrev.cecilia.util.ResourceLoader.getResourceBytes
 import org.ntqqrev.cecilia.util.WallpaperProvider
 import org.ntqqrev.cecilia.util.desaturate
 import org.ntqqrev.cecilia.view.LoginView
@@ -76,6 +78,10 @@ fun appMain() = application {
     val scope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob()) }
     var bot by remember { mutableStateOf<Bot?>(null) }
     var emojiImages by remember { mutableStateOf<Map<String, FaceEntry>?>(null) }
+    val emojiImageFallback = remember {
+        Image.makeFromEncoded(getResourceBytes("assets/default.png")!!)
+            .toComposeImageBitmap()
+    }
 
     val httpClient = remember { HttpClient() }
     val avatarCache = remember { AvatarCache() }
@@ -189,6 +195,7 @@ fun appMain() = application {
                 config.writeToPath(configPath)
             },
             LocalEmojiImages provides emojiImages,
+            LocalEmojiImageFallback provides emojiImageFallback,
             LocalAvatarCache provides avatarCache,
             LocalMediaCache provides mediaCache,
             LocalHttpClient provides httpClient,

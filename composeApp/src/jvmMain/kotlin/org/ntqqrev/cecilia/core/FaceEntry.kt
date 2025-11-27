@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.skia.Image
 import org.ntqqrev.apng.ApngReader
+import org.ntqqrev.cecilia.util.ResourceLoader.getResourceBytes
 import org.ntqqrev.cecilia.util.isNumeric
 
 class FaceEntry(
@@ -40,9 +41,6 @@ class FaceEntry(
 
     companion object {
         val all: Map<String, FaceEntry> by lazy {
-            fun getResourceBytes(path: String): ByteArray? =
-                this::class.java.classLoader.getResourceAsStream(path)?.readBytes()
-
             val indexedEmojis = Json.decodeFromString<List<JsonModel>>(
                 getResourceBytes("assets/qq_emoji/_index.json")!!.decodeToString()
             )

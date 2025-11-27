@@ -1,32 +1,25 @@
 package org.ntqqrev.cecilia.component.message
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.elevation
 import io.github.composefluent.component.Text
 import org.ntqqrev.acidify.entity.BotGroupMember
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.acidify.struct.GroupMemberRole
-import org.ntqqrev.cecilia.component.AnimatedImage
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.core.LocalBot
-import org.ntqqrev.cecilia.core.LocalEmojiImages
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.Message
 import org.ntqqrev.cecilia.util.displayName
@@ -227,32 +220,7 @@ private fun BubbleBody(
                         } else {
                             FluentTheme.colors.text.text.primary
                         },
-                        inlineContent = LocalEmojiImages.current
-                            ?.map { (k, v) ->
-                                "face/$k" to InlineTextContent(
-                                    Placeholder(
-                                        width = 16.sp,
-                                        height = 16.sp,
-                                        PlaceholderVerticalAlign.Center
-                                    )
-                                ) {
-                                    if (v.apng != null) {
-                                        AnimatedImage(
-                                            frames = v.apng,
-                                            contentDescription = "表情 $k",
-                                            modifier = Modifier.size(16.sp.value.dp)
-                                        )
-                                    } else {
-                                        Image(
-                                            bitmap = v.png,
-                                            contentDescription = "表情 $k",
-                                            modifier = Modifier.size(16.sp.value.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            ?.associate { it }
-                            ?: emptyMap()
+                        inlineContent = e.inlines,
                     )
                 }
 
