@@ -18,15 +18,10 @@ import io.github.composefluent.component.ProgressRing
 import io.github.composefluent.component.Text
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import io.ktor.http.contentLength
-import io.ktor.utils.io.core.writeFully
-import io.ktor.utils.io.exhausted
-import io.ktor.utils.io.readAvailable
+import io.ktor.http.*
+import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.io.Buffer
-import kotlinx.io.readByteArray
 import org.jetbrains.skia.Codec
 import org.jetbrains.skia.Data
 import org.ntqqrev.acidify.message.ImageSubType
@@ -48,63 +43,73 @@ fun MessageImage(
     val httpClient = LocalHttpClient.current
     val mediaCache = LocalMediaCache.current
     var progress by remember { mutableStateOf(0f) }
-    var imageBytes by remember { mutableStateOf<ByteArray?>(null) }
     var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var animationFrames by remember { mutableStateOf<List<AnimationFrame>?>(null) }
     var hasLoadingError by remember { mutableStateOf(false) }
 
     LaunchedEffect(image.fileId) {
         runCatching {
+            // reset states for new image
+            progress = 0f
+            imageBitmap = null
+            animationFrames = null
+            hasLoadingError = false
+
             val cachedContent = mediaCache.getContentByFileId(image.fileId)
             val bytes = if (cachedContent != null) {
                 cachedContent
             } else {
                 val url = bot.getDownloadUrl(image.fileId)
-                withContext(Dispatchers.IO) {
-                    val response = httpClient.get(url)
+                val downloaded = httpClient.get(url).let { response ->
                     val contentLength = response.contentLength()
                     if (contentLength != null) {
                         val channel = response.bodyAsChannel()
-                        val bytes = ByteArray(contentLength.toInt())
+                        val result = ByteArray(contentLength.toInt())
                         var totalRead = 0
                         while (!channel.isClosedForRead) {
-                            val read = channel.readAvailable(bytes, totalRead, bytes.size - totalRead)
+                            val read = channel.readAvailable(result, totalRead, result.size - totalRead)
                             if (read == -1) break
                             totalRead += read
                             progress = totalRead.toFloat() / contentLength
                         }
-                        bytes
+                        result
                     } else {
                         response.readRawBytes()
                     }
-                }.also {
+                }
+                downloaded.also {
                     mediaCache.putFileIdAndContent(image.fileId, url, it)
                 }
             }
-            imageBytes = bytes
-            val data = Data.makeFromBytes(bytes)
-            Codec.makeFromData(data).use { codec ->
-                if (codec.frameCount > 1) {
-                    val frames = mutableListOf<ImageBitmap>()
-                    val durations = mutableListOf<Int>()
-                    repeat(codec.frameCount) { index ->
-                        val bitmap = SkiaBitmap()
-                        bitmap.allocPixels(codec.imageInfo)
-                        codec.readPixels(bitmap, index)
-                        frames += SkiaImage.makeFromBitmap(bitmap).toComposeImageBitmap()
-                        val duration = codec.getFrameInfo(index).duration
-                        durations += duration.coerceAtLeast(16)
+            var decodedStatic: ImageBitmap? = null
+            var decodedFrames: List<AnimationFrame>? = null
+            withContext(Dispatchers.Default) {
+                val data = Data.makeFromBytes(bytes)
+                Codec.makeFromData(data).use { codec ->
+                    if (codec.frameCount > 1) {
+                        val frames = mutableListOf<ImageBitmap>()
+                        val durations = mutableListOf<Int>()
+                        repeat(codec.frameCount) { index ->
+                            val bitmap = SkiaBitmap()
+                            bitmap.allocPixels(codec.imageInfo)
+                            codec.readPixels(bitmap, index)
+                            frames += SkiaImage.makeFromBitmap(bitmap).toComposeImageBitmap()
+                            val duration = codec.getFrameInfo(index).duration
+                            durations += duration.coerceAtLeast(16)
+                        }
+                        decodedFrames = frames.zip(durations) { img, dur ->
+                            AnimationFrame(
+                                imageData = img,
+                                durationMillis = dur.toLong(),
+                            )
+                        }
+                    } else {
+                        decodedStatic = SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
                     }
-                    animationFrames = frames.zip(durations) { img, dur ->
-                        AnimationFrame(
-                            imageData = img,
-                            durationMillis = dur.toLong(),
-                        )
-                    }
-                } else {
-                    imageBitmap = SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
                 }
             }
+            imageBitmap = decodedStatic
+            animationFrames = decodedFrames
         }.onFailure {
             it.printStackTrace()
             hasLoadingError = true
