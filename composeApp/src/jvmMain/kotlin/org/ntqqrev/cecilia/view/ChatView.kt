@@ -156,8 +156,8 @@ fun ChatView() {
                     val conversationListScrollState = rememberScrollState()
                     Box(
                         modifier = Modifier.fillMaxWidth()
-                            .height(48.dp)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .height(44.dp)
+                            .padding(horizontal = 16.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
