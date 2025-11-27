@@ -1,4 +1,4 @@
-package org.ntqqrev.apng
+package org.ntqqrev.cecilia.util
 
 import java.awt.AlphaComposite
 import java.awt.image.BufferedImage
@@ -9,25 +9,19 @@ import java.nio.ByteOrder
 import java.util.zip.CRC32
 import javax.imageio.ImageIO
 
-class ApngReader(bytes: ByteArray) {
-    private val parsedFrames: List<ApngFrame>
-    private var index = 0
+object APNG {
+    data class Frame(
+        val image: BufferedImage,
+        val delayMillis: Long,
+        val width: Int,
+        val height: Int,
+        val xOffset: Int,
+        val yOffset: Int,
+        val disposeOp: Int,
+        val blendOp: Int
+    )
 
-    val frames: List<ApngFrame>
-        get() = parsedFrames
-
-    init {
-        parsedFrames = parseApng(bytes)
-    }
-
-    fun hasNextFrame(): Boolean = index < parsedFrames.size
-
-    fun nextFrame(): ApngFrame {
-        require(hasNextFrame()) { "No more frames" }
-        return parsedFrames[index++]
-    }
-
-    private fun parseApng(bytes: ByteArray): List<ApngFrame> {
+    fun parse(bytes: ByteArray): List<Frame> {
         val stream = ByteArrayInputStream(bytes)
         val signature = stream.readNBytes(PNG_SIGNATURE.size)
         require(signature contentEquals PNG_SIGNATURE) { "Not a PNG/APNG file" }
@@ -104,12 +98,12 @@ class ApngReader(bytes: ByteArray) {
         baseIhdr: ByteArray,
         sharedChunks: List<ByteArray>,
         iendChunk: ByteArray
-    ): List<ApngFrame> {
+    ): List<Frame> {
         val canvasWidth = ByteBuffer.wrap(baseIhdr, 0, 4).order(ByteOrder.BIG_ENDIAN).int
         val canvasHeight = ByteBuffer.wrap(baseIhdr, 4, 4).order(ByteOrder.BIG_ENDIAN).int
         val canvas = BufferedImage(canvasWidth, canvasHeight, BufferedImage.TYPE_INT_ARGB)
 
-        val result = mutableListOf<ApngFrame>()
+        val result = mutableListOf<Frame>()
         for (frame in frameBuilders) {
             val ihdrChunk = makeChunk(
                 IHDR_BYTES,
@@ -146,7 +140,7 @@ class ApngReader(bytes: ByteArray) {
             g.dispose()
 
             result.add(
-                ApngFrame(
+                Frame(
                     image = deepCopy(canvas),
                     delayMillis = calculateDelay(frame.control.delayNum, frame.control.delayDen),
                     width = canvasWidth,
@@ -224,9 +218,6 @@ class ApngReader(bytes: ByteArray) {
         )
     }
 
-    private fun makeChunk(type: String, data: ByteArray): ByteArray =
-        makeChunk(type.toByteArray(Charsets.US_ASCII), data)
-
     private fun makeChunk(type: ByteArray, data: ByteArray): ByteArray {
         require(type.size == 4) { "Chunk type must be 4 bytes" }
         val crc32 = CRC32()
@@ -270,15 +261,13 @@ class ApngReader(bytes: ByteArray) {
         val blendOp: Int
     )
 
-    companion object {
-        private val PNG_SIGNATURE = byteArrayOf(
-            0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
-        )
-        private val IHDR_BYTES = "IHDR".toByteArray(Charsets.US_ASCII)
-        private val IDAT_BYTES = "IDAT".toByteArray(Charsets.US_ASCII)
-        private val ANIMATION_CHUNKS = setOf("acTL", "fcTL", "fdAT")
-        private const val BLEND_SOURCE = 0
-        private const val DISPOSE_BACKGROUND = 1
-        private const val DISPOSE_PREVIOUS = 2
-    }
+    private val PNG_SIGNATURE = byteArrayOf(
+        0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+    )
+    private val IHDR_BYTES = "IHDR".toByteArray(Charsets.US_ASCII)
+    private val IDAT_BYTES = "IDAT".toByteArray(Charsets.US_ASCII)
+    private val ANIMATION_CHUNKS = setOf("acTL", "fcTL", "fdAT")
+    private const val BLEND_SOURCE = 0
+    private const val DISPOSE_BACKGROUND = 1
+    private const val DISPOSE_PREVIOUS = 2
 }

@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.skia.Image
-import org.ntqqrev.apng.ApngReader
+import org.ntqqrev.cecilia.util.APNG
 import org.ntqqrev.cecilia.util.ResourceLoader.getResourceBytes
 import org.ntqqrev.cecilia.util.isNumeric
 
@@ -55,7 +55,7 @@ class FaceEntry(
                     png = Image.makeFromEncoded(pngBytes).toComposeImageBitmap(),
                     apng = apngBytes?.let {
                         runCatching {
-                            ApngReader(apngBytes).frames.map { apngFrame ->
+                            APNG.parse(apngBytes).map { apngFrame ->
                                 AnimationFrame(
                                     durationMillis = apngFrame.delayMillis,
                                     imageData = apngFrame.image.toComposeImageBitmap()
