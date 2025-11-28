@@ -59,8 +59,7 @@ fun SettingsView() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(end = 24.dp)
-            .padding(vertical = 24.dp)
+            .padding(end = 24.dp, top = 8.dp, bottom = 24.dp)
     ) {
         val scrollState = rememberScrollState()
         Column(
@@ -149,7 +148,7 @@ fun SettingsView() {
         Spacer(Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
             AccentButton(
