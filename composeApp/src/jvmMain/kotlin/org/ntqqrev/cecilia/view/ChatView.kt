@@ -606,10 +606,25 @@ private fun ChatArea(conversation: Conversation) {
             when (event) {
                 is MessageReceiveEvent -> {
                     if (event.message.scene == conversation.scene &&
-                        event.message.peerUin == conversation.peerUin &&
-                        event.message.senderUin != bot.uin
+                        event.message.peerUin == conversation.peerUin
                     ) {
-                        messageLikeList.add(event.message.toModel())
+                        if (event.message.senderUin != bot.uin) {
+                            messageLikeList.add(event.message.toModel())
+                        } else {
+                            // is self message, check its random
+                            withMutableSnapshot {
+                                // for better performance, search from end and limit to last 20 messages
+                                for (i in messageLikeList.size - 1 downTo (messageLikeList.size - 20).coerceAtLeast(0)) {
+                                    val messageLike = messageLikeList[i]
+                                    if (messageLike is LocalMessage &&
+                                        messageLike.random == event.message.random
+                                    ) {
+                                        return@withMutableSnapshot
+                                    }
+                                }
+                                messageLikeList.add(event.message.toModel()) // treat as normal incoming message
+                            }
+                        }
                     }
                 }
 
@@ -890,6 +905,7 @@ private fun ChatInput(
             MessageScene.FRIEND -> {
                 bot.sendFriendMessage(
                     friendUin = conversationKey.peerUin,
+                    random = localMessage.random,
                     build = sendMessageBlock,
                 )
             }
@@ -897,6 +913,7 @@ private fun ChatInput(
             MessageScene.GROUP -> {
                 bot.sendGroupMessage(
                     groupUin = conversationKey.peerUin,
+                    random = localMessage.random,
                     build = sendMessageBlock,
                 )
             }
