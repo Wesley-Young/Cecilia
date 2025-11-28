@@ -48,6 +48,7 @@ import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.component.message.Bubble
 import org.ntqqrev.cecilia.component.message.GreyTip
 import org.ntqqrev.cecilia.component.message.LocalBubble
+import org.ntqqrev.cecilia.component.message.MessageReply
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.core.LocalConfig
 import org.ntqqrev.cecilia.core.LocalEmojiImageFallback
@@ -357,6 +358,7 @@ private fun ChatArea(conversation: Conversation) {
     val messageLikeList = remember(bot, conversation.asKey) {
         mutableStateListOf<MessageLike>()
     }
+    var replyingMessageLike by remember { mutableStateOf<MessageLike?>(null) }
 
     val listState = rememberLazyListState()
     val lastVisibleItemIndex by remember {
@@ -747,7 +749,10 @@ private fun ChatArea(conversation: Conversation) {
                                 is Message -> {
                                     Bubble(
                                         message = currentMessageLike,
-                                        blink = currentMessageLike.sequence == blinkSequence
+                                        blink = currentMessageLike.sequence == blinkSequence,
+                                        onDoubleClick = {
+                                            replyingMessageLike = currentMessageLike
+                                        },
                                     )
                                 }
 
@@ -755,7 +760,12 @@ private fun ChatArea(conversation: Conversation) {
                                     LocalBubble(
                                         message = currentMessageLike,
                                         blink = currentMessageLike.sequence != null
-                                                && currentMessageLike.sequence == blinkSequence
+                                                && currentMessageLike.sequence == blinkSequence,
+                                        onDoubleClick = {
+                                            if (currentMessageLike.sequence != null) {
+                                                replyingMessageLike = currentMessageLike
+                                            }
+                                        },
                                     )
                                 }
 
@@ -800,7 +810,11 @@ private fun ChatArea(conversation: Conversation) {
             Box(Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) {
                 ChatInput(
                     conversationKey = conversation.asKey,
-                    onSendMessage = { messageLikeList += it },
+                    replyingMessageLike = replyingMessageLike,
+                    onSendMessage = {
+                        replyingMessageLike = null
+                        messageLikeList += it
+                    },
                     onSendMessageComplete = {
                         withMutableSnapshot {
                             val lastIndex = messageLikeList.indexOfLast { ml ->
@@ -821,12 +835,30 @@ private fun ChatArea(conversation: Conversation) {
 private fun ChatInput(
     modifier: Modifier = Modifier,
     conversationKey: Conversation.Key,
+    replyingMessageLike: MessageLike?,
     onSendMessage: (LocalMessage) -> Unit,
     onSendMessageComplete: (LocalMessage) -> Unit,
 ) {
     val bot = LocalBot.current
     val config = LocalConfig.current
     val state = rememberTextFieldState()
+    val replyElement = replyingMessageLike?.let {
+        when (it) {
+            is Message -> Element.Reply(
+                sequence = it.sequence,
+                senderName = it.senderName,
+                content = it.toPreviewText()
+            )
+
+            is LocalMessage -> Element.Reply(
+                sequence = it.sequence!!,
+                senderName = "你",
+                content = it.toPreviewText()
+            )
+
+            else -> null
+        }
+    }
     var enterStartedWithModifier by remember { mutableStateOf(false) }
     var enterConsumedForSend by remember { mutableStateOf(false) }
 
@@ -834,16 +866,22 @@ private fun ChatInput(
         if (state.text.isBlank()) return
 
         val sendText = state.text.toString().trim()
+        val sendReply = replyElement
+
         val localMessage = LocalMessage(
             scene = conversationKey.scene,
             peerUin = conversationKey.peerUin,
             random = Random.nextInt(),
             timestamp = Instant.now().epochSecond,
             text = sendText,
+            reply = sendReply,
         )
         onSendMessage(localMessage)
 
         val sendMessageBlock: suspend BotOutgoingMessageBuilder.() -> Unit = {
+            sendReply?.let {
+                reply(it.sequence)
+            }
             text(sendText)
         }
         state.edit { delete(0, length) }
@@ -868,63 +906,71 @@ private fun ChatInput(
         result?.let { onSendMessageComplete(localMessage.copy(sequence = result.sequence)) }
     }
 
-    TextField(
-        state = state,
-        modifier = modifier.fillMaxWidth()
-            .onPreviewKeyEvent { event ->
-                if (event.key != Key.Enter) return@onPreviewKeyEvent false
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (replyingMessageLike != null) {
+            MessageReply(
+                reply = replyElement!!,
+                isSelf = false,
+            )
+        }
+        TextField(
+            state = state,
+            modifier = modifier.fillMaxWidth()
+                .onPreviewKeyEvent { event ->
+                    if (event.key != Key.Enter) return@onPreviewKeyEvent false
 
-                if (config.useCtrlEnterToSend) {
-                    when (event.type) {
-                        KeyEventType.KeyDown -> {
-                            enterStartedWithModifier = event.isCtrlPressed || event.isMetaPressed
-                            false
-                        }
-
-                        KeyEventType.KeyUp -> {
-                            val hasModifierNow = event.isCtrlPressed || event.isMetaPressed
-                            val effectiveHasModifier = hasModifierNow || enterStartedWithModifier
-                            enterStartedWithModifier = false
-                            if (effectiveHasModifier) {
-                                bot.launch { sendMessage() }
-                                true
-                            } else {
+                    if (config.useCtrlEnterToSend) {
+                        when (event.type) {
+                            KeyEventType.KeyDown -> {
+                                enterStartedWithModifier = event.isCtrlPressed || event.isMetaPressed
                                 false
                             }
-                        }
 
-                        else -> false
-                    }
-                } else {
-                    when (event.type) {
-                        KeyEventType.KeyDown -> {
-                            val hasModifier = event.isCtrlPressed || event.isMetaPressed
-                            return@onPreviewKeyEvent if (!hasModifier) {
-                                // Enter alone: send message, do not insert newline.
-                                bot.launch { sendMessage() }
-                                enterConsumedForSend = true
-                                true
-                            } else {
-                                // Ctrl/Cmd + Enter: manually insert newline.
-                                state.edit { append('\n') }
-                                enterConsumedForSend = false
-                                true
+                            KeyEventType.KeyUp -> {
+                                val hasModifierNow = event.isCtrlPressed || event.isMetaPressed
+                                val effectiveHasModifier = hasModifierNow || enterStartedWithModifier
+                                enterStartedWithModifier = false
+                                if (effectiveHasModifier) {
+                                    bot.launch { sendMessage() }
+                                    true
+                                } else {
+                                    false
+                                }
                             }
-                        }
 
-                        KeyEventType.KeyUp -> {
-                            // If Enter was already used to send, also consume KeyUp.
-                            return@onPreviewKeyEvent if (enterConsumedForSend) {
-                                enterConsumedForSend = false
-                                true
-                            } else {
-                                false
+                            else -> false
+                        }
+                    } else {
+                        when (event.type) {
+                            KeyEventType.KeyDown -> {
+                                val hasModifier = event.isCtrlPressed || event.isMetaPressed
+                                return@onPreviewKeyEvent if (!hasModifier) {
+                                    // Enter alone: send message, do not insert newline.
+                                    bot.launch { sendMessage() }
+                                    enterConsumedForSend = true
+                                    true
+                                } else {
+                                    // Ctrl/Cmd + Enter: manually insert newline.
+                                    state.edit { append('\n') }
+                                    enterConsumedForSend = false
+                                    true
+                                }
                             }
-                        }
 
-                        else -> false
+                            KeyEventType.KeyUp -> {
+                                // If Enter was already used to send, also consume KeyUp.
+                                return@onPreviewKeyEvent if (enterConsumedForSend) {
+                                    enterConsumedForSend = false
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+
+                            else -> false
+                        }
                     }
-                }
-            },
-    )
+                },
+        )
+    }
 }

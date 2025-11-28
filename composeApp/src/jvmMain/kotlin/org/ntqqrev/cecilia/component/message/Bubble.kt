@@ -1,8 +1,10 @@
 package org.ntqqrev.cecilia.component.message
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,9 +28,11 @@ import org.ntqqrev.cecilia.model.Message
 import org.ntqqrev.cecilia.util.displayName
 import org.ntqqrev.cecilia.util.zipIntoSingleLine
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Bubble(
     message: Message,
+    onDoubleClick: () -> Unit,
     blink: Boolean = false,
 ) {
     val bot = LocalBot.current
@@ -44,6 +48,10 @@ fun Bubble(
                 } else {
                     Color.Transparent
                 }
+            )
+            .onClick(
+                onDoubleClick = onDoubleClick,
+                onClick = {}
             )
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = if (isSelf) Alignment.CenterEnd else Alignment.CenterStart
@@ -107,9 +115,11 @@ fun Bubble(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LocalBubble(
     message: LocalMessage,
+    onDoubleClick: () -> Unit,
     blink: Boolean
 ) {
     val bot = LocalBot.current
@@ -130,6 +140,10 @@ fun LocalBubble(
                 } else {
                     Color.Transparent
                 }
+            )
+            .onClick(
+                onDoubleClick = onDoubleClick,
+                onClick = {}
             )
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.CenterEnd
@@ -159,6 +173,7 @@ fun LocalBubble(
                 } else {
                     BubbleBody(
                         elements = buildList {
+                            message.reply?.let { add(it) }
                             add(
                                 Element.RichText(
                                     content = buildAnnotatedString { append(message.text) },

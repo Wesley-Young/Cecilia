@@ -8,11 +8,15 @@ sealed class Element {
     data class RichText(
         val content: AnnotatedString,
         val inlines: Map<String, InlineTextContent>,
-    ) : Element()
+    ) : Element() {
+        override fun toString() = content.text
+    }
 
     data class LargeFace(
         val faceId: Int,
-    ) : Element()
+    ) : Element() {
+        override fun toString() = "[表情]"
+    }
 
     data class Image(
         val fileId: String,
@@ -20,11 +24,15 @@ sealed class Element {
         val height: Int,
         val subType: ImageSubType,
         val summary: String,
-    ) : Element()
+    ) : Element() {
+        override fun toString() = summary
+    }
 
     data class Reply(
         val sequence: Long,
         val senderName: String,
         val content: String,
-    ) : Element()
+    ) : Element() {
+        override fun toString() = "[引用消息]"
+    }
 }
