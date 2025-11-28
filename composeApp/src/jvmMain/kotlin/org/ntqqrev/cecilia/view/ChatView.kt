@@ -358,7 +358,7 @@ private fun ChatArea(conversation: Conversation) {
     val messageLikeList = remember(bot, conversation.asKey) {
         mutableStateListOf<MessageLike>()
     }
-    var replyElement by remember { mutableStateOf<Element.Reply?>(null) }
+    var replyElement by remember(conversation.asKey) { mutableStateOf<Element.Reply?>(null) }
 
     val listState = rememberLazyListState()
     val lastVisibleItemIndex by remember {
