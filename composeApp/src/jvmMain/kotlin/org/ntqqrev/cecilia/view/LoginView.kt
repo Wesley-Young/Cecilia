@@ -110,6 +110,7 @@ fun LoginView(
                                         } catch (e: Throwable) {
                                             if (e is ServiceException && e.retCode == -10003) {
                                                 // Session has been revoked
+                                                bot.sessionStore.clear()
                                                 usingQrCode = true
                                             }
                                             isSessionLoggingIn = false
