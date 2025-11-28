@@ -358,7 +358,7 @@ private fun ChatArea(conversation: Conversation) {
     val messageLikeList = remember(bot, conversation.asKey) {
         mutableStateListOf<MessageLike>()
     }
-    var replyingMessageLike by remember { mutableStateOf<MessageLike?>(null) }
+    var replyElement by remember { mutableStateOf<Element.Reply?>(null) }
 
     val listState = rememberLazyListState()
     val lastVisibleItemIndex by remember {
@@ -766,7 +766,33 @@ private fun ChatArea(conversation: Conversation) {
                                         message = currentMessageLike,
                                         blink = currentMessageLike.sequence == blinkSequence,
                                         onDoubleClick = {
-                                            replyingMessageLike = currentMessageLike
+                                            scope.launch {
+                                                replyElement = currentMessageLike.let {
+                                                    Element.Reply(
+                                                        sequence = it.sequence,
+                                                        senderName = when (it.scene) {
+                                                            MessageScene.FRIEND -> {
+                                                                if (it.senderUin == bot.uin) {
+                                                                    "你"
+                                                                } else {
+                                                                    val friend = bot.getFriend(it.senderUin)
+                                                                    friend?.displayName ?: it.senderUin.toString()
+                                                                }
+                                                            }
+
+                                                            MessageScene.GROUP -> {
+                                                                resolveSubject(
+                                                                    groupUin = it.peerUin,
+                                                                    memberUin = it.senderUin
+                                                                )
+                                                            }
+
+                                                            else -> it.senderUin.toString()
+                                                        },
+                                                        content = it.toPreviewText()
+                                                    )
+                                                }
+                                            }
                                         },
                                     )
                                 }
@@ -778,7 +804,11 @@ private fun ChatArea(conversation: Conversation) {
                                                 && currentMessageLike.sequence == blinkSequence,
                                         onDoubleClick = {
                                             if (currentMessageLike.sequence != null) {
-                                                replyingMessageLike = currentMessageLike
+                                                replyElement = Element.Reply(
+                                                    sequence = currentMessageLike.sequence,
+                                                    senderName = "你",
+                                                    content = currentMessageLike.toPreviewText()
+                                                )
                                             }
                                         },
                                     )
@@ -825,9 +855,9 @@ private fun ChatArea(conversation: Conversation) {
             Box(Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) {
                 ChatInput(
                     conversationKey = conversation.asKey,
-                    replyingMessageLike = replyingMessageLike,
+                    replyElement = replyElement,
                     onSendMessage = {
-                        replyingMessageLike = null
+                        replyElement = null
                         messageLikeList += it
                     },
                     onSendMessageComplete = {
@@ -850,30 +880,13 @@ private fun ChatArea(conversation: Conversation) {
 private fun ChatInput(
     modifier: Modifier = Modifier,
     conversationKey: Conversation.Key,
-    replyingMessageLike: MessageLike?,
+    replyElement: Element.Reply?,
     onSendMessage: (LocalMessage) -> Unit,
     onSendMessageComplete: (LocalMessage) -> Unit,
 ) {
     val bot = LocalBot.current
     val config = LocalConfig.current
     val state = rememberTextFieldState()
-    val replyElement = replyingMessageLike?.let {
-        when (it) {
-            is Message -> Element.Reply(
-                sequence = it.sequence,
-                senderName = it.senderName,
-                content = it.toPreviewText()
-            )
-
-            is LocalMessage -> Element.Reply(
-                sequence = it.sequence!!,
-                senderName = "你",
-                content = it.toPreviewText()
-            )
-
-            else -> null
-        }
-    }
     var enterStartedWithModifier by remember { mutableStateOf(false) }
     var enterConsumedForSend by remember { mutableStateOf(false) }
 
@@ -924,9 +937,9 @@ private fun ChatInput(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (replyingMessageLike != null) {
+        if (replyElement != null) {
             MessageReply(
-                reply = replyElement!!,
+                reply = replyElement,
                 isSelf = false,
             )
         }
