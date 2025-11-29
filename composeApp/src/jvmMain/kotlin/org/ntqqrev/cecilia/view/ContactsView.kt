@@ -23,8 +23,6 @@ import io.github.composefluent.icons.regular.Group
 import io.github.composefluent.icons.regular.Person
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
-import org.ntqqrev.acidify.struct.BotUserInfo
-import org.ntqqrev.acidify.struct.UserInfoGender
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.core.LocalBot
@@ -42,8 +40,8 @@ fun ContactsView() {
 
     LaunchedEffect(bot) {
         runCatching {
-            val allFriends = bot.getFriends()
-            val allGroups = bot.getGroups()
+            val allFriends = bot.getFriends(true)
+            val allGroups = bot.getGroups(true)
             friends = allFriends.sortedBy { friend ->
                 friend.remark.ifEmpty { friend.nickname }
             }

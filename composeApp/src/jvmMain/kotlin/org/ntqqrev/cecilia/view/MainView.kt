@@ -109,12 +109,12 @@ fun MainView() {
             ) {
                 ChatView()
             }
-            Box(
-                if (mainViewState == MainViewState.Contacts) Modifier
-                else Modifier.size(0.dp)
-            ) {
+
+            // Should be mounted every time entering Contacts view to refresh contacts list
+            if (mainViewState == MainViewState.Contacts) {
                 ContactsView()
             }
+
             Box(
                 if (mainViewState == MainViewState.Settings) Modifier
                 else Modifier.size(0.dp)
