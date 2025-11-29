@@ -1,6 +1,7 @@
 package org.ntqqrev.cecilia.model
 
 import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.AnnotatedString
 import org.ntqqrev.acidify.message.ImageSubType
 
@@ -34,5 +35,11 @@ sealed class Element {
         val content: String,
     ) : Element() {
         override fun toString() = "[引用消息]"
+    }
+
+    data class LocalImage(
+        val bitmap: ImageBitmap
+    ) : Element() {
+        override fun toString() = "[图片]"
     }
 }

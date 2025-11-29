@@ -1,16 +1,13 @@
 package org.ntqqrev.cecilia.component.message
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -25,6 +22,7 @@ import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.LocalMessage
 import org.ntqqrev.cecilia.model.Message
+import org.ntqqrev.cecilia.util.coerceInSquareBox
 import org.ntqqrev.cecilia.util.displayName
 import org.ntqqrev.cecilia.util.zipIntoSingleLine
 
@@ -85,23 +83,10 @@ fun Bubble(
                         )
                     }
                 }
-                when (message.elements.size) {
-                    1 if (message.elements[0] is Element.Image) -> {
-                        Spacer(Modifier.height(4.dp))
-                        MessageImage(image = message.elements[0] as Element.Image)
-                    }
-
-                    1 if (message.elements[0] is Element.LargeFace) -> {
-                        Spacer(Modifier.height(4.dp))
-                        val largeFace = message.elements[0] as Element.LargeFace
-                        MessageLargeFace(faceId = largeFace.faceId)
-                    }
-
-                    else -> {
-                        Spacer(Modifier.height(2.dp))
-                        BubbleBody(elements = message.elements, isSelf = isSelf)
-                    }
-                }
+                ElementsDisplay(
+                    elements = message.elements,
+                    isSelf = isSelf,
+                )
             }
 
             // self, avatar displayed last
@@ -168,27 +153,54 @@ fun LocalBubble(
                     )
                 }
 
-                if (message.text == null) {
-                    // currently nothing
-                } else {
-                    BubbleBody(
-                        elements = buildList {
-                            message.reply?.let { add(it) }
-                            add(
-                                Element.RichText(
-                                    content = buildAnnotatedString { append(message.text) },
-                                    inlines = mapOf()
-                                )
-                            )
-                        },
-                        isSelf = true,
-                    )
-                }
+                ElementsDisplay(
+                    elements = message.elements,
+                    isSelf = true,
+                )
             }
             AvatarImage(
                 uin = bot.uin,
                 size = 32.dp,
             )
+        }
+    }
+}
+
+@Composable
+private fun ElementsDisplay(
+    elements: List<Element>,
+    isSelf: Boolean,
+) {
+    when (elements.size) {
+        1 if (elements[0] is Element.Image) -> {
+            Spacer(Modifier.height(4.dp))
+            MessageImage(image = elements[0] as Element.Image)
+        }
+
+        1 if (elements[0] is Element.LocalImage) -> {
+            Spacer(Modifier.height(4.dp))
+            val e = elements[0] as Element.LocalImage
+            val (displayWidth, displayHeight) = Pair(
+                e.bitmap.width,
+                e.bitmap.height
+            ).coerceInSquareBox(300)
+            Image(
+                bitmap = e.bitmap,
+                contentDescription = null,
+                modifier = Modifier.size(width = displayWidth.dp, height = displayHeight.dp)
+                    .clip(RoundedCornerShape(4.dp))
+            )
+        }
+
+        1 if (elements[0] is Element.LargeFace) -> {
+            Spacer(Modifier.height(4.dp))
+            val largeFace = elements[0] as Element.LargeFace
+            MessageLargeFace(faceId = largeFace.faceId)
+        }
+
+        else -> {
+            Spacer(Modifier.height(2.dp))
+            BubbleBody(elements = elements, isSelf = isSelf)
         }
     }
 }
@@ -317,6 +329,19 @@ private fun BubbleBody(
 
                 is Element.Image -> {
                     MessageImage(image = e)
+                }
+
+                is Element.LocalImage -> {
+                    val (displayWidth, displayHeight) = Pair(
+                        e.bitmap.width,
+                        e.bitmap.height
+                    ).coerceInSquareBox(300)
+                    Image(
+                        bitmap = e.bitmap,
+                        contentDescription = null,
+                        modifier = Modifier.size(width = displayWidth.dp, height = displayHeight.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                    )
                 }
 
                 is Element.Reply -> {

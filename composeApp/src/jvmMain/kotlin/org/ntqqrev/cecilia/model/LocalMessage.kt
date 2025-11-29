@@ -8,7 +8,5 @@ data class LocalMessage(
     val random: Int,
     val sequence: Long? = null,
     val timestamp: Long,
-    val text: String? = null,
-    val reply: Element.Reply? = null,
-    // more fields can be added later
+    val elements: List<Element>,
 ) : MessageLike

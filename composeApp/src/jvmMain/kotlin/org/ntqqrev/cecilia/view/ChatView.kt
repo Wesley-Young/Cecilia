@@ -905,8 +905,20 @@ private fun ChatInput(
             peerUin = conversationKey.peerUin,
             random = Random.nextInt(),
             timestamp = Instant.now().epochSecond,
-            text = sendText,
-            reply = sendReply,
+            elements = buildList {
+                sendReply?.let { add(it) }
+                sendImages.forEach { attachment ->
+                    add(Element.LocalImage(attachment.bitmap))
+                }
+                if (hasText) {
+                    add(
+                        Element.RichText(
+                            content = AnnotatedString(sendText),
+                            inlines = emptyMap(),
+                        )
+                    )
+                }
+            }
         )
         onSendMessage(localMessage)
 

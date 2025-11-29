@@ -23,10 +23,7 @@ fun List<BotIncomingSegment>.toPreviewText() = joinToString("").zipIntoSingleLin
 
 fun Message.toPreviewText() = elements.toPreviewText()
 
+fun LocalMessage.toPreviewText() = elements.toPreviewText()
+
 @JvmName("elementsToPreviewText")
 fun List<Element>.toPreviewText() = joinToString("").zipIntoSingleLine()
-
-fun LocalMessage.toPreviewText() = buildString {
-    append(text)
-    // more preview info can be added here
-}

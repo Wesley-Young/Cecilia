@@ -2,8 +2,7 @@ package org.ntqqrev.cecilia.component.message
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +30,7 @@ import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.core.LocalHttpClient
 import org.ntqqrev.cecilia.core.LocalMediaCache
 import org.ntqqrev.cecilia.model.Element
+import org.ntqqrev.cecilia.util.coerceInSquareBox
 import org.jetbrains.skia.Bitmap as SkiaBitmap
 import org.jetbrains.skia.Image as SkiaImage
 
@@ -121,24 +121,12 @@ fun MessageImage(
         ImageSubType.STICKER -> 200.dp
     }
 
-    val (displayWidth, displayHeight) = run {
-        val aspectRatio = image.width.toFloat() / image.height.toFloat()
-        var w = image.width.dp
-        var h = image.height.dp
-        if (w > maxWidth) {
-            w = maxWidth
-            h = w / aspectRatio
-        }
-        if (h > maxWidth) {
-            h = maxWidth
-            w = h * aspectRatio
-        }
-        w to h
-    }
+    val (displayWidth, displayHeight) = Pair(
+        image.width,
+        image.height
+    ).coerceInSquareBox(maxWidth.value.toInt())
 
-    val modifier = Modifier
-        .width(displayWidth)
-        .height(displayHeight)
+    val modifier = Modifier.size(width = displayWidth.dp, height = displayHeight.dp)
         .clip(RoundedCornerShape(4.dp))
 
     Box(
