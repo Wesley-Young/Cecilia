@@ -758,9 +758,8 @@ private fun ChatArea(conversation: Conversation) {
                         scope.launch {
                             val itemIndex = messageLikeList.size - targetIndex - 1
                             listState.scrollToItem(
-                                (itemIndex - listState.layoutInfo.visibleItemsInfo.size / 2)
-                                    .coerceAtLeast(0)
-                                // make the target message at center of the viewport
+                                index = itemIndex,
+                                scrollOffset = - listState.layoutInfo.viewportSize.height / 2
                             )
                             blinkSequence = sequence
                             delay(1500L)
