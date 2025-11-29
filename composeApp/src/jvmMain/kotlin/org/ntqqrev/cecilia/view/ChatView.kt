@@ -42,6 +42,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.ntqqrev.acidify.event.MessageRecallEvent
 import org.ntqqrev.acidify.event.MessageReceiveEvent
+import org.ntqqrev.acidify.event.PinChangedEvent
 import org.ntqqrev.acidify.message.*
 import org.ntqqrev.cecilia.component.AnimatedImage
 import org.ntqqrev.cecilia.component.AvatarImage
@@ -86,6 +87,32 @@ fun ChatView() {
         append(toPreviewText())
     }
 
+    suspend fun Conversation.Key.resolveConversation(isPinnedOnCreating: Boolean): Conversation? {
+        return when (scene) {
+            MessageScene.FRIEND -> {
+                val friend = bot.getFriend(peerUin)
+                friend?.let {
+                    Conversation.fromFriend(
+                        friend = it,
+                        isPinned = isPinnedOnCreating
+                    )
+                }
+            }
+
+            MessageScene.GROUP -> {
+                val group = bot.getGroup(peerUin)
+                group?.let {
+                    Conversation.fromGroup(
+                        group = it,
+                        isPinned = isPinnedOnCreating
+                    )
+                }
+            }
+
+            else -> null
+        }
+    }
+
     LaunchedEffect(bot) {
         val pinnedChats = bot.getPins()
         val initialConversations = buildList {
@@ -107,35 +134,14 @@ fun ChatView() {
         }
 
         bot.eventFlow.collect { event ->
-            if (event is MessageReceiveEvent) {
-                withMutableSnapshot {
+            when (event) {
+                is MessageReceiveEvent -> withMutableSnapshot {
                     val conversationKey = Conversation.Key(
                         scene = event.message.scene,
                         peerUin = event.message.peerUin
                     )
-                    val prev = conversations[conversationKey] ?: when (event.message.scene) {
-                        MessageScene.FRIEND -> {
-                            val friend = bot.getFriend(event.message.peerUin)
-                            friend?.let {
-                                Conversation.fromFriend(
-                                    friend = it,
-                                    isPinned = false
-                                )
-                            }
-                        }
-
-                        MessageScene.GROUP -> {
-                            val group = bot.getGroup(event.message.peerUin)
-                            group?.let {
-                                Conversation.fromGroup(
-                                    group = it,
-                                    isPinned = false
-                                )
-                            }
-                        }
-
-                        else -> null
-                    }
+                    val prev = conversations[conversationKey]
+                        ?: conversationKey.resolveConversation(isPinnedOnCreating = false)
                     val current = prev?.copy(
                         lastMessageTime = event.message.timestamp,
                         lastMessagePreview = event.message.buildPreview(),
@@ -143,6 +149,29 @@ fun ChatView() {
                         else prev.unreadCount + 1,
                     )
                     current?.let { conversations[conversationKey] = it }
+                }
+
+                is PinChangedEvent -> withMutableSnapshot {
+                    val conversationKey = Conversation.Key(
+                        scene = event.scene,
+                        peerUin = event.peerUin
+                    )
+                    val prev = conversations[conversationKey]
+                    when (event.isPinned) {
+                        true -> {
+                            val current = prev
+                                ?: conversationKey.resolveConversation(isPinnedOnCreating = true)
+                            current?.let {
+                                conversations[conversationKey] = it.copy(isPinned = true)
+                            }
+                        }
+
+                        false -> {
+                            if (prev != null) {
+                                conversations[conversationKey] = prev.copy(isPinned = false)
+                            }
+                        }
+                    }
                 }
             }
         }
