@@ -1,14 +1,21 @@
 package org.ntqqrev.cecilia.view
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -19,10 +26,13 @@ import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.filled.Group
 import io.github.composefluent.icons.filled.Person
+import io.github.composefluent.icons.regular.ChevronDown
 import io.github.composefluent.icons.regular.Group
 import io.github.composefluent.icons.regular.Person
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
+import org.ntqqrev.acidify.entity.BotGroupMember
+import org.ntqqrev.acidify.struct.GroupMemberRole
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.core.LocalBot
@@ -304,14 +314,157 @@ private fun FriendInfoView(friend: BotFriend) {
 
 @Composable
 private fun GroupInfoView(group: BotGroup) {
+    val interactionSource = remember { MutableInteractionSource() }
+    var groupMembersExpanded by remember(group) { mutableStateOf(false) }
+
+    Layer(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                AvatarImage(
+                    uin = group.uin,
+                    size = 160.dp,
+                    isGroup = true,
+                    quality = 640
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = group.name,
+                style = FluentTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                InfoRow("群号", group.uin.toString())
+                InfoRow("成员数", "${group.memberCount}/${group.capacity}")
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Layer(Modifier.fillMaxWidth()) {
+                Column {
+                    ExpanderItem(
+                        icon = null,
+                        heading = { Text("群成员列表") },
+                        dropdown = {
+                            SubtleButton(
+                                onClick = { groupMembersExpanded = !groupMembersExpanded },
+                                interaction = interactionSource,
+                                iconOnly = true
+                            ) {
+                                Icon(
+                                    modifier = Modifier.rotate(
+                                        animateFloatAsState(
+                                            if (groupMembersExpanded) 180f else 0f,
+                                        ).value
+                                    ),
+                                    imageVector = Icons.Default.ChevronDown,
+                                    contentDescription = "Expand source code"
+                                )
+                            }
+                        },
+                        color = FluentTheme.colors.background.card.default,
+                        modifier = Modifier.clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { groupMembersExpanded = !groupMembersExpanded }
+                        )
+                    )
+                    if (groupMembersExpanded) {
+                        Box(
+                            Modifier.fillMaxWidth()
+                                .height(1.dp)
+                                .background(FluentTheme.colors.stroke.divider.default)
+                        )
+                    }
+                    AnimatedVisibility(groupMembersExpanded) {
+                        GroupMemberList(groupUin = group.uin)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupMemberList(groupUin: Long) {
+    val bot = LocalBot.current
+    var members by remember { mutableStateOf<List<BotGroupMember>?>(null) }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(bot, groupUin) {
+        runCatching {
+            val allMembers = bot.getGroupMembers(groupUin, true)
+            members = allMembers?.sortedBy {
+                // first role, then uin
+                val rolePriority = when (it.role) {
+                    GroupMemberRole.OWNER -> 0
+                    GroupMemberRole.ADMIN -> 1
+                    GroupMemberRole.MEMBER -> 2
+                }
+                rolePriority * UInt.MAX_VALUE.toLong() + it.uin
+            }
+        }
+    }
+
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "TODO：${group.name}",
-            style = FluentTheme.typography.body,
-            color = FluentTheme.colors.text.text.secondary
+        if (members == null) {
+            ProgressRing()
+        }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            members?.let {
+                items(it.size) { index ->
+                    val member = it[index]
+
+                    if (index == 0) {
+                        Spacer(Modifier.height(8.dp))
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AvatarImage(
+                            uin = member.uin,
+                            size = 32.dp,
+                            isGroup = false,
+                            quality = 100
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(member.card.ifEmpty { member.nickname }.ifEmpty { member.uin.toString() })
+                    }
+
+                    if (index == it.size - 1) {
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+            }
+        }
+        VerticalScrollbar(
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+            adapter = rememberScrollbarAdapter(listState)
         )
     }
 }
