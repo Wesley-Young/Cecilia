@@ -103,7 +103,7 @@ fun MainView() {
                 if (mainViewState == MainViewState.Contacts) Modifier
                 else Modifier.size(0.dp)
             ) {
-                // ContactsView()
+                ContactsView()
             }
             Box(
                 if (mainViewState == MainViewState.Settings) Modifier
