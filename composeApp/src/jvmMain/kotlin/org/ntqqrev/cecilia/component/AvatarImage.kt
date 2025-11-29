@@ -45,14 +45,16 @@ fun AvatarImage(
         }
 
         runCatching {
-            withContext(Dispatchers.IO) {
+            val imageBytes = withContext(Dispatchers.IO) {
                 val url = if (isGroup) {
                     "https://p.qlogo.cn/gh/$uin/$uin/$quality"
                 } else {
                     "https://q1.qlogo.cn/g?b=qq&nk=$uin&s=$quality"
                 }
                 val response = httpClient.get(url)
-                val imageBytes = response.readRawBytes()
+                response.readRawBytes()
+            }
+            withContext(Dispatchers.Default) {
                 Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
             }
         }.onSuccess { bitmap ->
