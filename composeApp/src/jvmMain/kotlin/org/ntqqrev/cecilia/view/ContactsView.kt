@@ -1,24 +1,28 @@
 package org.ntqqrev.cecilia.view
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.ExperimentalFluentApi
 import io.github.composefluent.FluentTheme
-import io.github.composefluent.component.Icon
-import io.github.composefluent.component.ListItem
-import io.github.composefluent.component.Text
-import io.github.composefluent.component.TopNav
-import io.github.composefluent.component.TopNavItem
+import io.github.composefluent.background.Layer
+import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.Group
 import io.github.composefluent.icons.regular.Person
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
+import org.ntqqrev.acidify.struct.BotUserInfo
+import org.ntqqrev.acidify.struct.UserInfoGender
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.core.LocalBot
@@ -98,9 +102,29 @@ fun ContactsView() {
 
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
         ) {
-            // TODO: contact info view
+            when {
+                selectedFriend != null -> {
+                    FriendInfoView(friend = selectedFriend!!)
+                }
+
+                selectedGroup != null -> {
+                    GroupInfoView(group = selectedGroup!!)
+                }
+
+                else -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "选择一个联系人查看详情",
+                            style = FluentTheme.typography.bodyLarge,
+                            color = FluentTheme.colors.text.text.secondary
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -182,5 +206,123 @@ private fun <T> ContactList(
                 adapter = rememberScrollbarAdapter(scrollState)
             )
         }
+    }
+}
+
+@Composable
+private fun FriendInfoView(friend: BotFriend) {
+    Layer(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                AvatarImage(
+                    uin = friend.uin,
+                    size = 160.dp,
+                    isGroup = false,
+                    quality = 640
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = friend.remark.ifEmpty { friend.nickname },
+                style = FluentTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+            if (friend.remark.isNotEmpty()) {
+                Text(
+                    text = "备注：${friend.nickname}",
+                    style = FluentTheme.typography.body,
+                    color = FluentTheme.colors.text.text.secondary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                InfoRow("QQ 号", friend.uin.toString())
+                if (friend.qid.isNotEmpty()) {
+                    InfoRow("QID", friend.qid)
+                }
+                InfoRow("分组", friend.categoryName)
+                val genderText = when (friend.gender.name) {
+                    "MALE" -> "男"
+                    "FEMALE" -> "女"
+                    else -> "未知"
+                }
+                if (friend.age > 0) {
+                    InfoRow("年龄", friend.age.toString())
+                }
+                InfoRow("性别", genderText)
+
+                if (friend.bio.isNotEmpty()) {
+                    Box(
+                        Modifier.height(1.dp)
+                            .fillMaxWidth()
+                            .background(FluentTheme.colors.stroke.divider.default)
+                    )
+                    Column {
+                        Text(
+                            text = "个性签名",
+                            style = FluentTheme.typography.caption,
+                            color = FluentTheme.colors.text.text.secondary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = friend.bio,
+                            style = FluentTheme.typography.body,
+                            color = FluentTheme.colors.text.text.primary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupInfoView(group: BotGroup) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "TODO：${group.name}",
+            style = FluentTheme.typography.body,
+            color = FluentTheme.colors.text.text.secondary
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = FluentTheme.typography.caption,
+            color = FluentTheme.colors.text.text.secondary
+        )
+        Text(
+            text = value,
+            style = FluentTheme.typography.body,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
