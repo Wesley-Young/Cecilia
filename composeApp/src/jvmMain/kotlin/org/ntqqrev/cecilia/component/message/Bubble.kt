@@ -8,7 +8,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
@@ -16,7 +15,6 @@ import io.github.composefluent.background.elevation
 import io.github.composefluent.component.Text
 import org.ntqqrev.acidify.entity.BotGroupMember
 import org.ntqqrev.acidify.message.MessageScene
-import org.ntqqrev.acidify.struct.GroupMemberRole
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.MemberBadge
 import org.ntqqrev.cecilia.core.LocalBot

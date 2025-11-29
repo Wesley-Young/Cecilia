@@ -11,11 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.Layer
-import io.github.composefluent.component.AccentButton
-import io.github.composefluent.component.Button
-import io.github.composefluent.component.Icon
-import io.github.composefluent.component.ProgressRing
-import io.github.composefluent.component.Text
+import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.regular.Settings
 import kotlinx.coroutines.launch

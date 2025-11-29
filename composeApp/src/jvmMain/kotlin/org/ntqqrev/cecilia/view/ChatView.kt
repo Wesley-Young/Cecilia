@@ -489,7 +489,7 @@ private fun ChatArea(conversation: Conversation) {
                         is BotIncomingSegment.Reply -> {
                             flush()
                             when (this@toModel.scene) {
-                                MessageScene.FRIEND -> add (
+                                MessageScene.FRIEND -> add(
                                     Element.Reply(
                                         sequence = it.sequence,
                                         senderName = if (it.senderUin == bot.uin) {
@@ -502,7 +502,7 @@ private fun ChatArea(conversation: Conversation) {
                                     )
                                 )
 
-                                MessageScene.GROUP -> add (
+                                MessageScene.GROUP -> add(
                                     Element.Reply(
                                         sequence = it.sequence,
                                         senderName = resolveSubject(
