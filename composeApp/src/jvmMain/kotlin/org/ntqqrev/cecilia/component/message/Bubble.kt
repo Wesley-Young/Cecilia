@@ -248,7 +248,7 @@ private fun BubbleBody(
 ) {
     val bubbleShape = remember { RoundedCornerShape(12.dp) }
     Column(
-        Modifier
+        modifier = Modifier
             .elevation(
                 elevation = 4.dp,
                 shape = bubbleShape
@@ -266,7 +266,8 @@ private fun BubbleBody(
                 },
                 shape = bubbleShape
             )
-            .padding(12.dp)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         elements.forEach { e ->
             when (e) {
