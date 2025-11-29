@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
@@ -54,10 +55,7 @@ import org.ntqqrev.cecilia.core.LocalConfig
 import org.ntqqrev.cecilia.core.LocalEmojiImageFallback
 import org.ntqqrev.cecilia.core.LocalEmojiImages
 import org.ntqqrev.cecilia.model.*
-import org.ntqqrev.cecilia.util.displayName
-import org.ntqqrev.cecilia.util.formatToConvenientTime
-import org.ntqqrev.cecilia.util.formatToShortTime
-import org.ntqqrev.cecilia.util.toPreviewText
+import org.ntqqrev.cecilia.util.*
 import java.time.Instant
 import kotlin.random.Random
 
@@ -887,14 +885,20 @@ private fun ChatInput(
     val bot = LocalBot.current
     val config = LocalConfig.current
     var textValue by remember { mutableStateOf(TextFieldValue()) }
+    val imageAttachments = remember { mutableStateListOf<ImageAttachment>() }
     var enterStartedWithModifier by remember { mutableStateOf(false) }
     var enterConsumedForSend by remember { mutableStateOf(false) }
 
     suspend fun sendMessage() {
+        // snapshot current input state
         val sendText = textValue.text.trim()
-        if (sendText.isEmpty()) return
-
+        val sendImages = imageAttachments.toList()
         val sendReply = replyElement
+
+        val hasText = sendText.isNotEmpty()
+        val hasImages = sendImages.isNotEmpty()
+
+        if (!hasText && !hasImages) return
 
         val localMessage = LocalMessage(
             scene = conversationKey.scene,
@@ -910,9 +914,22 @@ private fun ChatInput(
             sendReply?.let {
                 reply(it.sequence)
             }
-            text(sendText)
+            if (hasImages) {
+                sendImages.forEach { attachment ->
+                    image(
+                        raw = attachment.bytes,
+                        format = attachment.format,
+                        width = attachment.bitmap.width,
+                        height = attachment.bitmap.height,
+                    )
+                }
+            }
+            if (hasText) {
+                text(sendText)
+            }
         }
         textValue = TextFieldValue("")
+        imageAttachments.clear()
 
         val result = when (conversationKey.scene) {
             MessageScene.FRIEND -> {
@@ -943,12 +960,61 @@ private fun ChatInput(
                 isSelf = false,
             )
         }
+        if (imageAttachments.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                imageAttachments.forEachIndexed { index, attachment ->
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    ) {
+                        Image(
+                            bitmap = attachment.bitmap,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(FluentTheme.colors.background.layer.default)
+                                .clickable {
+                                    imageAttachments.removeAt(index)
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "×",
+                                style = FluentTheme.typography.caption,
+                                color = FluentTheme.colors.text.text.secondary,
+                            )
+                        }
+                    }
+                }
+            }
+        }
         TextField(
             value = textValue,
             onValueChange = { textValue = it },
             placeholder = { Text("输入消息...") },
             modifier = modifier.fillMaxWidth()
                 .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown &&
+                        event.key == Key.V &&
+                        (event.isCtrlPressed || event.isMetaPressed)
+                    ) {
+                        if (imageAttachments.tryPasteImages()) {
+                            return@onPreviewKeyEvent true
+                        }
+                    }
                     if (event.key != Key.Enter) return@onPreviewKeyEvent false
 
                     if (config.useCtrlEnterToSend) {
