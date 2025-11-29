@@ -17,6 +17,8 @@ import io.github.composefluent.FluentTheme
 import io.github.composefluent.background.Layer
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.filled.Group
+import io.github.composefluent.icons.filled.Person
 import io.github.composefluent.icons.regular.Group
 import io.github.composefluent.icons.regular.Person
 import org.ntqqrev.acidify.entity.BotFriend
@@ -60,7 +62,12 @@ fun ContactsView() {
                         selected = selectedIndex == 0,
                         onClick = { selectedIndex = 0 },
                         text = { Text("好友") },
-                        icon = { Icon(imageVector = Icons.Default.Person, contentDescription = null) }
+                        icon = {
+                            Icon(
+                                imageVector = if (selectedIndex == 0) Icons.Filled.Person else Icons.Regular.Person,
+                                contentDescription = null
+                            )
+                        }
                     )
                 }
                 item {
@@ -68,7 +75,12 @@ fun ContactsView() {
                         selected = selectedIndex == 1,
                         onClick = { selectedIndex = 1 },
                         text = { Text("群聊") },
-                        icon = { Icon(imageVector = Icons.Default.Group, contentDescription = null) }
+                        icon = {
+                            Icon(
+                                imageVector = if (selectedIndex == 1) Icons.Filled.Group else Icons.Regular.Group,
+                                contentDescription = null
+                            )
+                        }
                     )
                 }
             }

@@ -9,6 +9,9 @@ import androidx.compose.ui.unit.dp
 import io.github.composefluent.ExperimentalFluentApi
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.filled.Chat
+import io.github.composefluent.icons.filled.People
+import io.github.composefluent.icons.filled.Settings
 import io.github.composefluent.icons.regular.Chat
 import io.github.composefluent.icons.regular.People
 import io.github.composefluent.icons.regular.Settings
@@ -17,19 +20,23 @@ import org.ntqqrev.cecilia.core.LocalBot
 
 enum class MainViewState(
     val displayName: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val selected: ImageVector,
 ) {
     Chat(
         "聊天",
-        Icons.Default.Chat
+        Icons.Default.Chat,
+        Icons.Filled.Chat,
     ),
     Contacts(
         "联系人",
-        Icons.Default.People
+        Icons.Default.People,
+        Icons.Filled.People,
     ),
     Settings(
         "设置",
-        Icons.Default.Settings
+        Icons.Default.Settings,
+        Icons.Filled.Settings,
     ),
 }
 
@@ -81,7 +88,10 @@ fun MainView() {
                         mainViewState = state
                     },
                     icon = {
-                        Icon(imageVector = state.icon, contentDescription = null)
+                        Icon(
+                            imageVector = if (selectedIndex == idx) state.selected else state.icon,
+                            contentDescription = state.displayName,
+                        )
                     }
                 ) {
                     Text(state.displayName)
