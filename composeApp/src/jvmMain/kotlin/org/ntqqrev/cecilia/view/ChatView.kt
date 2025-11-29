@@ -10,8 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.foundation.text.input.delete
-import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.Snapshot.Companion.withMutableSnapshot
 import androidx.compose.ui.Alignment
@@ -22,7 +20,9 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -886,14 +886,14 @@ private fun ChatInput(
 ) {
     val bot = LocalBot.current
     val config = LocalConfig.current
-    val state = rememberTextFieldState()
+    var textValue by remember { mutableStateOf(TextFieldValue()) }
     var enterStartedWithModifier by remember { mutableStateOf(false) }
     var enterConsumedForSend by remember { mutableStateOf(false) }
 
     suspend fun sendMessage() {
-        if (state.text.isBlank()) return
+        val sendText = textValue.text.trim()
+        if (sendText.isEmpty()) return
 
-        val sendText = state.text.toString().trim()
         val sendReply = replyElement
 
         val localMessage = LocalMessage(
@@ -912,7 +912,7 @@ private fun ChatInput(
             }
             text(sendText)
         }
-        state.edit { delete(0, length) }
+        textValue = TextFieldValue("")
 
         val result = when (conversationKey.scene) {
             MessageScene.FRIEND -> {
@@ -944,7 +944,9 @@ private fun ChatInput(
             )
         }
         TextField(
-            state = state,
+            value = textValue,
+            onValueChange = { textValue = it },
+            placeholder = { Text("输入消息...") },
             modifier = modifier.fillMaxWidth()
                 .onPreviewKeyEvent { event ->
                     if (event.key != Key.Enter) return@onPreviewKeyEvent false
@@ -981,7 +983,10 @@ private fun ChatInput(
                                     true
                                 } else {
                                     // Ctrl/Cmd + Enter: manually insert newline.
-                                    state.edit { append('\n') }
+                                    textValue = TextFieldValue(
+                                        text = textValue.text + "\n",
+                                        selection = TextRange(textValue.selection.start + 1)
+                                    )
                                     enterConsumedForSend = false
                                     true
                                 }
