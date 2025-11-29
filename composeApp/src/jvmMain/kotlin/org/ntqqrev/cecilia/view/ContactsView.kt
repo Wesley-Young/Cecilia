@@ -35,6 +35,7 @@ import org.ntqqrev.acidify.entity.BotGroupMember
 import org.ntqqrev.acidify.struct.GroupMemberRole
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
+import org.ntqqrev.cecilia.component.MemberBadge
 import org.ntqqrev.cecilia.core.LocalBot
 
 @OptIn(ExperimentalFluentApi::class)
@@ -453,7 +454,14 @@ private fun GroupMemberList(groupUin: Long) {
                             quality = 100
                         )
                         Spacer(Modifier.width(12.dp))
-                        Text(member.card.ifEmpty { member.nickname }.ifEmpty { member.uin.toString() })
+                        Box(Modifier.weight(1f)) {
+                            Text(
+                                text = member.card.ifEmpty { member.nickname }.ifEmpty { member.uin.toString() },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        MemberBadge(member)
                     }
 
                     if (index == it.size - 1) {

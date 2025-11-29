@@ -18,6 +18,7 @@ import org.ntqqrev.acidify.entity.BotGroupMember
 import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.acidify.struct.GroupMemberRole
 import org.ntqqrev.cecilia.component.AvatarImage
+import org.ntqqrev.cecilia.component.MemberBadge
 import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.LocalMessage
@@ -237,48 +238,6 @@ private fun SenderHeader(
             Spacer(modifier = Modifier.width(4.dp))
             MemberBadge(member)
         }
-    }
-}
-
-@Composable
-private fun MemberBadge(member: BotGroupMember) {
-    Box(
-        Modifier.background(
-            color = when (member.role) {
-                GroupMemberRole.OWNER -> Color(0xFFFFB74D)
-                GroupMemberRole.ADMIN -> Color(0xFF26C6DA)
-                GroupMemberRole.MEMBER -> {
-                    if (member.specialTitle.isNotBlank()) {
-                        Color(0xFFD269DA)
-                    } else {
-                        Color(0xFF90A4AE)
-                    }
-                }
-            },
-            shape = RoundedCornerShape(999.dp),
-        )
-    ) {
-        Text(
-            text = buildString {
-                val titlePart = member.specialTitle.takeIf { it.isNotBlank() } ?: when (member.role) {
-                    GroupMemberRole.OWNER -> "群主"
-                    GroupMemberRole.ADMIN -> "管理员"
-                    else -> null
-                }
-                append("Lv")
-                append(member.level)
-                if (titlePart != null) {
-                    append(" ")
-                    append(titlePart)
-                }
-            },
-            style = FluentTheme.typography.caption.copy(
-                fontSize = FluentTheme.typography.caption.fontSize * 0.9f,
-                fontWeight = FontWeight.SemiBold,
-            ),
-            color = FluentTheme.colors.text.onAccent.primary.copy(alpha = 0.8f),
-            modifier = Modifier.padding(horizontal = 6.dp)
-        )
     }
 }
 
