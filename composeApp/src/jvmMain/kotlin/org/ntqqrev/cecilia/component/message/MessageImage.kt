@@ -1,8 +1,10 @@
 package org.ntqqrev.cecilia.component.message
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,15 +27,13 @@ import org.jetbrains.skia.Codec
 import org.jetbrains.skia.Data
 import org.ntqqrev.acidify.message.ImageSubType
 import org.ntqqrev.cecilia.component.AnimatedImage
-import org.ntqqrev.cecilia.core.AnimationFrame
-import org.ntqqrev.cecilia.core.LocalBot
-import org.ntqqrev.cecilia.core.LocalHttpClient
-import org.ntqqrev.cecilia.core.LocalMediaCache
+import org.ntqqrev.cecilia.core.*
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.util.coerceInSquareBox
 import org.jetbrains.skia.Bitmap as SkiaBitmap
 import org.jetbrains.skia.Image as SkiaImage
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageImage(
     image: Element.Image,
@@ -42,6 +42,7 @@ fun MessageImage(
     val bot = LocalBot.current
     val httpClient = LocalHttpClient.current
     val mediaCache = LocalMediaCache.current
+    val previewSetter = LocalPreviewSetter.current
     var progress by remember { mutableStateOf(0f) }
     var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var animationFrames by remember { mutableStateOf<List<AnimationFrame>?>(null) }
@@ -130,7 +131,12 @@ fun MessageImage(
         .clip(RoundedCornerShape(4.dp))
 
     Box(
-        modifier = modifier,
+        modifier = modifier
+            .onClick {
+                if (imageBitmap != null || animationFrames != null) {
+                    previewSetter.invoke(imageBitmap, animationFrames)
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
         when {

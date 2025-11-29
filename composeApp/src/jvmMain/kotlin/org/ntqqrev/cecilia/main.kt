@@ -2,11 +2,15 @@
 
 package org.ntqqrev.cecilia
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -33,6 +37,7 @@ import org.ntqqrev.acidify.common.UrlSignProvider
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
 import org.ntqqrev.acidify.logging.SimpleLogHandler
 import org.ntqqrev.cecilia.component.ConfigInitDialog
+import org.ntqqrev.cecilia.component.ImagePreview
 import org.ntqqrev.cecilia.core.*
 import org.ntqqrev.cecilia.util.AppDataDirectoryProvider
 import org.ntqqrev.cecilia.util.ResourceLoader.getResourceBytes
@@ -86,6 +91,9 @@ fun appMain() = application {
     val httpClient = remember { HttpClient() }
     val avatarCache = remember { AvatarCache() }
     val mediaCache = remember { MediaCache() }
+
+    var previewBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var previewAnimatedFrames by remember { mutableStateOf<List<AnimationFrame>?>(null) }
 
     val scaleFactor = config.displayScale
     val originalDensity = LocalDensity.current
@@ -199,6 +207,10 @@ fun appMain() = application {
             LocalAvatarCache provides avatarCache,
             LocalMediaCache provides mediaCache,
             LocalHttpClient provides httpClient,
+            LocalPreviewSetter provides { bitmap, animatedFrames ->
+                previewBitmap = bitmap
+                previewAnimatedFrames = animatedFrames
+            }
         ) {
             FluentTheme {
                 Mica(
@@ -230,6 +242,7 @@ fun appMain() = application {
                         },
                         isRefining = isConfigRefining,
                     )
+
                     App(
                         bot = bot,
                         loadError = loadError,
@@ -237,6 +250,21 @@ fun appMain() = application {
                             isConfigRefining = true
                         }
                     )
+
+                    AnimatedVisibility(
+                        visible = previewBitmap != null || previewAnimatedFrames != null,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        ImagePreview(
+                            bitmap = previewBitmap,
+                            animatedFrames = previewAnimatedFrames,
+                            onClose = {
+                                previewBitmap = null
+                                previewAnimatedFrames = null
+                            }
+                        )
+                    }
                 }
             }
         }

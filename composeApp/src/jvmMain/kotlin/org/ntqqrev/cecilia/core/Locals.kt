@@ -35,3 +35,7 @@ val LocalMediaCache = staticCompositionLocalOf<MediaCache> {
 val LocalHttpClient = staticCompositionLocalOf<HttpClient> {
     error("No HttpClient provided")
 }
+
+val LocalPreviewSetter = compositionLocalOf<(ImageBitmap?, List<AnimationFrame>?) -> Unit> {
+    error("No Image Preview setter provided")
+}
