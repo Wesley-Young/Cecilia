@@ -269,7 +269,7 @@ private fun ConversationDisplay(
                     )
                 } else if (isHovered) {
                     Modifier.background(
-                        color = Color(0f, 0f, 0f, 0.05f),
+                        color = Color.Black.copy(alpha = 0.05f),
                         shape = RoundedCornerShape(4.dp)
                     )
                 } else {

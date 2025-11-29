@@ -62,17 +62,17 @@ fun ImagePreview(
                     false
                 }
             },
-        contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
             val (displayWidth, displayHeight) = (bitmap.width to bitmap.height).coerceInRectBox(
                 maxWidth = this.maxWidth.value.toInt(),
-                maxHeight = this.maxHeight.value.toInt(),
+                maxHeight = this.maxHeight.value.toInt() - 32,
             )
             Image(
                 bitmap = bitmap,
                 contentDescription = "",
                 modifier = Modifier.size(displayWidth.dp, displayHeight.dp)
+                    .align(Alignment.TopCenter)
             )
         }
 
@@ -80,12 +80,13 @@ fun ImagePreview(
             val firstFrame = animatedFrames.first().imageData
             val (displayWidth, displayHeight) = (firstFrame.width to firstFrame.height).coerceInRectBox(
                 maxWidth = this.maxWidth.value.toInt(),
-                maxHeight = this.maxHeight.value.toInt(),
+                maxHeight = this.maxHeight.value.toInt() - 32,
             )
             AnimatedImage(
                 frames = animatedFrames,
                 contentDescription = "",
                 modifier = Modifier.size(displayWidth.dp, displayHeight.dp)
+                    .align(Alignment.TopCenter)
             )
         }
 
@@ -103,7 +104,7 @@ fun ImagePreview(
         Text(
             text = "按 Esc 或点击右上角关闭预览",
             color = Color.White,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
+            modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp)
         )
     }
 }

@@ -41,7 +41,7 @@ fun Bubble(
         modifier = Modifier.fillMaxWidth()
             .background(
                 color = if (blink) {
-                    Color(0f, 0f, 0f, 0.05f)
+                    Color.Black.copy(alpha = 0.05f)
                 } else {
                     Color.Transparent
                 }
@@ -120,7 +120,7 @@ fun LocalBubble(
         modifier = Modifier.fillMaxWidth()
             .background(
                 color = if (blink) {
-                    Color(0f, 0f, 0f, 0.05f)
+                    Color.Black.copy(alpha = 0.05f)
                 } else {
                     Color.Transparent
                 }
