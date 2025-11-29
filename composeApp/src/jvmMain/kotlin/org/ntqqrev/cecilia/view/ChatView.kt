@@ -365,6 +365,7 @@ private fun ChatArea(conversation: Conversation) {
         }
     }
     var isLoadingFurtherHistoryMessages by remember(conversation) { mutableStateOf(false) }
+    var haveSentMessage by remember(conversation) { mutableStateOf(false) }
 
     suspend fun resolveSubject(groupUin: Long, memberUin: Long): String {
         return if (memberUin == bot.uin) {
@@ -686,10 +687,11 @@ private fun ChatArea(conversation: Conversation) {
         }
     }
 
-    LaunchedEffect(messageLikeList.size) {
+    LaunchedEffect(messageLikeList.size, haveSentMessage) {
         // auto scroll to bottom when new message arrives
-        if (listState.firstVisibleItemIndex <= 2) {
+        if (listState.firstVisibleItemIndex <= 2 || haveSentMessage) {
             listState.animateScrollToItem(0)
+            haveSentMessage = false
         }
     }
 
@@ -856,7 +858,10 @@ private fun ChatArea(conversation: Conversation) {
                     replyElement = replyElement,
                     onSendMessage = {
                         replyElement = null
-                        messageLikeList += it
+                        withMutableSnapshot {
+                            messageLikeList += it
+                            haveSentMessage = true
+                        }
                     },
                     onSendMessageComplete = {
                         withMutableSnapshot {
