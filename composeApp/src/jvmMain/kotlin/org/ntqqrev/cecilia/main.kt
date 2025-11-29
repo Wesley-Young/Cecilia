@@ -2,10 +2,12 @@
 
 package org.ntqqrev.cecilia
 
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Typography
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
@@ -13,22 +15,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.background.Mica
+import io.github.composefluent.component.Button
+import io.github.composefluent.component.Icon
+import io.github.composefluent.component.ProgressRing
+import io.github.composefluent.component.Text
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Settings
 import io.ktor.client.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.Json
+import org.jetbrains.skia.Image
 import org.ntqqrev.acidify.Bot
 import org.ntqqrev.acidify.common.AppInfo
 import org.ntqqrev.acidify.common.SessionStore
 import org.ntqqrev.acidify.common.UrlSignProvider
 import org.ntqqrev.acidify.event.SessionStoreUpdatedEvent
-import org.ntqqrev.cecilia.component.NotoFontFamily
-import org.ntqqrev.cecilia.component.ThemeType
-import org.ntqqrev.cecilia.component.view.SignApiSetupDialog
-import org.ntqqrev.cecilia.core.CeciliaConfig
-import org.ntqqrev.cecilia.core.ConversationManager
-import org.ntqqrev.cecilia.util.getAppDataDirectory
+import org.ntqqrev.acidify.logging.SimpleLogHandler
+import org.ntqqrev.cecilia.component.ConfigInitDialog
+import org.ntqqrev.cecilia.core.*
+import org.ntqqrev.cecilia.util.AppDataDirectoryProvider
+import org.ntqqrev.cecilia.util.ResourceLoader.getResourceBytes
+import org.ntqqrev.cecilia.util.WallpaperProvider
+import org.ntqqrev.cecilia.util.desaturate
+import org.ntqqrev.cecilia.view.LoginView
+import org.ntqqrev.cecilia.view.MainView
 import java.awt.Dimension
+import java.awt.event.WindowEvent
+import java.awt.event.WindowFocusListener
 import java.io.PrintStream
+import kotlin.io.path.div
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
@@ -40,168 +56,252 @@ fun main() {
 }
 
 fun appMain() = application {
-    val appDataDirectory = remember { getAppDataDirectory() }
-    val configPath = appDataDirectory.resolve("config.json")
+    var loadError by remember { mutableStateOf<Throwable?>(null) }
+
+    val appDataDirectory = remember { AppDataDirectoryProvider.value }
+    val configPath = appDataDirectory / "config.json"
     var isConfigInitialized by remember { mutableStateOf(configPath.exists()) }
+    var isConfigRefining by remember { mutableStateOf(false) }
     var config by remember {
         mutableStateOf(
-            if (isConfigInitialized) CeciliaConfig.fromPath(configPath) else CeciliaConfig()
+            if (isConfigInitialized) Config.fromPath(configPath) else Config()
         )
     }
+
+    val screenshot = remember {
+        WallpaperProvider.value.toComposeImageBitmap()
+    }
+    val screenshotDesaturated = remember {
+        WallpaperProvider.value.desaturate(0.5f).toComposeImageBitmap()
+    }
+
     val scope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob()) }
     var bot by remember { mutableStateOf<Bot?>(null) }
-    var conversationManager by remember { mutableStateOf<ConversationManager?>(null) }
-    var loadingError by remember { mutableStateOf<String?>(null) }
-    var isLoggedIn by remember { mutableStateOf(false) }
-    var userUin by remember { mutableStateOf(0L) }
+    var emojiImages by remember { mutableStateOf<Map<String, FaceEntry>?>(null) }
+    val emojiImageFallback = remember {
+        Image.makeFromEncoded(getResourceBytes("assets/default.png")!!)
+            .toComposeImageBitmap()
+    }
+
     val httpClient = remember { HttpClient() }
-    var isCommandPaletteVisible by remember { mutableStateOf(false) }
+    val avatarCache = remember { AvatarCache() }
+    val mediaCache = remember { MediaCache() }
 
-    // 在完成配置前不要初始化 Bot
+    val scaleFactor = config.displayScale
+    val originalDensity = LocalDensity.current
+    val scaledDensity = Density(originalDensity.density * scaleFactor)
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            emojiImages = FaceEntry.all
+        }
+    }
+
     LaunchedEffect(isConfigInitialized) {
-        if (!isConfigInitialized) return@LaunchedEffect
+        if (!isConfigInitialized) {
+            return@LaunchedEffect
+        }
 
-        launch(Dispatchers.IO) {
-            try {
-                val sessionStorePath = appDataDirectory.resolve("session-store.json")
-                val sessionStore: SessionStore = if (sessionStorePath.exists()) {
-                    Json.decodeFromString(sessionStorePath.readText())
-                } else {
-                    val emptySessionStore = SessionStore.empty()
-                    sessionStorePath.writeText(Json.encodeToString(emptySessionStore))
-                    emptySessionStore
+        try {
+            val sessionStorePath = appDataDirectory.resolve("session-store.json")
+            val sessionStore: SessionStore = if (sessionStorePath.exists()) {
+                SessionStore.fromJson(sessionStorePath.readText())
+            } else {
+                val emptySessionStore = SessionStore.empty()
+                emptySessionStore.also { store ->
+                    sessionStorePath.writeText(store.toJson())
                 }
+            }
 
-                val signProvider = UrlSignProvider(config.signApiUrl, config.signApiHttpProxy)
-                val appInfo = signProvider.getAppInfo() ?: run {
-                    println("获取 AppInfo 失败，使用内置默认值")
-                    AppInfo.Bundled.Linux
-                }
+            val signProvider = UrlSignProvider(config.signApiUrl, config.signApiHttpProxy)
+            val appInfo = signProvider.getAppInfo() ?: run {
+                println("获取 AppInfo 失败，使用内置默认值")
+                AppInfo.Bundled.Linux
+            }
 
-                val newBot = Bot.create(
-                    appInfo = appInfo,
-                    sessionStore = sessionStore,
-                    signProvider = signProvider,
-                    scope = scope,
-                    minLogLevel = config.minLogLevel,
-                    logHandler = { level, tag, message, throwable ->
-                        println("[$level] [$tag] $message")
-                        throwable?.printStackTrace()
-                    }
-                )
+            val newBot = Bot.create(
+                appInfo = appInfo,
+                sessionStore = sessionStore,
+                signProvider = signProvider,
+                scope = scope,
+                minLogLevel = config.minLogLevel,
+                logHandler = SimpleLogHandler
+            )
 
-                // 监听 SessionStore 更新事件并保存
-                newBot.launch {
-                    newBot.eventFlow.collect { event ->
-                        if (event is SessionStoreUpdatedEvent) {
-                            runCatching {
-                                sessionStorePath.writeText(
-                                    Json.encodeToString(SessionStore.serializer(), event.sessionStore)
-                                )
-                            }
+            newBot.launch {
+                newBot.eventFlow.collect { event ->
+                    if (event is SessionStoreUpdatedEvent) {
+                        runCatching {
+                            sessionStorePath.writeText(event.sessionStore.toJson())
                         }
                     }
                 }
-
-                bot = newBot
-                // 创建会话管理器
-                conversationManager = ConversationManager(newBot, scope)
-                userUin = newBot.sessionStore.uin
-                isLoggedIn = newBot.isLoggedIn
-            } catch (e: Exception) {
-                loadingError = e.message ?: e::class.qualifiedName
             }
+
+            bot = newBot
+        } catch (e: Exception) {
+            loadError = e
         }
     }
 
     Window(
         onCloseRequest = {
-            // 如果已登录，先调用 offline
-            if (bot != null && isLoggedIn) {
-                runBlocking {
-                    runCatching { bot?.offline() }
+            if (bot?.isLoggedIn ?: false) {
+                runCatching {
+                    runBlocking {
+                        withTimeout(2000L) {
+                            bot?.offline()
+                        }
+                    }
                 }
             }
-            // 取消 scope
-            scope.cancel()
-            // 退出应用
             exitApplication()
         },
         title = "Cecilia",
-        state = rememberWindowState(size = DpSize(1200.dp, 800.dp) * config.displayScale),
-        onKeyEvent = { event: KeyEvent ->
-            if (!isCommandPaletteVisible &&
-                event.type == KeyEventType.KeyDown &&
-                event.isShiftPressed &&
-                (event.isMetaPressed || event.isCtrlPressed) &&
-                event.key == Key.P
-            ) {
-                isCommandPaletteVisible = true
-                true
-            } else {
-                false
-            }
-        }
+        state = rememberWindowState(size = DpSize(1000.dp, 700.dp)),
     ) {
-        // 设置窗口最小尺寸
+        var isFocused by remember { mutableStateOf(window.isFocused) }
+
         LaunchedEffect(Unit) {
             window.minimumSize = Dimension(800, 600)
         }
 
-        // 动态更新窗口标题
-        LaunchedEffect(bot, userUin, isLoggedIn) {
-            val title = when {
-                bot == null -> "Cecilia"
-                userUin == 0L -> "Cecilia - 未登录"
-                !isLoggedIn -> "Cecilia - $userUin (未登录)"
-                else -> "Cecilia - $userUin"
+        LaunchedEffect(Unit) {
+            window.addWindowFocusListener(object : WindowFocusListener {
+                override fun windowGainedFocus(e: WindowEvent) {
+                    isFocused = true
+                }
+
+                override fun windowLostFocus(e: WindowEvent) {
+                    isFocused = false
+                }
+            })
+        }
+
+        LaunchedEffect(bot) {
+            val title = if (bot == null) {
+                "Cecilia"
+            } else {
+                "Cecilia - ${bot?.sessionStore?.uin}"
             }
             window.title = title
         }
 
-        // 通过调整 Density 来实现全局缩放（包括字体和布局）
-        val scaleFactor = config.displayScale
-        val originalDensity = LocalDensity.current
-        val scaledDensity = Density(originalDensity.density * scaleFactor)
-
-        CompositionLocalProvider(LocalDensity provides scaledDensity) {
-            App(
-                config = config,
-                setConfig = {
-                    config = it
-                    it.writeToPath(configPath)
-                },
-                bot = bot,
-                httpClient = httpClient,
-                conversationManager = conversationManager,
-                loadingError = loadingError,
-                onLoginStateChange = { loggedIn, uin ->
-                    isLoggedIn = loggedIn
-                    userUin = uin
-                },
-                showCommandPalette = isCommandPaletteVisible,
-                onCommandPaletteDismiss = { isCommandPaletteVisible = false }
-            )
-        }
-
-        if (!isConfigInitialized) {
-            MaterialTheme(
-                colors = ThemeType.GREEN.colorScheme,
-                typography = Typography(defaultFontFamily = NotoFontFamily)
-            ) {
-                SignApiSetupDialog(
-                    initialSignApiUrl = config.signApiUrl,
-                    initialSignApiHttpProxy = config.signApiHttpProxy,
-                    onConfirm = { newUrl, newProxy ->
-                        val updatedConfig = config.copy(
-                            signApiUrl = newUrl,
-                            signApiHttpProxy = newProxy
+        CompositionLocalProvider(
+            LocalDensity provides scaledDensity,
+            LocalConfig provides config,
+            LocalConfigSetter provides { newConfig ->
+                config = newConfig
+                config.writeToPath(configPath)
+            },
+            LocalEmojiImages provides emojiImages,
+            LocalEmojiImageFallback provides emojiImageFallback,
+            LocalAvatarCache provides avatarCache,
+            LocalMediaCache provides mediaCache,
+            LocalHttpClient provides httpClient,
+        ) {
+            FluentTheme {
+                Mica(
+                    modifier = Modifier.fillMaxSize(),
+                    background = {
+                        Image(
+                            bitmap = if (isFocused) screenshot else screenshotDesaturated,
+                            contentDescription = null,
                         )
-                        config = updatedConfig
-                        updatedConfig.writeToPath(configPath)
-                        isConfigInitialized = true
                     }
+                ) {
+                    ConfigInitDialog(
+                        visible = isConfigRefining || !isConfigInitialized,
+                        initialSignApiHttpProxy = config.signApiHttpProxy,
+                        initialSignApiUrl = config.signApiUrl,
+                        onConfirm = { signApiUrl, signApiHttpProxy ->
+                            config = config.copy(
+                                signApiUrl = signApiUrl,
+                                signApiHttpProxy = signApiHttpProxy
+                            )
+                            config.writeToPath(configPath)
+                            isConfigInitialized = true
+                            if (isConfigRefining) {
+                                Runtime.getRuntime().exit(0)
+                            }
+                        },
+                        onDismissRequest = {
+                            isConfigRefining = false
+                        },
+                        isRefining = isConfigRefining,
+                    )
+                    App(
+                        bot = bot,
+                        loadError = loadError,
+                        showConfigInitDialog = {
+                            isConfigRefining = true
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun App(
+    bot: Bot?,
+    loadError: Throwable?,
+    showConfigInitDialog: () -> Unit
+) {
+    var isLoggedIn by remember { mutableStateOf(bot?.isLoggedIn ?: false) }
+
+
+    if (bot == null) {
+        Box(Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    ProgressRing()
+                    if (loadError == null) {
+                        Text("正在初始化")
+                    } else {
+                        Text(
+                            "初始化失败：${loadError.localizedMessage}\n" +
+                                    "请检查配置文件，确保指定了有效的签名地址。"
+                        )
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.BottomStart
+            ) {
+                Button(
+                    iconOnly = true,
+                    onClick = showConfigInitDialog
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "设置"
+                    )
+                }
+            }
+        }
+    } else {
+        CompositionLocalProvider(
+            LocalBot provides bot
+        ) {
+            if (!isLoggedIn) {
+                LoginView(
+                    onLoggedIn = { isLoggedIn = true },
+                    showConfigInitDialog = showConfigInitDialog
                 )
+            } else {
+                MainView()
             }
         }
     }

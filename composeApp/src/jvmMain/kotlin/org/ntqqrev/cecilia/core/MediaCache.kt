@@ -4,12 +4,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-object MediaCache {
-    private const val URL_CONTENT_CACHE_SIZE = 300
-    private const val FILE_ID_URL_CACHE_SIZE = 10000
+class MediaCache {
+    private val urlContentCacheSize = 300
+    private val fileIdUrlCacheSize = 10000
 
-    private val urlContentCache = LRUCache<String, ByteArray>(URL_CONTENT_CACHE_SIZE)
-    private val fileIdUrlCache = FIFOCache<String, String>(FILE_ID_URL_CACHE_SIZE)
+    private val urlContentCache = LRUCache<String, ByteArray>(urlContentCacheSize)
+    private val fileIdUrlCache = FIFOCache<String, String>(fileIdUrlCacheSize)
 
     fun getUrlByFileId(fileId: String): String? {
         return fileIdUrlCache.get(fileId)
@@ -53,9 +53,9 @@ object MediaCache {
     fun getStats(): CacheStats {
         return CacheStats(
             urlContentCacheSize = urlContentCache.size(),
-            urlContentCacheMaxSize = URL_CONTENT_CACHE_SIZE,
+            urlContentCacheMaxSize = urlContentCacheSize,
             fileIdUrlCacheSize = fileIdUrlCache.size(),
-            fileIdUrlCacheMaxSize = FILE_ID_URL_CACHE_SIZE
+            fileIdUrlCacheMaxSize = fileIdUrlCacheSize
         )
     }
 

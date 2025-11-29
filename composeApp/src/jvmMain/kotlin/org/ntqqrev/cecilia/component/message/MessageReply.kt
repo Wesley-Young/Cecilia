@@ -1,96 +1,60 @@
 package org.ntqqrev.cecilia.component.message
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.dp
-import org.ntqqrev.acidify.message.BotIncomingMessage
-import org.ntqqrev.acidify.message.BotIncomingSegment
-import org.ntqqrev.cecilia.util.segmentsToPreviewString
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import org.ntqqrev.cecilia.model.Element
+import org.ntqqrev.cecilia.view.LocalJumpToMessage
 
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MessageReply(
-    replySegment: BotIncomingSegment.Reply,
-    referencedMessage: BotIncomingMessage?,
-    isSent: Boolean,
-    onReplyClick: (() -> Unit)? = null
+    reply: Element.Reply,
+    isSelf: Boolean,
 ) {
-    val backgroundColor = if (isSent) {
-        // 自己发送的消息：颜色较浅
-        MaterialTheme.colors.onPrimary.copy(alpha = 0.15f)
-    } else {
-        // 接收的消息：颜色稍深
-        MaterialTheme.colors.onSurface.copy(alpha = 0.08f)
-    }
+    val onJumpToMessage = LocalJumpToMessage.current
+    var isHovering by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .background(backgroundColor)
-            .then(
-                if (onReplyClick != null) {
-                    Modifier.clickable { onReplyClick() }
-                } else {
-                    Modifier
-                }
+        Modifier.fillMaxWidth()
+            .padding(bottom = 4.dp)
+            .background(
+                color = Color(
+                    red = 0f, green = 0f, blue = 0f,
+                    alpha = if (isHovering) 0.08f else 0.04f
+                ),
+                shape = RoundedCornerShape(4.dp),
             )
+            .onPointerEvent(PointerEventType.Enter) { isHovering = true }
+            .onPointerEvent(PointerEventType.Exit) { isHovering = false }
+            .onClick {
+                onJumpToMessage?.invoke(reply.sequence)
+            }
             .padding(8.dp)
     ) {
-        if (referencedMessage != null) {
-            // 找到被引用的消息：显示两行内容
-            Column(
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                // 第一行：发送者昵称
-                val senderName = referencedMessage.extraInfo?.let { info ->
-                    info.groupCard.takeIf { it.isNotEmpty() } ?: info.nick
-                } ?: referencedMessage.senderUin.toString()
-
-                Text(
-                    text = senderName,
-                    style = MaterialTheme.typography.caption,
-                    fontWeight = FontWeight.Medium,
-                    color = if (isSent)
-                        MaterialTheme.colors.onPrimary.copy(alpha = 0.8f)
-                    else
-                        MaterialTheme.colors.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // 第二行：消息内容预览
-                val preview = referencedMessage.segmentsToPreviewString()
-                Text(
-                    text = preview,
-                    style = MaterialTheme.typography.body2,
-                    color = if (isSent)
-                        MaterialTheme.colors.onPrimary.copy(alpha = 0.7f)
-                    else
-                        MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        } else {
-            // 找不到被引用的消息：显示一行内容
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = replySegment.toString(),
-                style = MaterialTheme.typography.body2,
-                color = if (isSent)
-                    MaterialTheme.colors.onPrimary.copy(alpha = 0.7f)
-                else
-                    MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = reply.senderName,
+                style = FluentTheme.typography.caption,
+                color = if (isSelf) FluentTheme.colors.text.onAccent.secondary
+                else FluentTheme.colors.text.text.tertiary,
+            )
+            Text(
+                text = reply.content,
+                style = FluentTheme.typography.caption,
+                color = if (isSelf) FluentTheme.colors.text.onAccent.secondary
+                else FluentTheme.colors.text.text.tertiary,
             )
         }
     }

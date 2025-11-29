@@ -2,23 +2,28 @@
 androidx-lifecycle = "2.9.6"
 composeHotReload = "1.0.0-rc03"
 composeMultiplatform = "1.9.3"
-kotlin = "2.3.0-Beta2"
+fluent = "v0.1.0"
+kotlin = "2.3.0-RC"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
 ktor = "3.3.2"
 qrcode-kotlin = "4.5.0"
-acidify = "0.4.1"
+kottie = "2.2.0"
+acidify = "0.5.1"
 pinyin4j = "2.5.1"
 
 [libraries]
+fluent-ui = { module = "io.github.compose-fluent:fluent", version.ref = "fluent" }
+fluent-iconsExtended = { module = "io.github.compose-fluent:fluent-icons-extended", version.ref = "fluent" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
-ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-client-apache5 = { module = "io.ktor:ktor-client-apache5", version.ref = "ktor" }
 qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "qrcode-kotlin" }
+kottie = { module = "io.github.ismai117:kottie", version.ref = "kottie" }
 acidify-core = { module = "org.ntqqrev:acidify-core", version.ref = "acidify" }
 pinyin4j = { module = "com.belerweb:pinyin4j", version.ref = "pinyin4j" }
 
