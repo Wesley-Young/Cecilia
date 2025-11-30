@@ -137,19 +137,21 @@ fun LocalBubble(
                 modifier = Modifier.widthIn(max = 400.dp),
                 horizontalAlignment = Alignment.End
             ) {
-                if (selfAsMember != null) {
-                    SenderHeader(
-                        member = selfAsMember!!,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                } else {
-                    Text(
-                        text = "你",
-                        style = FluentTheme.typography.caption,
-                        color = FluentTheme.colors.text.text.tertiary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                if (isGroup) {
+                    if (selfAsMember != null) {
+                        SenderHeader(
+                            member = selfAsMember!!,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "你",
+                            style = FluentTheme.typography.caption,
+                            color = FluentTheme.colors.text.text.tertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
 
                 ElementsDisplay(
