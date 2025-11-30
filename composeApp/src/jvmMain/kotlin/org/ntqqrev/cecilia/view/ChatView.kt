@@ -34,6 +34,7 @@ import io.github.composefluent.background.Layer
 import io.github.composefluent.component.Icon
 import io.github.composefluent.component.Text
 import io.github.composefluent.component.TextField
+import io.github.composefluent.component.rememberScrollbarAdapter
 import io.github.composefluent.icons.Icons
 import io.github.composefluent.icons.filled.Pin
 import kotlinx.coroutines.async
@@ -198,28 +199,37 @@ fun ChatView() {
                             .height(1.dp)
                             .background(FluentTheme.colors.stroke.divider.default)
                     )
-                    Column(
-                        modifier = Modifier.fillMaxHeight()
+                    Box(
+                        Modifier.fillMaxHeight()
                             .padding(top = 4.dp)
-                            .verticalScroll(conversationListScrollState),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        conversations.values.sorted().forEach { conversation ->
-                            ConversationDisplay(
-                                conversation = conversation,
-                                isSelected = conversation.asKey == activeConversation,
-                                onClick = {
-                                    withMutableSnapshot {
-                                        activeConversation = if (activeConversation != conversation.asKey) {
-                                            conversation.asKey
-                                        } else {
-                                            null
+                        Column(
+                            modifier = Modifier.fillMaxSize()
+                                .verticalScroll(conversationListScrollState),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            conversations.values.sorted().forEach { conversation ->
+                                ConversationDisplay(
+                                    conversation = conversation,
+                                    isSelected = conversation.asKey == activeConversation,
+                                    onClick = {
+                                        withMutableSnapshot {
+                                            activeConversation = if (activeConversation != conversation.asKey) {
+                                                conversation.asKey
+                                            } else {
+                                                null
+                                            }
+                                            conversations[conversation.asKey] = conversation.copy(unreadCount = 0)
                                         }
-                                        conversations[conversation.asKey] = conversation.copy(unreadCount = 0)
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
+
+                        VerticalScrollbar(
+                            modifier = Modifier.align(Alignment.CenterEnd),
+                            adapter = rememberScrollbarAdapter(conversationListScrollState),
+                        )
                     }
                 }
             }
@@ -769,114 +779,125 @@ private fun ChatArea(conversation: Conversation) {
                 }
             }
         ) {
-            LazyColumn(
-                modifier = Modifier
+            Box(
+                Modifier
                     .weight(1f)
-                    .fillMaxWidth(),
-                state = listState,
-                reverseLayout = true,
+                    .fillMaxWidth()
             ) {
-                items(
-                    count = messageLikeList.size,
-                    key = { index ->
-                        when (val messageLike = messageLikeList[messageLikeList.size - index - 1]) {
-                            is Message -> "message-${messageLike.sequence}"
-                            is LocalMessage -> "local-message-${messageLike.random}-${messageLike.timestamp}"
-                            is Notification -> "notification-$index-${messageLike.hashCode()}"
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    reverseLayout = true,
+                ) {
+                    items(
+                        count = messageLikeList.size,
+                        key = { index ->
+                            when (val messageLike = messageLikeList[messageLikeList.size - index - 1]) {
+                                is Message -> "message-${messageLike.sequence}"
+                                is LocalMessage -> "local-message-${messageLike.random}-${messageLike.timestamp}"
+                                is Notification -> "notification-$index-${messageLike.hashCode()}"
+                            }
                         }
-                    }
-                ) { index ->
-                    when (val currentMessageLike = messageLikeList[messageLikeList.size - index - 1]) {
-                        is Message, is LocalMessage -> {
-                            when (currentMessageLike) {
-                                is Message -> {
-                                    Bubble(
-                                        message = currentMessageLike,
-                                        blink = currentMessageLike.sequence == blinkSequence,
-                                        onDoubleClick = {
-                                            scope.launch {
-                                                replyElement = currentMessageLike.let {
-                                                    Element.Reply(
-                                                        sequence = it.sequence,
-                                                        senderName = when (it.scene) {
-                                                            MessageScene.FRIEND -> {
-                                                                if (it.senderUin == bot.uin) {
-                                                                    "你"
-                                                                } else {
-                                                                    val friend = bot.getFriend(it.senderUin)
-                                                                    friend?.displayName ?: it.senderUin.toString()
+                    ) { index ->
+                        when (val currentMessageLike = messageLikeList[messageLikeList.size - index - 1]) {
+                            is Message, is LocalMessage -> {
+                                when (currentMessageLike) {
+                                    is Message -> {
+                                        Bubble(
+                                            message = currentMessageLike,
+                                            blink = currentMessageLike.sequence == blinkSequence,
+                                            onDoubleClick = {
+                                                scope.launch {
+                                                    replyElement = currentMessageLike.let {
+                                                        Element.Reply(
+                                                            sequence = it.sequence,
+                                                            senderName = when (it.scene) {
+                                                                MessageScene.FRIEND -> {
+                                                                    if (it.senderUin == bot.uin) {
+                                                                        "你"
+                                                                    } else {
+                                                                        val friend = bot.getFriend(it.senderUin)
+                                                                        friend?.displayName ?: it.senderUin.toString()
+                                                                    }
                                                                 }
-                                                            }
 
-                                                            MessageScene.GROUP -> {
-                                                                resolveSubject(
-                                                                    groupUin = it.peerUin,
-                                                                    memberUin = it.senderUin
-                                                                )
-                                                            }
+                                                                MessageScene.GROUP -> {
+                                                                    resolveSubject(
+                                                                        groupUin = it.peerUin,
+                                                                        memberUin = it.senderUin
+                                                                    )
+                                                                }
 
-                                                            else -> it.senderUin.toString()
-                                                        },
-                                                        content = it.toPreviewText()
+                                                                else -> it.senderUin.toString()
+                                                            },
+                                                            content = it.toPreviewText()
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                        )
+                                    }
+
+                                    is LocalMessage -> {
+                                        LocalBubble(
+                                            message = currentMessageLike,
+                                            blink = currentMessageLike.sequence != null
+                                                    && currentMessageLike.sequence == blinkSequence,
+                                            onDoubleClick = {
+                                                if (currentMessageLike.sequence != null) {
+                                                    replyElement = Element.Reply(
+                                                        sequence = currentMessageLike.sequence,
+                                                        senderName = "你",
+                                                        content = currentMessageLike.toPreviewText()
                                                     )
                                                 }
-                                            }
-                                        },
-                                    )
-                                }
-
-                                is LocalMessage -> {
-                                    LocalBubble(
-                                        message = currentMessageLike,
-                                        blink = currentMessageLike.sequence != null
-                                                && currentMessageLike.sequence == blinkSequence,
-                                        onDoubleClick = {
-                                            if (currentMessageLike.sequence != null) {
-                                                replyElement = Element.Reply(
-                                                    sequence = currentMessageLike.sequence,
-                                                    senderName = "你",
-                                                    content = currentMessageLike.toPreviewText()
-                                                )
-                                            }
-                                        },
-                                    )
-                                }
-
-                                else -> {}
-                            }
-
-                            // compare with prev timestamp
-                            val currentMessageTimestamp = when (currentMessageLike) {
-                                is Message -> currentMessageLike.timestamp
-                                is LocalMessage -> currentMessageLike.timestamp
-                                else -> 0L
-                            }
-                            val previousMessageTimestamp = messageLikeList.slice(0..messageLikeList.size - index - 2)
-                                .lastOrNull { it is Message || it is LocalMessage }
-                                ?.let {
-                                    when (it) {
-                                        is Message -> it.timestamp
-                                        is LocalMessage -> it.timestamp
-                                        else -> 0L
+                                            },
+                                        )
                                     }
-                                }
-                            val shouldShowTimeTip = previousMessageTimestamp?.let {
-                                currentMessageTimestamp - previousMessageTimestamp >= 300
-                            } ?: true
-                            if (shouldShowTimeTip) {
-                                GreyTip(
-                                    content = Instant.ofEpochSecond(currentMessageTimestamp)
-                                        .formatToConvenientTime()
-                                )
-                                Spacer(Modifier.height(16.dp))
-                            }
-                        }
 
-                        is Notification -> {
-                            GreyTip(content = currentMessageLike.content)
+                                    else -> {}
+                                }
+
+                                // compare with prev timestamp
+                                val currentMessageTimestamp = when (currentMessageLike) {
+                                    is Message -> currentMessageLike.timestamp
+                                    is LocalMessage -> currentMessageLike.timestamp
+                                    else -> 0L
+                                }
+                                val previousMessageTimestamp =
+                                    messageLikeList.slice(0..messageLikeList.size - index - 2)
+                                        .lastOrNull { it is Message || it is LocalMessage }
+                                        ?.let {
+                                            when (it) {
+                                                is Message -> it.timestamp
+                                                is LocalMessage -> it.timestamp
+                                                else -> 0L
+                                            }
+                                        }
+                                val shouldShowTimeTip = previousMessageTimestamp?.let {
+                                    currentMessageTimestamp - previousMessageTimestamp >= 300
+                                } ?: true
+                                if (shouldShowTimeTip) {
+                                    GreyTip(
+                                        content = Instant.ofEpochSecond(currentMessageTimestamp)
+                                            .formatToConvenientTime()
+                                    )
+                                    Spacer(Modifier.height(16.dp))
+                                }
+                            }
+
+                            is Notification -> {
+                                GreyTip(content = currentMessageLike.content)
+                            }
                         }
                     }
                 }
+
+                VerticalScrollbar(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    adapter = rememberScrollbarAdapter(listState),
+                    reverseLayout = true,
+                )
             }
         }
         Layer(Modifier.padding(horizontal = 8.dp)) {
