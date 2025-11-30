@@ -53,44 +53,46 @@ fun ContactsView() {
         runCatching {
             val allFriends = bot.getFriends(true)
             val allGroups = bot.getGroups(true)
-            friends = allFriends.sortedBy { friend ->
-                friend.remark.ifEmpty { friend.nickname }
+            friends = allFriends.sortedBy {
+                it.categoryId * UInt.MAX_VALUE.toLong() + it.uin
             }
-            groups = allGroups.sortedBy { group -> group.name }
+            groups = allGroups.sortedBy { it.uin }
         }
     }
 
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.width(leftPanelWidth)) {
-            TopNav(
-                expanded = false,
-                onExpandedChanged = {},
-            ) {
-                item {
-                    TopNavItem(
-                        selected = selectedIndex == 0,
-                        onClick = { selectedIndex = 0 },
-                        text = { Text("好友") },
-                        icon = {
-                            Icon(
-                                imageVector = if (selectedIndex == 0) Icons.Filled.Person else Icons.Regular.Person,
-                                contentDescription = null
-                            )
-                        }
-                    )
-                }
-                item {
-                    TopNavItem(
-                        selected = selectedIndex == 1,
-                        onClick = { selectedIndex = 1 },
-                        text = { Text("群聊") },
-                        icon = {
-                            Icon(
-                                imageVector = if (selectedIndex == 1) Icons.Filled.Group else Icons.Regular.Group,
-                                contentDescription = null
-                            )
-                        }
-                    )
+            Layer {
+                TopNav(
+                    expanded = false,
+                    onExpandedChanged = {},
+                ) {
+                    item {
+                        TopNavItem(
+                            selected = selectedIndex == 0,
+                            onClick = { selectedIndex = 0 },
+                            text = { Text("好友") },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selectedIndex == 0) Icons.Filled.Person else Icons.Regular.Person,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                    }
+                    item {
+                        TopNavItem(
+                            selected = selectedIndex == 1,
+                            onClick = { selectedIndex = 1 },
+                            text = { Text("群聊") },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selectedIndex == 1) Icons.Filled.Group else Icons.Regular.Group,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                    }
                 }
             }
 
@@ -174,7 +176,6 @@ private fun <T> ContactList(
     val scrollState = rememberScrollState()
     Column(
         modifier = Modifier.fillMaxHeight()
-            .padding(top = 4.dp)
     ) {
         Box(
             modifier = Modifier.fillMaxSize()
@@ -184,7 +185,7 @@ private fun <T> ContactList(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                items.forEach { item ->
+                items.forEachIndexed { index, item ->
                     val displayName = when (item) {
                         is BotFriend -> item.remark.ifEmpty { item.nickname }
                         is BotGroup -> item.name
@@ -194,6 +195,42 @@ private fun <T> ContactList(
                         is BotFriend -> item.uin
                         is BotGroup -> item.uin
                         else -> 0L
+                    }
+
+                    if (index == 0) {
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    if (item is BotFriend) {
+                        if (item.categoryId != (items.getOrNull(index - 1) as? BotFriend)?.categoryId) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                            ) {
+                                Box(
+                                    Modifier
+                                        .height(1.dp)
+                                        .weight(1f)
+                                        .align(Alignment.CenterVertically)
+                                        .background(FluentTheme.colors.stroke.divider.default)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = item.categoryName,
+                                    style = FluentTheme.typography.caption,
+                                    color = FluentTheme.colors.text.text.secondary
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Box(
+                                    Modifier
+                                        .height(1.dp)
+                                        .weight(1f)
+                                        .align(Alignment.CenterVertically)
+                                        .background(FluentTheme.colors.stroke.divider.default)
+                                )
+                            }
+                        }
                     }
 
                     ListItem(
