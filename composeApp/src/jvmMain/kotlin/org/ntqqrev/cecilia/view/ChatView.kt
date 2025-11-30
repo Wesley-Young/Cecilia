@@ -905,6 +905,9 @@ private fun ChatArea(conversation: Conversation) {
                 ChatInput(
                     conversationKey = conversation.asKey,
                     replyElement = replyElement,
+                    onCancelReply = {
+                        replyElement = null
+                    },
                     onSendMessage = {
                         replyElement = null
                         withMutableSnapshot {
@@ -933,6 +936,7 @@ private fun ChatInput(
     modifier: Modifier = Modifier,
     conversationKey: Conversation.Key,
     replyElement: Element.Reply?,
+    onCancelReply: () -> Unit,
     onSendMessage: (LocalMessage) -> Unit,
     onSendMessageComplete: (LocalMessage) -> Unit,
 ) {
@@ -1073,6 +1077,13 @@ private fun ChatInput(
             placeholder = { Text("输入消息...") },
             modifier = modifier.fillMaxWidth()
                 .onPreviewKeyEvent { event ->
+                    if (event.key == Key.Escape) {
+                        if (replyElement != null) {
+                            onCancelReply()
+                            return@onPreviewKeyEvent true
+                        }
+                    }
+
                     if (event.type == KeyEventType.KeyDown &&
                         event.key == Key.V &&
                         (event.isCtrlPressed || event.isMetaPressed)
