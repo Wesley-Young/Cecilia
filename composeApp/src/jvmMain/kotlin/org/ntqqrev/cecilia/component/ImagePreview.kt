@@ -3,22 +3,24 @@ package org.ntqqrev.cecilia.component
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import io.github.composefluent.component.Icon
@@ -36,6 +38,8 @@ fun ImagePreview(
     onClose: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -49,8 +53,7 @@ fun ImagePreview(
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
-                        val event = awaitPointerEvent()
-                        event.changes.forEach { it.consume() }
+                        awaitPointerEvent() // Keep the overlay active without swallowing events needed for gestures.
                     }
                 }
             }
@@ -63,6 +66,35 @@ fun ImagePreview(
                 }
             },
     ) {
+        val interactionModifier = Modifier
+            .graphicsLayer(
+                scaleX = scale,
+                scaleY = scale,
+                translationX = offset.x,
+                translationY = offset.y,
+            )
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    offset += dragAmount * scale // Faster pan when zoomed-in
+                }
+            }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.type == PointerEventType.Scroll) {
+                            val scrollY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                            if (scrollY != 0f) {
+                                val zoom = (scale - scrollY * 0.1f).coerceIn(0.2f, 5f)
+                                scale = zoom
+                            }
+                            event.changes.forEach { it.consume() }
+                        }
+                    }
+                }
+            }
+
         if (bitmap != null) {
             val (displayWidth, displayHeight) = (bitmap.width to bitmap.height).coerceInRectBox(
                 maxWidth = this.maxWidth.value.toInt(),
@@ -71,8 +103,10 @@ fun ImagePreview(
             Image(
                 bitmap = bitmap,
                 contentDescription = "",
-                modifier = Modifier.size(displayWidth.dp, displayHeight.dp)
-                    .align(Alignment.TopCenter)
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(displayWidth.dp, displayHeight.dp)
+                    .then(interactionModifier)
             )
         }
 
@@ -85,8 +119,10 @@ fun ImagePreview(
             AnimatedImage(
                 frames = animatedFrames,
                 contentDescription = "",
-                modifier = Modifier.size(displayWidth.dp, displayHeight.dp)
-                    .align(Alignment.TopCenter)
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(displayWidth.dp, displayHeight.dp)
+                    .then(interactionModifier)
             )
         }
 
