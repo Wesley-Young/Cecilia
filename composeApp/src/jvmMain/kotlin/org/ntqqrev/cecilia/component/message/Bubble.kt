@@ -211,33 +211,19 @@ private fun SenderHeader(
     member: BotGroupMember,
     modifier: Modifier = Modifier,
 ) {
-    val bot = LocalBot.current
-    val isSent = member.uin == bot.uin
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (!isSent) {
-            MemberBadge(member)
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = member.displayName.zipIntoSingleLine(),
-                style = FluentTheme.typography.caption,
-                color = FluentTheme.colors.text.text.tertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        } else {
-            Text(
-                text = member.displayName.zipIntoSingleLine(),
-                style = FluentTheme.typography.caption,
-                color = FluentTheme.colors.text.text.tertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            MemberBadge(member)
-        }
+        MemberBadge(member)
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = member.displayName.zipIntoSingleLine(),
+            style = FluentTheme.typography.caption,
+            color = FluentTheme.colors.text.text.tertiary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
