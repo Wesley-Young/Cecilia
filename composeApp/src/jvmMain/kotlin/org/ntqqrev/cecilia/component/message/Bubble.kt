@@ -1,5 +1,9 @@
 package org.ntqqrev.cecilia.component.message
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,19 +37,20 @@ fun Bubble(
     blink: Boolean = false,
 ) {
     val bot = LocalBot.current
+    val bgColor by animateColorAsState(
+        targetValue = if (blink) {
+            Color.Black.copy(alpha = 0.05f)
+        } else {
+            Color.Transparent
+        }
+    )
     val isSelf = message.senderUin == bot.uin
     val isGroup = message.scene == MessageScene.GROUP
     val member = message.member
 
     Box(
         modifier = Modifier.fillMaxWidth()
-            .background(
-                color = if (blink) {
-                    Color.Black.copy(alpha = 0.05f)
-                } else {
-                    Color.Transparent
-                }
-            )
+            .background(color = bgColor)
             .onClick(
                 onDoubleClick = onDoubleClick,
                 onClick = {}

@@ -772,7 +772,7 @@ private fun ChatArea(conversation: Conversation) {
                                 scrollOffset = - listState.layoutInfo.viewportSize.height / 2
                             )
                             blinkSequence = sequence
-                            delay(1500L)
+                            delay(800L)
                             blinkSequence = null
                         }
                     }
