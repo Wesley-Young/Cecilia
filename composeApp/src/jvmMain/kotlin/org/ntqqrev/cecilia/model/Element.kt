@@ -37,6 +37,15 @@ sealed class Element {
         override fun toString() = "[引用消息]"
     }
 
+    data class Forward(
+        val resId: String,
+        val title: String,
+        val preview: List<String>,
+        val summary: String,
+    ) : Element() {
+        override fun toString() = "[转发消息]"
+    }
+
     data class LocalImage(
         val bitmap: ImageBitmap
     ) : Element() {

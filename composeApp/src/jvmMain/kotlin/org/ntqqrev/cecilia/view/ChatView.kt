@@ -553,6 +553,18 @@ private fun ChatArea(conversation: Conversation) {
                             )
                         }
 
+                        is BotIncomingSegment.Forward -> {
+                            flush()
+                            add(
+                                Element.Forward(
+                                    resId = it.resId,
+                                    title = it.title,
+                                    preview = it.preview,
+                                    summary = it.summary,
+                                )
+                            )
+                        }
+
                         else -> {
                             buffer.append("[${it::class.simpleName}]")
                         }
@@ -769,7 +781,7 @@ private fun ChatArea(conversation: Conversation) {
                             val itemIndex = messageLikeList.size - targetIndex - 1
                             listState.scrollToItem(
                                 index = itemIndex,
-                                scrollOffset = - listState.layoutInfo.viewportSize.height / 2
+                                scrollOffset = -listState.layoutInfo.viewportSize.height / 2
                             )
                             blinkSequence = sequence
                             delay(800L)

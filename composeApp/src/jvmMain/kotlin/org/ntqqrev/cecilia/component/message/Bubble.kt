@@ -191,6 +191,11 @@ private fun ElementsDisplay(
             MessageLargeFace(faceId = largeFace.faceId)
         }
 
+        1 if (elements[0] is Element.Forward) -> {
+            Spacer(Modifier.height(4.dp))
+            MessageForward(forward = elements[0] as Element.Forward)
+        }
+
         else -> {
             Spacer(Modifier.height(2.dp))
             BubbleBody(elements = elements, isSelf = isSelf)
@@ -261,10 +266,6 @@ private fun BubbleBody(
                     )
                 }
 
-                is Element.LargeFace -> {
-                    // It should not be here
-                }
-
                 is Element.Image -> {
                     MessageImage(image = e)
                 }
@@ -287,6 +288,10 @@ private fun BubbleBody(
                         reply = e,
                         isSelf = isSelf,
                     )
+                }
+
+                else -> {
+                    // It should not be here
                 }
             }
         }
