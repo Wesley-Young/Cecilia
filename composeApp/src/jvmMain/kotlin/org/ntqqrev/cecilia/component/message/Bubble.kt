@@ -1,9 +1,6 @@
 package org.ntqqrev.cecilia.component.message
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -185,17 +182,7 @@ private fun ElementsDisplay(
 
         1 if (elements[0] is Element.LocalImage) -> {
             Spacer(Modifier.height(4.dp))
-            val e = elements[0] as Element.LocalImage
-            val (displayWidth, displayHeight) = Pair(
-                e.bitmap.width,
-                e.bitmap.height
-            ).coerceInSquareBox(300)
-            Image(
-                bitmap = e.bitmap,
-                contentDescription = null,
-                modifier = Modifier.size(width = displayWidth.dp, height = displayHeight.dp)
-                    .clip(RoundedCornerShape(4.dp))
-            )
+            LocalMessageImage(image = elements[0] as Element.LocalImage)
         }
 
         1 if (elements[0] is Element.LargeFace) -> {

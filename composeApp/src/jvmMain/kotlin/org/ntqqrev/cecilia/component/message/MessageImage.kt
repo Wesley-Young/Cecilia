@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
 package org.ntqqrev.cecilia.component.message
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -33,7 +35,6 @@ import org.ntqqrev.cecilia.util.coerceInSquareBox
 import org.jetbrains.skia.Bitmap as SkiaBitmap
 import org.jetbrains.skia.Image as SkiaImage
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageImage(
     image: Element.Image,
@@ -174,5 +175,30 @@ fun MessageImage(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun LocalMessageImage(image: Element.LocalImage) {
+    val previewSetter = LocalPreviewSetter.current
+
+    val (displayWidth, displayHeight) = Pair(
+        image.bitmap.width,
+        image.bitmap.height
+    ).coerceInSquareBox(300)
+
+    val modifier = Modifier.size(width = displayWidth.dp, height = displayHeight.dp)
+        .clip(RoundedCornerShape(4.dp))
+
+    Box(
+        modifier.onClick {
+            previewSetter.invoke(image.bitmap, null)
+        },
+    ) {
+        Image(
+            bitmap = image.bitmap,
+            contentDescription = null,
+            modifier = modifier,
+        )
     }
 }
