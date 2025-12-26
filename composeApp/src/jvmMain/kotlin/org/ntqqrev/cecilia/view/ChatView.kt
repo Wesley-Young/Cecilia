@@ -877,15 +877,12 @@ private fun ChatArea(conversation: Conversation) {
                                             },
                                         )
                                     }
-
-                                    else -> {}
                                 }
 
                                 // compare with prev timestamp
                                 val currentMessageTimestamp = when (currentMessageLike) {
                                     is Message -> currentMessageLike.timestamp
                                     is LocalMessage -> currentMessageLike.timestamp
-                                    else -> 0L
                                 }
                                 val previousMessageTimestamp =
                                     messageLikeList.slice(0..messageLikeList.size - index - 2)
