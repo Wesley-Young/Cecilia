@@ -22,6 +22,7 @@ import org.ntqqrev.cecilia.view.LocalJumpToMessage
 fun MessageReply(
     reply: Element.Reply,
     isSelf: Boolean,
+    innerModifier: Modifier = Modifier.padding(8.dp),
 ) {
     val onJumpToMessage = LocalJumpToMessage.current
     var isHovering by remember { mutableStateOf(false) }
@@ -41,7 +42,7 @@ fun MessageReply(
             .onClick {
                 onJumpToMessage?.invoke(reply.sequence)
             }
-            .padding(8.dp)
+            .then(innerModifier)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(

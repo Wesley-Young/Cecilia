@@ -1048,6 +1048,7 @@ private fun ChatInput(
             MessageReply(
                 reply = replyElement,
                 isSelf = false,
+                innerModifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
             )
         }
         if (imageAttachments.isNotEmpty()) {
