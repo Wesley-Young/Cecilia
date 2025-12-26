@@ -1,13 +1,15 @@
 package org.ntqqrev.cecilia.component.message
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -22,7 +24,6 @@ import org.ntqqrev.cecilia.core.LocalBot
 import org.ntqqrev.cecilia.model.Element
 import org.ntqqrev.cecilia.model.LocalMessage
 import org.ntqqrev.cecilia.model.Message
-import org.ntqqrev.cecilia.util.coerceInSquareBox
 import org.ntqqrev.cecilia.util.displayName
 import org.ntqqrev.cecilia.util.zipIntoSingleLine
 
@@ -271,16 +272,7 @@ private fun BubbleBody(
                 }
 
                 is Element.LocalImage -> {
-                    val (displayWidth, displayHeight) = Pair(
-                        e.bitmap.width,
-                        e.bitmap.height
-                    ).coerceInSquareBox(300)
-                    Image(
-                        bitmap = e.bitmap,
-                        contentDescription = null,
-                        modifier = Modifier.size(width = displayWidth.dp, height = displayHeight.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                    )
+                    LocalMessageImage(image = e)
                 }
 
                 is Element.Reply -> {
