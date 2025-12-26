@@ -87,6 +87,7 @@ fun Bubble(
                 }
                 ElementsDisplay(
                     elements = message.elements,
+                    isGroup = isGroup,
                     isSelf = isSelf,
                 )
             }
@@ -159,6 +160,7 @@ fun LocalBubble(
 
                 ElementsDisplay(
                     elements = message.elements,
+                    isGroup = isGroup,
                     isSelf = true,
                 )
             }
@@ -173,37 +175,49 @@ fun LocalBubble(
 @Composable
 private fun ElementsDisplay(
     elements: List<Element>,
+    isGroup: Boolean,
     isSelf: Boolean,
 ) {
     when (elements.size) {
         1 if (elements[0] is Element.Image) -> {
-            Spacer(Modifier.height(4.dp))
+            if (isGroup) {
+                Spacer(Modifier.height(4.dp))
+            }
             MessageImage(image = elements[0] as Element.Image)
         }
 
         1 if (elements[0] is Element.LocalImage) -> {
-            Spacer(Modifier.height(4.dp))
+            if (isGroup) {
+                Spacer(Modifier.height(4.dp))
+            }
             LocalMessageImage(image = elements[0] as Element.LocalImage)
         }
 
         1 if (elements[0] is Element.LargeFace) -> {
-            Spacer(Modifier.height(4.dp))
-            val largeFace = elements[0] as Element.LargeFace
-            MessageLargeFace(faceId = largeFace.faceId)
+            if (isGroup) {
+                Spacer(Modifier.height(4.dp))
+            }
+            MessageLargeFace(faceId = (elements[0] as Element.LargeFace).faceId)
         }
 
         1 if (elements[0] is Element.Forward) -> {
-            Spacer(Modifier.height(4.dp))
+            if (isGroup) {
+                Spacer(Modifier.height(4.dp))
+            }
             MessageForward(forward = elements[0] as Element.Forward)
         }
 
         1 if (elements[0] is Element.LightApp) -> {
-            Spacer(Modifier.height(4.dp))
+            if (isGroup) {
+                Spacer(Modifier.height(4.dp))
+            }
             MessageLightApp(lightApp = elements[0] as Element.LightApp)
         }
 
         else -> {
-            Spacer(Modifier.height(2.dp))
+            if (isGroup) {
+                Spacer(Modifier.height(2.dp))
+            }
             BubbleBody(elements = elements, isSelf = isSelf)
         }
     }
