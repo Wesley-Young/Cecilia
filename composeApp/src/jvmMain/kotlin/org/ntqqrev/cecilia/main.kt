@@ -82,6 +82,7 @@ fun appMain() = application {
 
     val scope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob()) }
     var bot by remember { mutableStateOf<Bot?>(null) }
+    var uin by remember { mutableStateOf<Long?>(null) }
     var emojiImages by remember { mutableStateOf<Map<String, FaceEntry>?>(null) }
     val emojiImageFallback = remember {
         Image.makeFromEncoded(getResourceBytes("assets/default.png")!!)
@@ -139,6 +140,7 @@ fun appMain() = application {
             newBot.launch {
                 newBot.eventFlow.collect { event ->
                     if (event is SessionStoreUpdatedEvent) {
+                        uin = event.sessionStore.uin
                         runCatching {
                             sessionStorePath.writeText(event.sessionStore.toJson())
                         }
@@ -165,7 +167,7 @@ fun appMain() = application {
             }
             exitApplication()
         },
-        title = "Cecilia",
+        title = uin.takeIf { it != 0L }?.let { "Cecilia - $it" } ?: "Cecilia",
         state = rememberWindowState(size = DpSize(1000.dp, 700.dp)),
     ) {
         var isFocused by remember { mutableStateOf(window.isFocused) }
@@ -184,15 +186,6 @@ fun appMain() = application {
                     isFocused = false
                 }
             })
-        }
-
-        LaunchedEffect(bot) {
-            val title = if (bot == null) {
-                "Cecilia"
-            } else {
-                "Cecilia - ${bot?.sessionStore?.uin}"
-            }
-            window.title = title
         }
 
         CompositionLocalProvider(
@@ -246,6 +239,9 @@ fun appMain() = application {
                     App(
                         bot = bot,
                         loadError = loadError,
+                        onLoggedIn = {
+                            uin = bot?.uin
+                        },
                         showConfigInitDialog = {
                             isConfigRefining = true
                         }
@@ -275,10 +271,10 @@ fun appMain() = application {
 fun App(
     bot: Bot?,
     loadError: Throwable?,
+    onLoggedIn: () -> Unit,
     showConfigInitDialog: () -> Unit
 ) {
     var isLoggedIn by remember { mutableStateOf(bot?.isLoggedIn ?: false) }
-
 
     if (bot == null) {
         Box(Modifier.fillMaxSize()) {
@@ -325,7 +321,10 @@ fun App(
         ) {
             if (!isLoggedIn) {
                 LoginView(
-                    onLoggedIn = { isLoggedIn = true },
+                    onLoggedIn = {
+                        isLoggedIn = true
+                        onLoggedIn()
+                    },
                     showConfigInitDialog = showConfigInitDialog
                 )
             } else {
