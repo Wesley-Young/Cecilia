@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.AnnotatedString
 import org.ntqqrev.acidify.message.ImageSubType
+import org.ntqqrev.cecilia.model.lightapp.LightAppPayload
 
 sealed class Element {
     data class RichText(
@@ -44,6 +45,12 @@ sealed class Element {
         val summary: String,
     ) : Element() {
         override fun toString() = "[转发消息]"
+    }
+
+    data class LightApp(
+        val payload: LightAppPayload,
+    ) : Element() {
+        override fun toString() = payload.prompt
     }
 
     data class LocalImage(

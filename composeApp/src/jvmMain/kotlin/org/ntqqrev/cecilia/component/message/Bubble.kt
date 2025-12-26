@@ -197,6 +197,11 @@ private fun ElementsDisplay(
             MessageForward(forward = elements[0] as Element.Forward)
         }
 
+        1 if (elements[0] is Element.LightApp) -> {
+            Spacer(Modifier.height(4.dp))
+            MessageLightApp(lightApp = elements[0] as Element.LightApp)
+        }
+
         else -> {
             Spacer(Modifier.height(2.dp))
             BubbleBody(elements = elements, isSelf = isSelf)

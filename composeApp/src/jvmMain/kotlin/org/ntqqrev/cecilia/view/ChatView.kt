@@ -57,6 +57,7 @@ import org.ntqqrev.cecilia.core.LocalConfig
 import org.ntqqrev.cecilia.core.LocalEmojiImageFallback
 import org.ntqqrev.cecilia.core.LocalEmojiImages
 import org.ntqqrev.cecilia.model.*
+import org.ntqqrev.cecilia.model.lightapp.LightAppPayload
 import org.ntqqrev.cecilia.util.*
 import java.time.Instant
 import kotlin.random.Random
@@ -561,6 +562,16 @@ private fun ChatArea(conversation: Conversation) {
                                     title = it.title,
                                     preview = it.preview,
                                     summary = it.summary,
+                                )
+                            )
+                        }
+
+                        is BotIncomingSegment.LightApp -> {
+                            flush()
+                            val lightApp = LightAppPayload.fromJson(it.jsonPayload)
+                            add(
+                                Element.LightApp(
+                                    payload = lightApp
                                 )
                             )
                         }
