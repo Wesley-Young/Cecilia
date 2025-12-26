@@ -16,17 +16,12 @@ fun MessageForward(forward: Element.Forward) {
     Box(Modifier.widthIn(max = 300.dp)) {
         Layer {
             Column {
-                Box(Modifier.padding(top = 8.dp, start = 12.dp, end = 12.dp, bottom = 6.dp)) {
-                    Text(forward.title)
-                }
-                Box(
-                    Modifier.background(color = FluentTheme.colors.stroke.divider.default)
-                        .fillMaxWidth()
-                        .height(1.dp)
-                )
-                Box(Modifier.padding(vertical = 4.dp, horizontal = 12.dp)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Box(Modifier.padding(vertical = 8.dp, horizontal = 12.dp)) {
+                    Column {
+                        Text(forward.title)
+                        Spacer(Modifier.height(4.dp))
                         forward.preview.forEach { line ->
+                            Spacer(Modifier.height(2.dp))
                             Text(
                                 text = line,
                                 style = FluentTheme.typography.caption,
@@ -36,6 +31,11 @@ fun MessageForward(forward: Element.Forward) {
                         }
                     }
                 }
+                Box(
+                    Modifier.background(color = FluentTheme.colors.stroke.divider.default)
+                        .fillMaxWidth()
+                        .height(1.dp)
+                )
                 Box(Modifier.padding(top = 4.dp, start = 12.dp, end = 12.dp, bottom = 8.dp)) {
                     Text(
                         text = forward.summary,
