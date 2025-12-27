@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -130,7 +132,12 @@ fun ImagePreview(
 
         SubtleButton(
             onClick = onClose,
-            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(72.dp)
+                .padding(16.dp)
+                .background(Color.Black.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(20.dp))
         ) {
             Icon(
                 imageVector = Icons.Default.Dismiss,
