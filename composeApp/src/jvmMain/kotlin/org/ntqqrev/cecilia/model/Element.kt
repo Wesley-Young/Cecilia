@@ -44,7 +44,7 @@ sealed class Element {
         val preview: List<String>,
         val summary: String,
     ) : Element() {
-        override fun toString() = "[转发消息]"
+        override fun toString() = "[聊天记录]"
     }
 
     data class LightApp(
