@@ -64,15 +64,7 @@ fun ImagePreview(
                 } else {
                     false
                 }
-            },
-    ) {
-        val interactionModifier = Modifier
-            .graphicsLayer(
-                scaleX = scale,
-                scaleY = scale,
-                translationX = offset.x,
-                translationY = offset.y,
-            )
+            }
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
@@ -93,8 +85,8 @@ fun ImagePreview(
                         }
                     }
                 }
-            }
-
+            },
+    ) {
         if (bitmap != null) {
             val (displayWidth, displayHeight) = (bitmap.width to bitmap.height).coerceInRectBox(
                 maxWidth = this.maxWidth.value.toInt(),
@@ -106,7 +98,12 @@ fun ImagePreview(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(displayWidth.dp, displayHeight.dp)
-                    .then(interactionModifier)
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y,
+                    )
             )
         }
 
@@ -122,7 +119,12 @@ fun ImagePreview(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(displayWidth.dp, displayHeight.dp)
-                    .then(interactionModifier)
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y,
+                    )
             )
         }
 
