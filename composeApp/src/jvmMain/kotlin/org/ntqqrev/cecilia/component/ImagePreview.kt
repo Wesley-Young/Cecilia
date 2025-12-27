@@ -3,7 +3,7 @@ package org.ntqqrev.cecilia.component
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -68,9 +68,13 @@ fun ImagePreview(
                 }
             }
             .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    offset += dragAmount * scale // Faster pan when zoomed-in
+                detectTransformGestures { _, pan, zoom, _ ->
+                    if (pan != Offset.Zero) {
+                        offset += pan
+                    }
+                    if (zoom != 1f) {
+                        scale = (scale * zoom).coerceIn(0.2f, 5f)
+                    }
                 }
             }
             .pointerInput(Unit) {
