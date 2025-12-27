@@ -73,12 +73,8 @@ fun appMain() = application {
         )
     }
 
-    val screenshot = remember {
-        WallpaperProvider.value.toComposeImageBitmap()
-    }
-    val screenshotDesaturated = remember {
-        WallpaperProvider.value.desaturate(0.5f).toComposeImageBitmap()
-    }
+    var wallpaperBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var wallpaperDesaturatedBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
 
     val scope = remember { CoroutineScope(Dispatchers.IO + SupervisorJob()) }
     var bot by remember { mutableStateOf<Bot?>(null) }
@@ -106,6 +102,17 @@ fun appMain() = application {
         }
     }
 
+    LaunchedEffect(Unit) {
+        // Load wallpaper off the UI thread to avoid delaying the first window frame.
+        val (normal, desaturated) = withContext(Dispatchers.IO) {
+            val wallpaper = WallpaperProvider.value
+            val desaturatedWallpaper = wallpaper.desaturate(0.5f)
+            wallpaper.toComposeImageBitmap() to desaturatedWallpaper.toComposeImageBitmap()
+        }
+        wallpaperBitmap = normal
+        wallpaperDesaturatedBitmap = desaturated
+    }
+
     LaunchedEffect(isConfigInitialized) {
         if (!isConfigInitialized) {
             return@LaunchedEffect
@@ -113,29 +120,31 @@ fun appMain() = application {
 
         try {
             val sessionStorePath = appDataDirectory.resolve("session-store.json")
-            val sessionStore: SessionStore = if (sessionStorePath.exists()) {
-                SessionStore.fromJson(sessionStorePath.readText())
-            } else {
-                val emptySessionStore = SessionStore.empty()
-                emptySessionStore.also { store ->
-                    sessionStorePath.writeText(store.toJson())
+            val newBot = withContext(Dispatchers.IO) {
+                val sessionStore: SessionStore = if (sessionStorePath.exists()) {
+                    SessionStore.fromJson(sessionStorePath.readText())
+                } else {
+                    val emptySessionStore = SessionStore.empty()
+                    emptySessionStore.also { store ->
+                        sessionStorePath.writeText(store.toJson())
+                    }
                 }
-            }
 
-            val signProvider = UrlSignProvider(config.signApiUrl, config.signApiHttpProxy)
-            val appInfo = signProvider.getAppInfo() ?: run {
-                println("获取 AppInfo 失败，使用内置默认值")
-                AppInfo.Bundled.Linux
-            }
+                val signProvider = UrlSignProvider(config.signApiUrl, config.signApiHttpProxy)
+                val appInfo = signProvider.getAppInfo() ?: run {
+                    println("获取 AppInfo 失败，使用内置默认值")
+                    AppInfo.Bundled.Linux
+                }
 
-            val newBot = Bot.create(
-                appInfo = appInfo,
-                sessionStore = sessionStore,
-                signProvider = signProvider,
-                scope = scope,
-                minLogLevel = config.minLogLevel,
-                logHandler = SimpleLogHandler
-            )
+                Bot.create(
+                    appInfo = appInfo,
+                    sessionStore = sessionStore,
+                    signProvider = signProvider,
+                    scope = scope,
+                    minLogLevel = config.minLogLevel,
+                    logHandler = SimpleLogHandler
+                )
+            }
 
             newBot.launch {
                 newBot.eventFlow.collect { event ->
@@ -209,10 +218,15 @@ fun appMain() = application {
                 Mica(
                     modifier = Modifier.fillMaxSize(),
                     background = {
-                        Image(
-                            bitmap = if (isFocused) screenshot else screenshotDesaturated,
-                            contentDescription = null,
-                        )
+                        val wallpaper = if (isFocused) wallpaperBitmap else wallpaperDesaturatedBitmap
+                        if (wallpaper != null) {
+                            Image(
+                                bitmap = wallpaper,
+                                contentDescription = null,
+                            )
+                        } else {
+                            Box(Modifier.fillMaxSize())
+                        }
                     }
                 ) {
                     ConfigInitDialog(
