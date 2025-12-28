@@ -63,19 +63,7 @@ private fun MiniApp01DetailView(lightApp: Element.LightApp, detail: MiniApp01Det
             .padding(12.dp)
     ) {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                KamelImage(
-                    resource = { asyncPainterResource(detail.icon) },
-                    contentDescription = detail.title,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = detail.title,
-                    style = FluentTheme.typography.caption,
-                    color = FluentTheme.colors.text.text.secondary,
-                )
-            }
+            SourceTag(detail.title, detail.icon)
             Spacer(Modifier.height(4.dp))
             Text(detail.desc)
             KamelImage(
@@ -120,19 +108,24 @@ private fun TuwenLuaNewsView(lightApp: Element.LightApp, news: TuwenLuaNews) {
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                KamelImage(
-                    resource = { asyncPainterResource(news.tagIcon) },
-                    contentDescription = news.tag,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = news.tag,
-                    style = FluentTheme.typography.caption,
-                    color = FluentTheme.colors.text.text.secondary,
-                )
-            }
+            SourceTag(news.tag, news.tagIcon)
         }
+    }
+}
+
+@Composable
+private fun SourceTag(tag: String, iconUrl: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        KamelImage(
+            resource = { asyncPainterResource(iconUrl) },
+            contentDescription = tag,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = tag,
+            style = FluentTheme.typography.caption,
+            color = FluentTheme.colors.text.text.secondary,
+        )
     }
 }
