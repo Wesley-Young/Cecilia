@@ -17,6 +17,7 @@ import io.github.composefluent.icons.regular.People
 import io.github.composefluent.icons.regular.Settings
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.core.LocalBot
+import org.ntqqrev.cecilia.model.Conversation
 
 enum class MainViewState(
     val displayName: String,
@@ -48,6 +49,7 @@ fun MainView() {
     var expanded by remember { mutableStateOf(false) }
     var selectedIndex by remember { mutableStateOf(0) }
     var botNickname by remember { mutableStateOf("") }
+    var jumpConversationKey by remember { mutableStateOf<Conversation.Key?>(null) }
 
     LaunchedEffect(bot) {
         val profile = bot.fetchUserInfoByUin(bot.uin)
@@ -107,12 +109,17 @@ fun MainView() {
                 if (mainViewState == MainViewState.Chat) Modifier
                 else Modifier.size(0.dp)
             ) {
-                ChatView()
+                ChatView(jumpConversationKey)
             }
 
             // Should be mounted every time entering Contacts view to refresh contacts list
             if (mainViewState == MainViewState.Contacts) {
-                ContactsView()
+                ContactsView(
+                    onJumpToConversation = {
+                        jumpConversationKey = it
+                        mainViewState = MainViewState.Chat
+                    }
+                )
             }
 
             Box(

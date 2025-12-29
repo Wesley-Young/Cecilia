@@ -29,18 +29,21 @@ import io.github.composefluent.icons.filled.Person
 import io.github.composefluent.icons.regular.ChevronDown
 import io.github.composefluent.icons.regular.Group
 import io.github.composefluent.icons.regular.Person
+import io.github.composefluent.icons.regular.Send
 import org.ntqqrev.acidify.entity.BotFriend
 import org.ntqqrev.acidify.entity.BotGroup
 import org.ntqqrev.acidify.entity.BotGroupMember
+import org.ntqqrev.acidify.message.MessageScene
 import org.ntqqrev.acidify.struct.GroupMemberRole
 import org.ntqqrev.cecilia.component.AvatarImage
 import org.ntqqrev.cecilia.component.DraggableDivider
 import org.ntqqrev.cecilia.component.MemberBadge
 import org.ntqqrev.cecilia.core.LocalBot
+import org.ntqqrev.cecilia.model.Conversation
 
 @OptIn(ExperimentalFluentApi::class)
 @Composable
-fun ContactsView() {
+fun ContactsView(onJumpToConversation: (Conversation.Key) -> Unit) {
     val bot = LocalBot.current
     var leftPanelWidth by remember { mutableStateOf(260.dp) }
     var selectedIndex by remember { mutableStateOf(0) }
@@ -129,10 +132,44 @@ fun ContactsView() {
             when {
                 selectedFriend != null -> {
                     FriendInfoView(friend = selectedFriend!!)
+                    Box(Modifier.align(Alignment.TopEnd).padding(16.dp)) {
+                        SubtleButton(
+                            onClick = {
+                                onJumpToConversation(
+                                    Conversation.Key(
+                                        scene = MessageScene.FRIEND,
+                                        peerUin = selectedFriend!!.uin,
+                                    )
+                                )
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "进入会话"
+                            )
+                        }
+                    }
                 }
 
                 selectedGroup != null -> {
                     GroupInfoView(group = selectedGroup!!)
+                    Box(Modifier.align(Alignment.TopEnd).padding(16.dp)) {
+                        SubtleButton(
+                            onClick = {
+                                onJumpToConversation(
+                                    Conversation.Key(
+                                        scene = MessageScene.GROUP,
+                                        peerUin = selectedGroup!!.uin,
+                                    )
+                                )
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "进入会话"
+                            )
+                        }
+                    }
                 }
 
                 else -> {

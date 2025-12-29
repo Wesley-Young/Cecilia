@@ -65,7 +65,7 @@ import kotlin.random.Random
 val LocalJumpToMessage = compositionLocalOf<((Long) -> Unit)?> { null }
 
 @Composable
-fun ChatView() {
+fun ChatView(jumpConversationKey: Conversation.Key?) {
     val windowState = rememberWindowState()
     var leftPanelWidth by remember { mutableStateOf(windowState.size.width * 0.35f) }
 
@@ -174,6 +174,19 @@ fun ChatView() {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(bot, jumpConversationKey) {
+        withMutableSnapshot {
+            if (jumpConversationKey != null) {
+                val conversation = conversations[jumpConversationKey]
+                    ?: jumpConversationKey.resolveConversation(isPinnedOnCreating = false)
+                if (conversation != null) {
+                    conversations[jumpConversationKey] = conversation
+                    activeConversation = jumpConversationKey
                 }
             }
         }
