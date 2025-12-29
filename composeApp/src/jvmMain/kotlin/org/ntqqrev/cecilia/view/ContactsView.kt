@@ -294,11 +294,10 @@ private fun FriendInfoView(friend: BotFriend) {
             Text(
                 text = friend.remark.ifEmpty { friend.nickname },
                 style = FluentTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold
             )
             if (friend.remark.isNotEmpty()) {
                 Text(
-                    text = "备注：${friend.nickname}",
+                    text = "昵称：${friend.nickname}",
                     style = FluentTheme.typography.body,
                     color = FluentTheme.colors.text.text.secondary
                 )
@@ -380,7 +379,6 @@ private fun GroupInfoView(group: BotGroup) {
             Text(
                 text = group.name,
                 style = FluentTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold
             )
 
             Spacer(modifier = Modifier.height(24.dp))
