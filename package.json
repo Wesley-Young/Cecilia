@@ -1,0 +1,23 @@
+{
+  "name": "cecilia",
+  "module": "src/index.tsx",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch src/index.tsx"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.14",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.2.1",
+    "@opentui/react": "^0.2.1",
+    "@saltify/milky-tea": "^0.2.2",
+    "@saltify/milky-types": "^1.2.2",
+    "react": "^19.2.4"
+  }
+}
