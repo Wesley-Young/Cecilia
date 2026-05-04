@@ -1,6 +1,7 @@
 import { createMilkyClient, type MilkyClient, type MilkyEventSource } from '@saltify/milky-tea';
 import { useState } from 'react';
 
+import { devClient } from './dev';
 import { MilkyContext, MilkyEventContext } from './shared';
 import LoginView from './view/LoginView';
 import MainView from './view/MainView';
@@ -24,8 +25,8 @@ async function testApi(client: MilkyClient): Promise<boolean> {
 }
 
 export default function App() {
-  const [milky, setMilky] = useState<MilkyClient | null>(null);
-  const [eventSource, setEventSource] = useState<MilkyEventSource | null>(null);
+  const [milky, setMilky] = useState<MilkyClient | null>(devClient);
+  const [eventSource, setEventSource] = useState<MilkyEventSource | null>(devClient?.event() ?? null);
 
   return (
     <box flexGrow={1}>
