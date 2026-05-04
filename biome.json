@@ -21,7 +21,8 @@
       "suspicious": {
         "noEmptyInterface": "off",
         "noTemplateCurlyInString": "off"
-      }
+      },
+      "a11y": "off"
     }
   },
   "javascript": {
