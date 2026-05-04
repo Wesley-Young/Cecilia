@@ -1,5 +1,6 @@
 {
   "name": "cecilia",
+  "description": "Terminal-based Milky IM",
   "module": "src/index.tsx",
   "type": "module",
   "private": true,

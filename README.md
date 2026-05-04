@@ -1,15 +1,17 @@
-# react
+<div align="center">
 
-To install dependencies:
+<h1>Cecilia</h1>
 
-```bash
-bun install
-```
+Terminal-based [Milky](https://milky.ntqqrev.org/) IM client, built with [OpenTUI](https://opentui.com/)
 
-To run:
+[QQ 群](https://qm.qq.com/q/C04kPQzayk) | [Telegram](https://t.me/WeavingStar)
 
-```bash
-bun dev
-```
+</div>
 
-This project was created using `bun create tui`. [create-tui](https://git.new/create-tui) is the easiest way to get started with OpenTUI.
+## Features
+
+- 基于 OpenTUI 构建的终端用户界面
+
+## See Also
+
+- [Yogurt](https://acidify.ntqqrev.org/yogurt/start) - 基于 Kotlin Multiplatform 的 Milky 协议端框架，原生支持 Windows / macOS / Linux

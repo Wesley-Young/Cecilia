@@ -47,7 +47,7 @@ export default function LoginView(props: LoginViewProps) {
       <box justifyContent="center" alignItems="stretch">
         <ascii-font font="block" text="Cecilia" />
         <text alignSelf="flex-end" attributes={TextAttributes.DIM}>
-          the Milky chatware
+          Terminal-based Milky IM
         </text>
         <InteractableBox
           title="Endpoint"
