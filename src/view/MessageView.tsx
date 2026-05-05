@@ -20,8 +20,11 @@ export default function MessageView(props: MessageViewProps) {
   const { active, focused } = props;
   const milky = useMilky();
   const eventSource = useMilkyEvent();
+
   const [messages, setMessages] = useImmer<Message[]>([]);
   const [isLoadingHistory, setLoadingHistory] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
+
   const scrollRef = useRef<ScrollBoxRenderable>(null);
   const historyRequestRef = useRef(0);
   const activeScene = active?.scene;
@@ -100,6 +103,8 @@ export default function MessageView(props: MessageViewProps) {
             });
           });
         }
+      } catch (e) {
+        setLoadingError(e instanceof Error ? e.message : `Failed to load messages: ${String(e)}`);
       } finally {
         if (historyRequestRef.current === requestId) {
           setLoadingHistory(false);
@@ -110,6 +115,8 @@ export default function MessageView(props: MessageViewProps) {
   );
 
   useEffect(() => {
+    setLoadingError(null);
+
     if (!activeScene || activeUin === undefined) {
       historyRequestRef.current += 1;
       setMessages([]);
@@ -179,7 +186,11 @@ export default function MessageView(props: MessageViewProps) {
 
   return (
     <scrollbox ref={scrollRef} stickyScroll>
-      {!isLoadingHistory ? (
+      {loadingError ? (
+        <box backgroundColor="brightRed" alignItems="center">
+          <text fg="black">{loadingError}</text>
+        </box>
+      ) : !isLoadingHistory ? (
         <box backgroundColor="brightGreen" alignItems="center">
           <text fg="black">
             Press <b>t</b> to load more history messages
