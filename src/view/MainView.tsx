@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useImmer } from 'use-immer';
 
 import ContactCard from '../component/ContactCard';
-import type { Contact } from '../model';
-import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared';
+import type { Contact } from '../shared/model';
+import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol';
 
 export default function MainView() {
   const milky = useMilky();

@@ -1,8 +1,7 @@
 import { createMilkyClient, type MilkyClient, type MilkyEventSource } from '@saltify/milky-tea';
 import { useState } from 'react';
 
-import { devClient } from './dev';
-import { MilkyContext, MilkyEventContext } from './shared';
+import { devClient, MilkyContext, MilkyEventContext } from './shared/protocol';
 import LoginView from './view/LoginView';
 import MainView from './view/MainView';
 

@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noConfusingVoidType: copied from @saltify/milky-tea */
 /** biome-ignore-all lint/suspicious/noExplicitAny: copied from @saltify/milky-tea */
-import type { MilkyClient, MilkyEventSource } from '@saltify/milky-tea';
+import { createMilkyClient, type MilkyClient, type MilkyEventSource } from '@saltify/milky-tea';
 import type { Event } from '@saltify/milky-types';
 import { createContext, useContext } from 'react';
 
@@ -44,3 +44,14 @@ export function defineMilkyListener<K extends MilkyEventSourceEventKey, R>(
 ): (ev: MilkyEventSourceEventMap[K]) => R {
   return listener;
 }
+
+function createDefaultMilkyClient(): MilkyClient | null {
+  if (!Bun.env.BASE_URL) {
+    return null;
+  }
+  return createMilkyClient({
+    baseURL: Bun.env.BASE_URL,
+  });
+}
+
+export const devClient = createDefaultMilkyClient();

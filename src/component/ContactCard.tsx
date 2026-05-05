@@ -2,7 +2,7 @@ import { TextAttributes } from '@opentui/core';
 import type { BoxProps } from '@opentui/react';
 import { useState } from 'react';
 
-import type { Contact } from '../model';
+import type { Contact } from '../shared/model';
 import SingleLineText from './SingleLineText';
 
 export type ContactCardProps = BoxProps & {
