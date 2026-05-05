@@ -1,4 +1,4 @@
-import type { ScrollBoxRenderable, TextareaRenderable } from '@opentui/core';
+import type { KeyEvent, ScrollBoxRenderable, TextareaRenderable } from '@opentui/core';
 import { useKeyboard } from '@opentui/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useImmer } from 'use-immer';
@@ -7,6 +7,32 @@ import MessageBubble from '../component/MessageBubble';
 import type { Message } from '../shared/model';
 import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol';
 import { transformIncomingMessage } from '../shared/transform';
+
+import os from 'node:os';
+
+function getSubmitKeySetHint(): string {
+  switch (os.platform()) {
+    case 'win32':
+    case 'linux':
+      return 'Ctrl+Enter';
+    case 'darwin':
+      return 'Cmd+Enter';
+    default:
+      return 'Ctrl+Enter';
+  }
+}
+
+function isSubmitKeySet(e: KeyEvent): boolean {
+  switch (os.platform()) {
+    case 'win32':
+    case 'linux':
+      return e.sequence === '\n';
+    case 'darwin':
+      return e.sequence === '\x1b[13;9u';
+    default:
+      return e.name === 'enter' && e.ctrl;
+  }
+}
 
 export type MessageViewProps = {
   active?: {
@@ -183,7 +209,7 @@ export default function MessageView(props: MessageViewProps) {
       activeUin !== undefined &&
       !isLoadingHistory &&
       beforeScrollTop === 0 &&
-      focused &&
+      focused === 'messages' &&
       e.name === 't'
     ) {
       const beforeSequence = messages[0]?.sequence;
@@ -203,12 +229,13 @@ export default function MessageView(props: MessageViewProps) {
   });
 
   useKeyboard((e) => {
-    if (e.sequence === '\x1b[13;9u' && focused === 'input') {
+    if (isSubmitKeySet(e) && focused === 'input') {
       const content = textAreaRef.current?.plainText.trim();
       if (content) {
         textAreaRef.current?.setText('');
         void sendMessage(content);
       }
+      e.preventDefault();
     }
   });
 
@@ -266,7 +293,7 @@ export default function MessageView(props: MessageViewProps) {
       >
         <textarea
           ref={textAreaRef}
-          placeholder="Type a message here; press Enter to send."
+          placeholder={`Type a message here; press ${getSubmitKeySetHint()} to send.`}
           flexGrow={1}
           focused={focused === 'input'}
         />
