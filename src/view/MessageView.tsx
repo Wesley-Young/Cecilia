@@ -1,4 +1,4 @@
-import type { ScrollBoxRenderable } from '@opentui/core';
+import type { ScrollBoxRenderable, TextareaRenderable } from '@opentui/core';
 import { useKeyboard } from '@opentui/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useImmer } from 'use-immer';
@@ -13,11 +13,12 @@ export type MessageViewProps = {
     scene: 'friend' | 'group';
     uin: number;
   };
-  focused?: boolean;
+  focused: 'contacts' | 'messages' | 'input';
+  setFocused: (f: 'contacts' | 'messages' | 'input') => void;
 };
 
 export default function MessageView(props: MessageViewProps) {
-  const { active, focused } = props;
+  const { active, focused, setFocused } = props;
   const milky = useMilky();
   const eventSource = useMilkyEvent();
 
@@ -27,6 +28,7 @@ export default function MessageView(props: MessageViewProps) {
 
   const scrollRef = useRef<ScrollBoxRenderable>(null);
   const historyRequestRef = useRef(0);
+  const textAreaRef = useRef<TextareaRenderable>(null);
   const activeScene = active?.scene;
   const activeUin = active?.uin;
 
@@ -85,7 +87,6 @@ export default function MessageView(props: MessageViewProps) {
             if (historyRequestRef.current !== requestId) {
               return;
             }
-
             const scrollbox = scrollRef.current;
             scrollbox?.scrollTo({ x: 0, y: scrollbox.scrollHeight });
           });
@@ -95,7 +96,6 @@ export default function MessageView(props: MessageViewProps) {
             if (historyRequestRef.current !== requestId) {
               return;
             }
-
             const afterScrollHeight = preserveScroll.scrollbox.scrollHeight;
             preserveScroll.scrollbox.scrollTo({
               x: 0,
@@ -112,6 +112,28 @@ export default function MessageView(props: MessageViewProps) {
       }
     },
     [milky, setMessages],
+  );
+
+  const sendMessage = useCallback(
+    async (content: string) => {
+      if (!activeScene || activeUin === undefined) {
+        return;
+      }
+      try {
+        if (activeScene === 'friend') {
+          await milky.message.sendPrivateMessage({
+            user_id: activeUin,
+            message: [{ type: 'text', data: { text: content } }],
+          });
+        } else {
+          await milky.message.sendGroupMessage({
+            group_id: activeUin,
+            message: [{ type: 'text', data: { text: content } }],
+          });
+        }
+      } catch {}
+    },
+    [activeScene, activeUin, milky],
   );
 
   useEffect(() => {
@@ -180,37 +202,75 @@ export default function MessageView(props: MessageViewProps) {
     }
   });
 
+  useKeyboard((e) => {
+    if (e.sequence === '\x1b[13;9u' && focused === 'input') {
+      const content = textAreaRef.current?.plainText.trim();
+      if (content) {
+        textAreaRef.current?.setText('');
+        void sendMessage(content);
+      }
+    }
+  });
+
   if (!active) {
-    return null;
+    return (
+      <box flexGrow={1} alignItems="center" justifyContent="center">
+        <text>Click a contact to view messages</text>
+      </box>
+    );
   }
 
   return (
-    <scrollbox ref={scrollRef} stickyScroll>
-      <box gap={1}>
-        {loadingError ? (
-          <box backgroundColor="brightRed" alignItems="center">
-            <text fg="black">{loadingError}</text>
+    <>
+      <box
+        title={`${active.scene} - ${active.uin}`}
+        flexGrow={1}
+        border
+        borderColor={focused === 'messages' ? 'cyan' : undefined}
+        onMouseDown={() => setFocused('messages')}
+      >
+        <scrollbox ref={scrollRef} stickyScroll>
+          <box gap={1}>
+            {loadingError ? (
+              <box backgroundColor="brightRed" alignItems="center">
+                <text fg="black">{loadingError}</text>
+              </box>
+            ) : !isLoadingHistory ? (
+              <box backgroundColor="brightGreen" alignItems="center">
+                <text fg="black">
+                  Press <b>t</b> to load more history messages
+                </text>
+              </box>
+            ) : (
+              <box backgroundColor="brightYellow" alignItems="center">
+                <text fg="black">Loading history messages, please wait...</text>
+              </box>
+            )}
+            {messages.map((m) => {
+              const id = `${m.scene}-${m.peerUin}-${m.sequence}`;
+              return (
+                <box id={id} key={id}>
+                  <MessageBubble message={m} />
+                </box>
+              );
+            })}
           </box>
-        ) : !isLoadingHistory ? (
-          <box backgroundColor="brightGreen" alignItems="center">
-            <text fg="black">
-              Press <b>t</b> to load more history messages
-            </text>
-          </box>
-        ) : (
-          <box backgroundColor="brightYellow" alignItems="center">
-            <text fg="black">Loading history messages, please wait...</text>
-          </box>
-        )}
-        {messages.map((m) => {
-          const id = `${m.scene}-${m.peerUin}-${m.sequence}`;
-          return (
-            <box id={id} key={id}>
-              <MessageBubble message={m} />
-            </box>
-          );
-        })}
+        </scrollbox>
       </box>
-    </scrollbox>
+      <box
+        height={8}
+        paddingX={1}
+        border
+        borderColor={focused === 'input' ? 'cyan' : undefined}
+        onMouseDown={() => setFocused('input')}
+      >
+        <textarea
+          ref={textAreaRef}
+          placeholder="Type a message here; press Enter to send."
+          flexGrow={1}
+          focused={focused === 'input'}
+        />
+      </box>
+    </>
   );
 }

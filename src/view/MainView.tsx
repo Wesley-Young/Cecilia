@@ -192,24 +192,7 @@ export default function MainView() {
           </scrollbox>
         </box>
         <box flexGrow={1}>
-          <box
-            title="Messages"
-            flexGrow={1}
-            border
-            borderColor={focused === 'messages' ? 'cyan' : undefined}
-            onMouseDown={() => setFocused('messages')}
-          >
-            <MessageView active={activeContact ?? undefined} focused={focused === 'messages'} />
-          </box>
-          <box
-            title="Input"
-            height={8}
-            border
-            borderColor={focused === 'input' ? 'cyan' : undefined}
-            onMouseDown={() => setFocused('input')}
-          >
-            <input placeholder="Type a message..." flexGrow={1} focused={focused === 'input'} />
-          </box>
+          <MessageView active={activeContact ?? undefined} focused={focused} setFocused={setFocused} />
         </box>
       </box>
     </box>
