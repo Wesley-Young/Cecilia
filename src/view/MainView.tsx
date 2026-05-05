@@ -119,7 +119,7 @@ export default function MainView() {
   }, [milky, setContacts]);
 
   useEffect(() => {
-    const listener = defineMilkyListener('message_receive', ({ data }) => {
+    const messageListener = defineMilkyListener('message_receive', ({ data }) => {
       if (data.message_scene === 'temp') {
         return;
       }
@@ -131,11 +131,30 @@ export default function MainView() {
       });
     });
 
-    eventSource.on('message_receive', listener);
+    const pinListener = defineMilkyListener('peer_pin_change', ({ data }) => {
+      if (data.message_scene === 'temp') {
+        return;
+      }
+      if (data.is_pinned) {
+        upsertContact(data.message_scene, data.peer_id, {
+          isPinned: true,
+        });
+      } else {
+        if (contacts.find((c) => c.scene === data.message_scene && c.uin === data.peer_id)) {
+          upsertContact(data.message_scene, data.peer_id, {
+            isPinned: false,
+          });
+        }
+      }
+    });
+
+    eventSource.on('message_receive', messageListener);
+    eventSource.on('peer_pin_change', pinListener);
     return () => {
-      eventSource.off('message_receive', listener);
+      eventSource.off('message_receive', messageListener);
+      eventSource.off('peer_pin_change', pinListener);
     };
-  }, [eventSource, upsertContact]);
+  }, [eventSource, upsertContact, contacts]);
 
   return (
     <box flexGrow={1}>
