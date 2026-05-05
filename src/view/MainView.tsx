@@ -1,4 +1,4 @@
-import { useKeyboard } from '@opentui/react';
+import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import { useCallback, useEffect, useState } from 'react';
 import { type Updater, useImmer } from 'use-immer';
 
@@ -10,6 +10,7 @@ import { contactComparator, friendToBaseContact, groupToBaseContact } from '../s
 import MessageView from './MessageView';
 
 export default function MainView() {
+  const { height } = useTerminalDimensions();
   const milky = useMilky();
   const eventSource = useMilkyEvent();
   const [contacts, rawSetContacts] = useImmer<Contact[]>([]);
@@ -158,13 +159,13 @@ export default function MainView() {
 
   return (
     <box flexGrow={1}>
-      <box backgroundColor="white">
+      <box backgroundColor="white" height={1}>
         <text fg="black">
           {' '}
           <b>Cecilia</b> - <b>Tab</b> or click to switch focus
         </text>
       </box>
-      <box flexDirection="row" flexGrow={1} paddingTop={1}>
+      <box flexDirection="row" height={height - 1}>
         <box
           title="Contacts"
           border
