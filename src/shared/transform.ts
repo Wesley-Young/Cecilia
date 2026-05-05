@@ -53,12 +53,12 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         senderUin: message.peer_id, // must be friend itself
         senderName: message.friend.remark || message.friend.nickname,
         time: message.time,
-        content: IncomingSegmentDisplay(message.segments),
+        content: IncomingSegmentDisplay({ segments: message.segments }),
         reply: replyData && {
           senderUin: replyData.sender_id,
           senderName: replyData.sender_name ?? undefined,
           // @ts-expect-error
-          content: IncomingSegmentDisplay(replyData.segments),
+          content: IncomingSegmentDisplay({ segments: replyData.segments }),
         },
       };
     case 'group':
@@ -69,12 +69,12 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         senderUin: message.sender_id,
         senderName: message.group_member.card || message.group_member.nickname,
         time: message.time,
-        content: IncomingSegmentDisplay(message.segments),
+        content: IncomingSegmentDisplay({ segments: message.segments }),
         reply: replyData && {
           senderUin: replyData.sender_id,
           senderName: replyData.sender_name ?? undefined,
           // @ts-expect-error
-          content: IncomingSegmentDisplay(replyData.segments),
+          content: IncomingSegmentDisplay({ segments: replyData.segments }),
         },
       };
     default:

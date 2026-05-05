@@ -126,7 +126,7 @@ export default function MainView() {
       upsertContact(data.message_scene, data.peer_id, {
         lastMsg: {
           time: data.time,
-          content: IncomingSegmentDisplay(data.segments),
+          content: <IncomingSegmentDisplay segments={data.segments} noFg />,
         },
       });
     });
