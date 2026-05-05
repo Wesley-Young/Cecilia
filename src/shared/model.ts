@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export interface Contact {
   scene: 'friend' | 'group';
   uin: number;
@@ -6,7 +8,7 @@ export interface Contact {
   unreadCount?: number;
   lastMsg?: {
     time: number;
-    content: string;
+    content: ReactNode;
   };
 }
 
@@ -17,5 +19,10 @@ export interface Message {
   senderUin: number;
   senderName: string;
   time: number;
-  content: string;
+  content: ReactNode;
+  reply?: {
+    senderUin: number;
+    senderName?: string;
+    content: ReactNode;
+  };
 }

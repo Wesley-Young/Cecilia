@@ -3,14 +3,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { type Updater, useImmer } from 'use-immer';
 
 import ContactCard from '../component/ContactCard';
+import { IncomingSegmentDisplay } from '../component/MessageSegmentDisplay';
 import type { Contact } from '../shared/model';
 import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol';
-import {
-  contactComparator,
-  friendToBaseContact,
-  groupToBaseContact,
-  incomingSegmentsToText,
-} from '../shared/transform';
+import { contactComparator, friendToBaseContact, groupToBaseContact } from '../shared/transform';
 import MessageView from './MessageView';
 
 export default function MainView() {
@@ -130,7 +126,7 @@ export default function MainView() {
       upsertContact(data.message_scene, data.peer_id, {
         lastMsg: {
           time: data.time,
-          content: incomingSegmentsToText(data.segments),
+          content: IncomingSegmentDisplay(data.segments),
         },
       });
     });

@@ -1,11 +1,6 @@
-import type {
-  FriendEntity,
-  GroupEntity,
-  IncomingMessage,
-  IncomingSegment,
-  OutgoingSegment,
-} from '@saltify/milky-types';
+import type { FriendEntity, GroupEntity, IncomingMessage } from '@saltify/milky-types';
 
+import { IncomingSegmentDisplay } from '../component/MessageSegmentDisplay';
 import type { Contact, Message } from './model';
 
 export function friendToBaseContact(friend: FriendEntity): Contact {
@@ -47,33 +42,8 @@ export function contactComparator(a: Contact, b: Contact): number {
   return a.uin - b.uin;
 }
 
-export function incomingSegmentsToText(segments: IncomingSegment[]): string {
-  return segments
-    .map((seg) => {
-      switch (seg.type) {
-        case 'text':
-          return seg.data.text;
-        default:
-          return `[${seg.type}]`;
-      }
-    })
-    .join('');
-}
-
-export function outgoingSegmentsToText(segments: OutgoingSegment[]): string {
-  return segments
-    .map((seg) => {
-      switch (seg.type) {
-        case 'text':
-          return seg.data.text;
-        default:
-          return `[${seg.type}]`;
-      }
-    })
-    .join('');
-}
-
 export function transformIncomingMessage(message: IncomingMessage): Message | null {
+  const replyData = message.segments[0]?.type === 'reply' ? message.segments[0].data : undefined;
   switch (message.message_scene) {
     case 'friend':
       return {
@@ -83,7 +53,13 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         senderUin: message.peer_id, // must be friend itself
         senderName: message.friend.remark || message.friend.nickname,
         time: message.time,
-        content: incomingSegmentsToText(message.segments),
+        content: IncomingSegmentDisplay(message.segments),
+        reply: replyData && {
+          senderUin: replyData.sender_id,
+          senderName: replyData.sender_name ?? undefined,
+          // @ts-expect-error
+          content: IncomingSegmentDisplay(replyData.segments),
+        },
       };
     case 'group':
       return {
@@ -93,7 +69,13 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         senderUin: message.sender_id,
         senderName: message.group_member.card || message.group_member.nickname,
         time: message.time,
-        content: incomingSegmentsToText(message.segments),
+        content: IncomingSegmentDisplay(message.segments),
+        reply: replyData && {
+          senderUin: replyData.sender_id,
+          senderName: replyData.sender_name ?? undefined,
+          // @ts-expect-error
+          content: IncomingSegmentDisplay(replyData.segments),
+        },
       };
     default:
       return null;
