@@ -57,6 +57,7 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         reply: replyData && {
           senderUin: replyData.sender_id,
           senderName: replyData.sender_name ?? undefined,
+          time: replyData.time,
           // @ts-expect-error
           content: IncomingSegmentDisplay({ segments: replyData.segments }),
         },
@@ -73,6 +74,7 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         reply: replyData && {
           senderUin: replyData.sender_id,
           senderName: replyData.sender_name ?? undefined,
+          time: replyData.time,
           // @ts-expect-error
           content: IncomingSegmentDisplay({ segments: replyData.segments }),
         },

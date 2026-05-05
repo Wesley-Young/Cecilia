@@ -25,7 +25,7 @@ export default function ContactCard(props: ContactCardProps) {
       {...props}
       backgroundColor={bg}
     >
-      <box flexDirection="row" justifyContent="space-between">
+      <box flexDirection="row" gap={1}>
         <LimitedLineText attributes={c.isPinned ? TextAttributes.BOLD : undefined} fg={fg} flexGrow={1}>
           {c.displayName}
         </LimitedLineText>

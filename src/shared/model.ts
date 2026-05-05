@@ -23,6 +23,7 @@ export interface Message {
   reply?: {
     senderUin: number;
     senderName?: string;
+    time: number;
     content: ReactNode;
   };
 }
