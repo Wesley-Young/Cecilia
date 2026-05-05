@@ -14,7 +14,7 @@ export type ContactCardProps = BoxProps & {
 export default function ContactCard(props: ContactCardProps) {
   const c = props.contact;
   const [isHovered, setHovered] = useState(false);
-  const bg = props.active ? 'brightGreen' : undefined;
+  const bg = props.active ? 'cyan' : undefined;
   const fg = props.active ? 'black' : isHovered ? 'cyan' : undefined;
 
   return (
