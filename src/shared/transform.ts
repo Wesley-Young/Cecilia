@@ -50,8 +50,8 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         scene: 'friend',
         peerUin: message.peer_id,
         sequence: message.message_seq,
-        senderUin: message.peer_id, // must be friend itself
-        senderName: message.friend.remark || message.friend.nickname,
+        senderUin: message.sender_id,
+        senderName: message.sender_id === message.peer_id ? message.friend.remark || message.friend.nickname : 'You',
         time: message.time,
         content: IncomingSegmentDisplay({ segments: message.segments }),
         reply: replyData && {
