@@ -1,6 +1,12 @@
-import type { FriendEntity, GroupEntity, IncomingSegment, OutgoingSegment } from '@saltify/milky-types';
+import type {
+  FriendEntity,
+  GroupEntity,
+  IncomingMessage,
+  IncomingSegment,
+  OutgoingSegment,
+} from '@saltify/milky-types';
 
-import type { Contact } from './model';
+import type { Contact, Message } from './model';
 
 export function friendToBaseContact(friend: FriendEntity): Contact {
   return {
@@ -65,6 +71,33 @@ export function outgoingSegmentsToText(segments: OutgoingSegment[]): string {
       }
     })
     .join('');
+}
+
+export function transformIncomingMessage(message: IncomingMessage): Message | null {
+  switch (message.message_scene) {
+    case 'friend':
+      return {
+        scene: 'friend',
+        peerUin: message.peer_id,
+        sequence: message.message_seq,
+        senderUin: message.peer_id, // must be friend itself
+        senderName: message.friend.remark || message.friend.nickname,
+        time: message.time,
+        content: incomingSegmentsToText(message.segments),
+      };
+    case 'group':
+      return {
+        scene: 'group',
+        peerUin: message.peer_id,
+        sequence: message.message_seq,
+        senderUin: message.sender_id,
+        senderName: message.group_member.card || message.group_member.nickname,
+        time: message.time,
+        content: incomingSegmentsToText(message.segments),
+      };
+    default:
+      return null;
+  }
 }
 
 export function formatShortDateTime(epochSeconds: number): string {

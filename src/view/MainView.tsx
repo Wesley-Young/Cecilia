@@ -1,4 +1,5 @@
-import { useCallback, useEffect } from 'react';
+import { useKeyboard } from '@opentui/react';
+import { useCallback, useEffect, useState } from 'react';
 import { type Updater, useImmer } from 'use-immer';
 
 import ContactCard from '../component/ContactCard';
@@ -10,11 +11,25 @@ import {
   groupToBaseContact,
   incomingSegmentsToText,
 } from '../shared/transform';
+import MessageView from './MessageView';
 
 export default function MainView() {
   const milky = useMilky();
   const eventSource = useMilkyEvent();
   const [contacts, rawSetContacts] = useImmer<Contact[]>([]);
+  const [activeContact, setActiveContact] = useImmer<{ scene: 'friend' | 'group'; uin: number } | null>(null);
+  const [focused, setFocused] = useState<'contacts' | 'messages' | 'input'>('contacts');
+
+  useKeyboard((e) => {
+    if (e.name === 'tab') {
+      setFocused((f) => {
+        if (f === 'contacts') return 'messages';
+        if (f === 'messages') return 'input';
+        return 'contacts';
+      });
+      e.preventDefault();
+    }
+  });
 
   const setContacts = useCallback<Updater<Contact[]>>(
     (contactsOrFunc) => {
@@ -131,25 +146,53 @@ export default function MainView() {
       <box backgroundColor="white">
         <text fg="black">
           {' '}
-          <b>Cecilia</b>
+          <b>Cecilia</b> - <b>Tab</b> or click to switch focus
         </text>
       </box>
-      <box flexDirection="row" flexGrow={1}>
-        <box title="Contacts" border width={30}>
+      <box flexDirection="row" flexGrow={1} paddingTop={1}>
+        <box
+          title="Contacts"
+          border
+          width={30}
+          borderColor={focused === 'contacts' ? 'cyan' : undefined}
+          onMouseDown={() => setFocused('contacts')}
+        >
           <scrollbox>
             <box gap={1}>
               {contacts.map((c) => (
-                <ContactCard key={`${c.scene}-${c.uin}`} contact={c} />
+                <ContactCard
+                  key={`${c.scene}-${c.uin}`}
+                  contact={c}
+                  onMouseDown={() => {
+                    setActiveContact({ scene: c.scene, uin: c.uin });
+                    setTimeout(() => {
+                      setFocused('messages');
+                    });
+                  }}
+                  active={activeContact?.scene === c.scene && activeContact?.uin === c.uin}
+                />
               ))}
             </box>
           </scrollbox>
         </box>
         <box flexGrow={1}>
-          <box title="Messages" flexGrow={1} border>
-            <scrollbox></scrollbox>
+          <box
+            title="Messages"
+            flexGrow={1}
+            border
+            borderColor={focused === 'messages' ? 'cyan' : undefined}
+            onMouseDown={() => setFocused('messages')}
+          >
+            <MessageView active={activeContact ?? undefined} focused={focused === 'messages'} />
           </box>
-          <box title="Input" height={8} border>
-            <input placeholder="Type a message..." flexGrow={1} />
+          <box
+            title="Input"
+            height={8}
+            border
+            borderColor={focused === 'input' ? 'cyan' : undefined}
+            onMouseDown={() => setFocused('input')}
+          >
+            <input placeholder="Type a message..." flexGrow={1} focused={focused === 'input'} />
           </box>
         </box>
       </box>
