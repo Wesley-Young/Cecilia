@@ -186,30 +186,31 @@ export default function MessageView(props: MessageViewProps) {
 
   return (
     <scrollbox ref={scrollRef} stickyScroll>
-      {loadingError ? (
-        <box backgroundColor="brightRed" alignItems="center">
-          <text fg="black">{loadingError}</text>
-        </box>
-      ) : !isLoadingHistory ? (
-        <box backgroundColor="brightGreen" alignItems="center">
-          <text fg="black">
-            Press <b>t</b> to load more history messages
-          </text>
-        </box>
-      ) : (
-        <box backgroundColor="brightYellow" alignItems="center">
-          <text fg="black">Loading history messages, please wait...</text>
-        </box>
-      )}
-      {messages.map((m) => {
-        const id = `${m.scene}-${m.peerUin}-${m.sequence}`;
-        return (
-          <box id={id} key={id}>
-            <MessageBubble message={m} />
-            <box height={1} />
+      <box gap={1}>
+        {loadingError ? (
+          <box backgroundColor="brightRed" alignItems="center">
+            <text fg="black">{loadingError}</text>
           </box>
-        );
-      })}
+        ) : !isLoadingHistory ? (
+          <box backgroundColor="brightGreen" alignItems="center">
+            <text fg="black">
+              Press <b>t</b> to load more history messages
+            </text>
+          </box>
+        ) : (
+          <box backgroundColor="brightYellow" alignItems="center">
+            <text fg="black">Loading history messages, please wait...</text>
+          </box>
+        )}
+        {messages.map((m) => {
+          const id = `${m.scene}-${m.peerUin}-${m.sequence}`;
+          return (
+            <box id={id} key={id}>
+              <MessageBubble message={m} />
+            </box>
+          );
+        })}
+      </box>
     </scrollbox>
   );
 }
