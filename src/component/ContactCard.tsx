@@ -3,17 +3,19 @@ import type { BoxProps } from '@opentui/react';
 import { useState } from 'react';
 
 import type { Contact } from '../shared/model';
-import SingleLineText from './SingleLineText';
+import { formatShortDateTime } from '../shared/transform';
+import LimitedLineText from './LimitedLineText';
 
 export type ContactCardProps = BoxProps & {
   contact: Contact;
-  isActive?: boolean;
+  active?: boolean;
 };
 
 export default function ContactCard(props: ContactCardProps) {
   const c = props.contact;
   const [isHovered, setHovered] = useState(false);
-  const fg = isHovered ? 'cyan' : undefined;
+  const bg = props.active ? 'brightGreen' : undefined;
+  const fg = props.active ? 'black' : isHovered ? 'cyan' : undefined;
 
   return (
     <box
@@ -21,12 +23,27 @@ export default function ContactCard(props: ContactCardProps) {
       onMouseOver={() => setHovered(true)}
       onMouseOut={() => setHovered(false)}
       {...props}
+      backgroundColor={bg}
     >
-      <SingleLineText attributes={TextAttributes.BOLD} fg={fg}>{c.displayName}</SingleLineText>
       <box flexDirection="row" justifyContent="space-between">
-        <text attributes={TextAttributes.DIM}>{c.lastMsg ? c.lastMsg.content : 'No messages yet'}</text>
-        {c.isPinned && <text>📌</text>}
+        <LimitedLineText attributes={c.isPinned ? TextAttributes.BOLD : undefined} fg={fg} flexGrow={1}>
+          {c.displayName}
+        </LimitedLineText>
+        {c.lastMsg && (
+          <LimitedLineText attributes={TextAttributes.DIM} fg={fg}>
+            {formatShortDateTime(c.lastMsg.time)}
+          </LimitedLineText>
+        )}
       </box>
+      {c.lastMsg ? (
+        <LimitedLineText attributes={TextAttributes.DIM} maxLines={2} fg={fg}>
+          {c.lastMsg.content}
+        </LimitedLineText>
+      ) : (
+        <text attributes={TextAttributes.DIM} fg={fg}>
+          No messages yet
+        </text>
+      )}
     </box>
   );
 }

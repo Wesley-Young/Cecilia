@@ -1,41 +1,74 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useImmer } from 'use-immer';
+import { useCallback, useEffect } from 'react';
+import { type Updater, useImmer } from 'use-immer';
 
 import ContactCard from '../component/ContactCard';
 import type { Contact } from '../shared/model';
 import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol';
+import {
+  contactComparator,
+  friendToBaseContact,
+  groupToBaseContact,
+  incomingSegmentsToText,
+} from '../shared/transform';
 
 export default function MainView() {
   const milky = useMilky();
   const eventSource = useMilkyEvent();
   const [contacts, rawSetContacts] = useImmer<Contact[]>([]);
-  const [messages, setMessages] = useState<string[]>([]);
 
-  const setContacts = useCallback(
-    (contacts: Contact[]) => {
-      const sortedContacts = contacts.toSorted((a, b) => {
-        // compare pinned status
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-
-        // compare message time
-        const aTime = a.lastMsg?.time ?? 0;
-        const bTime = b.lastMsg?.time ?? 0;
-        if (aTime !== bTime) {
-          return bTime - aTime;
-        }
-
-        // compare scene, group first
-        if (a.scene !== b.scene) {
-          return a.scene === 'group' ? -1 : 1;
-        }
-
-        // compare uin
-        return b.uin - a.uin;
-      });
-      rawSetContacts(sortedContacts);
+  const setContacts = useCallback<Updater<Contact[]>>(
+    (contactsOrFunc) => {
+      if (Array.isArray(contactsOrFunc)) {
+        const sortedContacts = contactsOrFunc.toSorted(contactComparator);
+        rawSetContacts(sortedContacts);
+      } else {
+        // is a function
+        rawSetContacts((draft) => {
+          contactsOrFunc(draft);
+          draft.sort(contactComparator);
+        });
+      }
     },
     [rawSetContacts],
+  );
+
+  const resolveBaseContact = useCallback(
+    async (scene: 'friend' | 'group', uin: number): Promise<Contact | null> => {
+      try {
+        if (scene === 'friend') {
+          const { friend } = await milky.system.getFriendInfo({ user_id: uin, no_cache: false });
+          return friendToBaseContact(friend);
+        } else {
+          const { group } = await milky.system.getGroupInfo({ group_id: uin, no_cache: false });
+          return groupToBaseContact(group);
+        }
+      } catch {
+        return null;
+      }
+    },
+    [milky],
+  );
+
+  const upsertContact = useCallback(
+    (scene: 'friend' | 'group', uin: number, contact: Partial<Contact>) => {
+      const contactIndex = contacts.findIndex((c) => c.scene === scene && c.uin === uin);
+      if (contactIndex !== -1) {
+        // update existing contact
+        setContacts((contacts) => {
+          // @ts-expect-error
+          contacts[contactIndex] = { ...contacts[contactIndex], ...contact };
+        });
+      } else {
+        resolveBaseContact(scene, uin).then((baseContact) => {
+          if (baseContact) {
+            setContacts((contacts) => {
+              contacts.push({ ...baseContact, ...contact });
+            });
+          }
+        });
+      }
+    },
+    [setContacts, resolveBaseContact, contacts],
   );
 
   useEffect(() => {
@@ -54,9 +87,7 @@ export default function MainView() {
         const info = groupMap.get(group.group_id);
         if (info) {
           preloadedContacts.push({
-            scene: 'group',
-            uin: group.group_id,
-            displayName: info.group_name,
+            ...groupToBaseContact(info),
             isPinned: true,
           });
         }
@@ -66,9 +97,7 @@ export default function MainView() {
         const info = friendMap.get(friend.user_id);
         if (info) {
           preloadedContacts.push({
-            scene: 'friend',
-            uin: friend.user_id,
-            displayName: info.nickname,
+            ...friendToBaseContact(info),
             isPinned: true,
           });
         }
@@ -80,14 +109,22 @@ export default function MainView() {
 
   useEffect(() => {
     const listener = defineMilkyListener('message_receive', ({ data }) => {
-      setMessages((msgs) => [...msgs, `${data.message_scene}, ${data.peer_id}, ${data.message_seq}`]);
+      if (data.message_scene === 'temp') {
+        return;
+      }
+      upsertContact(data.message_scene, data.peer_id, {
+        lastMsg: {
+          time: data.time,
+          content: incomingSegmentsToText(data.segments),
+        },
+      });
     });
 
     eventSource.on('message_receive', listener);
     return () => {
       eventSource.off('message_receive', listener);
     };
-  }, [eventSource]);
+  }, [eventSource, upsertContact]);
 
   return (
     <box flexGrow={1}>
