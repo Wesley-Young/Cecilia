@@ -177,7 +177,6 @@ export default function MessageView(props: MessageViewProps) {
               peerUin: activeUin,
               sequence: message_seq,
               senderUin: selfInfo.uin,
-              senderName: 'You',
               time: Date.now(),
               content: <OutgoingSegmentDisplay segments={segments} />,
             });

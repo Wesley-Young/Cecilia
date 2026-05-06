@@ -3,13 +3,16 @@ import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import { useCallback, useRef, useState } from 'react';
 
 import ContactCard from '../component/ContactCard';
-import { useRuntimeCache } from '../shared/cache';
+import { useRuntimeCache, useRuntimeCacheUpdater } from '../shared/cache';
+import { useMilky } from '../shared/protocol';
 import { contactComparator, friendToBaseContact, groupToBaseContact } from '../shared/transform';
 import MessageView from './MessageView';
 
 export default function MainView() {
   const { height } = useTerminalDimensions();
-  const { selfInfo, friends, groups, pinned, lastMsg } = useRuntimeCache();
+  const milky = useMilky();
+  const { selfInfo, friends, groups, groupMembers, pinned, lastMsg } = useRuntimeCache();
+  const updateCache = useRuntimeCacheUpdater();
 
   const pinnedFriendSet = new Set(pinned.friends);
   const pinnedGroupSet = new Set(pinned.groups);
@@ -31,12 +34,24 @@ export default function MainView() {
   const [focused, setFocused] = useState<'contacts' | 'messages' | 'input'>('contacts');
   const contactScrollRef = useRef<ScrollBoxRenderable>(null);
 
-  const switchActiveContact = useCallback((scene: 'friend' | 'group', uin: number) => {
-    setActiveContact({ scene, uin });
-    setTimeout(() => {
-      setFocused('input');
-    });
-  }, []);
+  const switchActiveContact = useCallback(
+    (scene: 'friend' | 'group', uin: number) => {
+      setActiveContact({ scene, uin });
+      if (scene === 'group') {
+        if (!groupMembers[uin]) {
+          milky.system.getGroupMemberList({ group_id: uin, no_cache: true }).then(({ members }) => {
+            updateCache((cache) => {
+              cache.groupMembers[uin] = Object.fromEntries(members.map((m) => [m.user_id, m]));
+            });
+          });
+        }
+      }
+      setTimeout(() => {
+        setFocused('input');
+      });
+    },
+    [groupMembers, milky, updateCache],
+  );
 
   useKeyboard((e) => {
     if (e.name === 'tab') {

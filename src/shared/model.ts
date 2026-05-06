@@ -17,7 +17,6 @@ export interface Message {
   peerUin: number;
   sequence: number;
   senderUin: number;
-  senderName: string;
   time: number;
   content: ReactNode;
   reply?: {

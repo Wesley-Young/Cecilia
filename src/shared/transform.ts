@@ -51,7 +51,6 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         peerUin: message.peer_id,
         sequence: message.message_seq,
         senderUin: message.sender_id,
-        senderName: message.sender_id === message.peer_id ? message.friend.remark || message.friend.nickname : 'You',
         time: message.time,
         content: IncomingSegmentDisplay({ segments: message.segments }),
         reply: replyData && {
@@ -68,7 +67,6 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         peerUin: message.peer_id,
         sequence: message.message_seq,
         senderUin: message.sender_id,
-        senderName: message.group_member.card || message.group_member.nickname,
         time: message.time,
         content: IncomingSegmentDisplay({ segments: message.segments }),
         reply: replyData && {

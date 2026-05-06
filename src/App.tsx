@@ -110,10 +110,15 @@ export default function App() {
             content: <IncomingSegmentDisplay segments={data.segments} noFg />,
           };
         } else if (data.message_scene === 'group') {
+          cache.groups[data.peer_id] = data.group;
           cache.lastMsg.groups[data.peer_id] = {
             time: data.time,
             content: <IncomingSegmentDisplay segments={data.segments} noFg />,
           };
+          const members = cache.groupMembers[data.peer_id];
+          if (members) {
+            members[data.sender_id] = data.group_member;
+          }
         }
       });
     });
