@@ -168,16 +168,16 @@ export default function MessageView(props: MessageViewProps) {
   useEffect(() => {
     if (active) {
       if (active.scene === 'friend') {
-        milky.system.getFriendInfo({ user_id: active.uin, no_cache: true }).then(({friend}) => {
+        milky.system.getFriendInfo({ user_id: active.uin, no_cache: false }).then(({ friend }) => {
           setChatTitle(friend.remark || friend.nickname);
         });
       } else {
-        milky.system.getGroupInfo({ group_id: active.uin, no_cache: true }).then(({group}) => {
+        milky.system.getGroupInfo({ group_id: active.uin, no_cache: false }).then(({ group }) => {
           setChatTitle(`${group.group_name} (${group.member_count})`);
         });
       }
     }
-  });
+  }, [active, milky]);
 
   useEffect(() => {
     setLoadingError(null);
