@@ -79,6 +79,7 @@ export default function MessageView(props: MessageViewProps) {
       historyRequestRef.current = requestId;
 
       setLoadingHistory(true);
+      setLoadingError(null);
       try {
         const { messages: historyMessages } = await milky.message.getHistoryMessages({
           message_scene: contact.scene,
@@ -200,36 +201,33 @@ export default function MessageView(props: MessageViewProps) {
   }, [eventSource, activeScene, activeUin, setMessages]);
 
   useKeyboard((e) => {
-    const scrollbox = scrollRef.current;
-    if (!scrollbox) return;
-
-    const beforeScrollTop = scrollbox.scrollTop;
-    if (
-      activeScene &&
-      activeUin !== undefined &&
-      !isLoadingHistory &&
-      beforeScrollTop === 0 &&
-      focused === 'messages' &&
-      e.name === 't'
-    ) {
-      const beforeSequence = messages[0]?.sequence;
-      void loadHistoryMessages(
-        { scene: activeScene, uin: activeUin },
-        {
-          mode: 'prepend',
-          startMessageSeq: beforeSequence && beforeSequence - 1,
-          preserveScroll: {
-            scrollbox,
-            beforeScrollTop,
-            beforeScrollHeight: scrollbox.scrollHeight,
+    if (focused === 'messages' && e.name === 'up' && activeScene && activeUin !== undefined && !isLoadingHistory) {
+      const scrollbox = scrollRef.current;
+      if (!scrollbox) return;
+      const beforeScrollTop = scrollbox.scrollTop;
+      if (beforeScrollTop === 0) {
+        const beforeSequence = messages[0]?.sequence;
+        void loadHistoryMessages(
+          {
+            scene: activeScene,
+            uin: activeUin,
           },
-        },
-      );
+          {
+            mode: 'prepend',
+            startMessageSeq: beforeSequence && beforeSequence - 1,
+            preserveScroll: {
+              scrollbox,
+              beforeScrollTop,
+              beforeScrollHeight: scrollbox.scrollHeight,
+            },
+          },
+        );
+      }
     }
   });
 
   useKeyboard((e) => {
-    if (isSubmitKeySet(e) && focused === 'input') {
+    if (focused === 'input' && isSubmitKeySet(e)) {
       const content = textAreaRef.current?.plainText.trim();
       if (content) {
         textAreaRef.current?.setText('');
@@ -256,7 +254,7 @@ export default function MessageView(props: MessageViewProps) {
         borderColor={focused === 'messages' ? 'cyan' : undefined}
         onMouseDown={() => setFocused('messages')}
       >
-        <scrollbox ref={scrollRef} stickyScroll>
+        <scrollbox ref={scrollRef} focused={focused === 'messages'} stickyScroll>
           <box gap={1}>
             {loadingError ? (
               <box backgroundColor="brightRed" alignItems="center">
@@ -265,7 +263,7 @@ export default function MessageView(props: MessageViewProps) {
             ) : !isLoadingHistory ? (
               <box backgroundColor="brightGreen" alignItems="center">
                 <text fg="black">
-                  Press <b>t</b> to load more history messages
+                  Press <b>up</b> to load more history messages
                 </text>
               </box>
             ) : (
