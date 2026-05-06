@@ -1,5 +1,6 @@
+import type { ScrollBoxRenderable } from '@opentui/core';
 import { useKeyboard, useTerminalDimensions } from '@opentui/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { type Updater, useImmer } from 'use-immer';
 
 import ContactCard from '../component/ContactCard';
@@ -13,21 +14,13 @@ export default function MainView() {
   const { height } = useTerminalDimensions();
   const milky = useMilky();
   const eventSource = useMilkyEvent();
+
   const [contacts, rawSetContacts] = useImmer<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
   const [activeContact, setActiveContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
   const [focused, setFocused] = useState<'contacts' | 'messages' | 'input'>('contacts');
 
-  useKeyboard((e) => {
-    if (e.name === 'tab') {
-      setFocused((f) => {
-        if (f === 'contacts') return 'messages';
-        if (f === 'messages') return 'input';
-        return 'contacts';
-      });
-      e.preventDefault();
-    }
-  });
+  const contactScrollRef = useRef<ScrollBoxRenderable>(null);
 
   const setContacts = useCallback<Updater<Contact[]>>(
     (contactsOrFunc) => {
@@ -96,33 +89,29 @@ export default function MainView() {
       const preloadedContacts: Contact[] = [];
 
       const { friends: pinnedFriends, groups: pinnedGroups } = await milky.system.getPeerPins();
-      const friendMap = await milky.system.getFriendList({ no_cache: false }).then((res) => {
-        return new Map(res.friends.map((f) => [f.user_id, f]));
-      });
-      const groupMap = await milky.system.getGroupList({ no_cache: false }).then((res) => {
-        return new Map(res.groups.map((g) => [g.group_id, g]));
-      });
+      const pinnedFriendUinSet = new Set(pinnedFriends.map((f) => f.user_id));
+      const pinnedGroupUinSet = new Set(pinnedGroups.map((g) => g.group_id));
+      const { friends } = await milky.system.getFriendList({ no_cache: false });
+      const { groups } = await milky.system.getGroupList({ no_cache: false });
 
-      for (const group of pinnedGroups) {
-        const info = groupMap.get(group.group_id);
-        if (info) {
-          preloadedContacts.push({
-            ...groupToBaseContact(info),
-            isPinned: true,
-          });
-        }
-      }
-
-      for (const friend of pinnedFriends) {
-        const info = friendMap.get(friend.user_id);
-        if (info) {
-          preloadedContacts.push({
-            ...friendToBaseContact(info),
-            isPinned: true,
-          });
-        }
-      }
-
+      preloadedContacts.push(
+        ...groups.map((g) => {
+          const isPinned = pinnedGroupUinSet.has(g.group_id);
+          return {
+            ...groupToBaseContact(g),
+            isPinned,
+          };
+        }),
+      );
+      preloadedContacts.push(
+        ...friends.map((f) => {
+          const isPinned = pinnedFriendUinSet.has(f.user_id);
+          return {
+            ...friendToBaseContact(f),
+            isPinned,
+          };
+        }),
+      );
       setContacts(preloadedContacts);
     })();
   }, [milky, setContacts]);
@@ -166,6 +155,17 @@ export default function MainView() {
   }, [eventSource, upsertContact, contacts]);
 
   useKeyboard((e) => {
+    if (e.name === 'tab') {
+      setFocused((f) => {
+        if (f === 'contacts' && activeContact) return 'messages';
+        if (f === 'messages') return 'input';
+        return 'contacts';
+      });
+      e.preventDefault();
+    }
+  });
+
+  useKeyboard((e) => {
     if (focused === 'contacts' && (e.name === 'up' || e.name === 'down' || e.sequence === '\r')) {
       if (e.name === 'up') {
         const currentIndex = contacts.findIndex(
@@ -178,6 +178,7 @@ export default function MainView() {
         // biome-ignore lint/style/noNonNullAssertion: already checked bounds
         const prevContact = contacts[prevIndex]!;
         setSelectedContact({ scene: prevContact.scene, uin: prevContact.uin });
+        contactScrollRef.current?.scrollChildIntoView(`contact-${prevContact.scene}-${prevContact.uin}`);
         e.preventDefault();
       } else if (e.name === 'down') {
         const currentIndex = contacts.findIndex(
@@ -190,6 +191,7 @@ export default function MainView() {
         // biome-ignore lint/style/noNonNullAssertion: already checked bounds
         const nextContact = contacts[nextIndex]!;
         setSelectedContact({ scene: nextContact.scene, uin: nextContact.uin });
+        contactScrollRef.current?.scrollChildIntoView(`contact-${nextContact.scene}-${nextContact.uin}`);
         e.preventDefault();
       } else if (e.sequence === '\r') {
         if (selectedContact) {
@@ -216,19 +218,23 @@ export default function MainView() {
           borderColor={focused === 'contacts' ? 'cyan' : undefined}
           onMouseDown={() => setFocused('contacts')}
         >
-          <scrollbox>
+          <scrollbox ref={contactScrollRef}>
             <box gap={1}>
-              {contacts.map((c) => (
-                <ContactCard
-                  key={`${c.scene}-${c.uin}`}
-                  contact={c}
-                  onMouseDown={() => switchActiveContact(c.scene, c.uin)}
-                  onMouseOver={() => setSelectedContact({ scene: c.scene, uin: c.uin })}
-                  onMouseOut={() => setSelectedContact(null)}
-                  active={activeContact?.scene === c.scene && activeContact?.uin === c.uin}
-                  selected={selectedContact?.scene === c.scene && selectedContact?.uin === c.uin}
-                />
-              ))}
+              {contacts.map((c) => {
+                const key = `contact-${c.scene}-${c.uin}`;
+                return (
+                  <ContactCard
+                    id={key}
+                    key={key}
+                    contact={c}
+                    onMouseDown={() => switchActiveContact(c.scene, c.uin)}
+                    onMouseOver={() => setSelectedContact({ scene: c.scene, uin: c.uin })}
+                    onMouseOut={() => setSelectedContact(null)}
+                    active={activeContact?.scene === c.scene && activeContact?.uin === c.uin}
+                    selected={selectedContact?.scene === c.scene && selectedContact?.uin === c.uin}
+                  />
+                );
+              })}
             </box>
           </scrollbox>
         </box>
