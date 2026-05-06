@@ -14,8 +14,9 @@ export type ContactCardProps = BoxProps & {
 export default function ContactCard(props: ContactCardProps) {
   const c = props.contact;
   const [isHovered, setHovered] = useState(false);
-  const bg = props.active ? 'cyan' : undefined;
-  const fg = props.active ? 'black' : isHovered ? 'cyan' : undefined;
+  const activeColor = c.scene === 'friend' ? 'cyan' : 'brightGreen';
+  const bg = props.active ? activeColor : undefined;
+  const fg = props.active ? 'black' : isHovered ? activeColor : undefined;
 
   return (
     <box
@@ -26,9 +27,11 @@ export default function ContactCard(props: ContactCardProps) {
       backgroundColor={bg}
     >
       <box flexDirection="row" gap={1}>
-        <LimitedLineText attributes={c.isPinned ? TextAttributes.BOLD : undefined} fg={fg} flexGrow={1}>
-          {c.displayName}
-        </LimitedLineText>
+        <box flexGrow={1}>
+          <LimitedLineText attributes={c.isPinned ? TextAttributes.BOLD : undefined} fg={fg}>
+            {c.displayName}
+          </LimitedLineText>
+        </box>
         {c.lastMsg && (
           <LimitedLineText attributes={TextAttributes.DIM} fg={fg}>
             {formatShortDateTime(c.lastMsg.time)}
