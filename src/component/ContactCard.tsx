@@ -8,15 +8,17 @@ import LimitedLineText from './LimitedLineText';
 
 export type ContactCardProps = BoxProps & {
   contact: Contact;
+  selected?: boolean;
   active?: boolean;
 };
 
 export default function ContactCard(props: ContactCardProps) {
   const c = props.contact;
   const [isHovered, setHovered] = useState(false);
+  const selectedOrHovered = props.selected || isHovered;
   const activeColor = c.scene === 'friend' ? 'cyan' : 'brightGreen';
   const bg = props.active ? activeColor : undefined;
-  const fg = props.active ? 'black' : isHovered ? activeColor : undefined;
+  const fg = props.active ? 'black' : selectedOrHovered ? activeColor : undefined;
 
   return (
     <box

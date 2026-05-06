@@ -14,7 +14,8 @@ export default function MainView() {
   const milky = useMilky();
   const eventSource = useMilkyEvent();
   const [contacts, rawSetContacts] = useImmer<Contact[]>([]);
-  const [activeContact, setActiveContact] = useImmer<{ scene: 'friend' | 'group'; uin: number } | null>(null);
+  const [selectedContact, setSelectedContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
+  const [activeContact, setActiveContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
   const [focused, setFocused] = useState<'contacts' | 'messages' | 'input'>('contacts');
 
   useKeyboard((e) => {
@@ -82,6 +83,13 @@ export default function MainView() {
     },
     [setContacts, resolveBaseContact, contacts],
   );
+
+  const switchActiveContact = useCallback((scene: 'friend' | 'group', uin: number) => {
+    setActiveContact({ scene, uin });
+    setTimeout(() => {
+      setFocused('messages');
+    });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -157,6 +165,37 @@ export default function MainView() {
     };
   }, [eventSource, upsertContact, contacts]);
 
+  useKeyboard((e) => {
+    if (focused === 'contacts' && (e.name === 'up' || e.name === 'down' || e.sequence === '\r')) {
+      if (e.name === 'up') {
+        const currentIndex = contacts.findIndex((c) => c.scene === selectedContact?.scene && c.uin === selectedContact?.uin);
+        const prevIndex = currentIndex - 1;
+        if (prevIndex < 0 || prevIndex >= contacts.length) {
+          return;
+        }
+        // biome-ignore lint/style/noNonNullAssertion: already checked bounds
+        const prevContact = contacts[prevIndex]!;
+        setSelectedContact({ scene: prevContact.scene, uin: prevContact.uin });
+        e.preventDefault();
+      } else if (e.name === 'down') {
+        const currentIndex = contacts.findIndex((c) => c.scene === selectedContact?.scene && c.uin === selectedContact?.uin);
+        const nextIndex = currentIndex + 1;
+        if (nextIndex < 0 || nextIndex >= contacts.length) {
+          return;
+        }
+        // biome-ignore lint/style/noNonNullAssertion: already checked bounds
+        const nextContact = contacts[nextIndex]!;
+        setSelectedContact({ scene: nextContact.scene, uin: nextContact.uin });
+        e.preventDefault();
+      } else if (e.sequence === '\r') {
+        if (selectedContact) {
+          switchActiveContact(selectedContact.scene, selectedContact.uin);
+        }
+        e.preventDefault();
+      }
+    }
+  });
+
   return (
     <box flexGrow={1}>
       <box backgroundColor="white" height={1}>
@@ -180,12 +219,10 @@ export default function MainView() {
                   key={`${c.scene}-${c.uin}`}
                   contact={c}
                   onMouseDown={() => {
-                    setActiveContact({ scene: c.scene, uin: c.uin });
-                    setTimeout(() => {
-                      setFocused('messages');
-                    });
+                    switchActiveContact(c.scene, c.uin);
                   }}
                   active={activeContact?.scene === c.scene && activeContact?.uin === c.uin}
+                  selected={selectedContact?.scene === c.scene && selectedContact?.uin === c.uin}
                 />
               ))}
             </box>
