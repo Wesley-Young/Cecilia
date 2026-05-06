@@ -1,81 +1,35 @@
 import type { ScrollBoxRenderable } from '@opentui/core';
 import { useKeyboard, useTerminalDimensions } from '@opentui/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { type Updater, useImmer } from 'use-immer';
+import { useCallback, useRef, useState } from 'react';
 
 import ContactCard from '../component/ContactCard';
-import { IncomingSegmentDisplay } from '../component/MessageSegmentDisplay';
-import type { Contact } from '../shared/model';
-import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol';
+import { useRuntimeCache } from '../shared/cache';
 import { contactComparator, friendToBaseContact, groupToBaseContact } from '../shared/transform';
 import MessageView from './MessageView';
 
 export default function MainView() {
   const { height } = useTerminalDimensions();
-  const milky = useMilky();
-  const eventSource = useMilkyEvent();
+  const { selfInfo, friends, groups, pinned, lastMsg } = useRuntimeCache();
 
-  const [contacts, rawSetContacts] = useImmer<Contact[]>([]);
+  const pinnedFriendSet = new Set(pinned.friends);
+  const pinnedGroupSet = new Set(pinned.groups);
+  const contacts = [
+    ...Object.values(groups).map((g) => ({
+      ...groupToBaseContact(g),
+      lastMsg: lastMsg.groups[g.group_id],
+      isPinned: pinnedGroupSet.has(g.group_id),
+    })),
+    ...Object.values(friends).map((f) => ({
+      ...friendToBaseContact(f),
+      lastMsg: lastMsg.friends[f.user_id],
+      isPinned: pinnedFriendSet.has(f.user_id),
+    })),
+  ].sort(contactComparator);
+
   const [selectedContact, setSelectedContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
   const [activeContact, setActiveContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
   const [focused, setFocused] = useState<'contacts' | 'messages' | 'input'>('contacts');
-
   const contactScrollRef = useRef<ScrollBoxRenderable>(null);
-
-  const setContacts = useCallback<Updater<Contact[]>>(
-    (contactsOrFunc) => {
-      if (Array.isArray(contactsOrFunc)) {
-        const sortedContacts = contactsOrFunc.toSorted(contactComparator);
-        rawSetContacts(sortedContacts);
-      } else {
-        // is a function
-        rawSetContacts((draft) => {
-          contactsOrFunc(draft);
-          draft.sort(contactComparator);
-        });
-      }
-    },
-    [rawSetContacts],
-  );
-
-  const resolveBaseContact = useCallback(
-    async (scene: 'friend' | 'group', uin: number): Promise<Contact | null> => {
-      try {
-        if (scene === 'friend') {
-          const { friend } = await milky.system.getFriendInfo({ user_id: uin, no_cache: false });
-          return friendToBaseContact(friend);
-        } else {
-          const { group } = await milky.system.getGroupInfo({ group_id: uin, no_cache: false });
-          return groupToBaseContact(group);
-        }
-      } catch {
-        return null;
-      }
-    },
-    [milky],
-  );
-
-  const upsertContact = useCallback(
-    (scene: 'friend' | 'group', uin: number, contact: Partial<Contact>) => {
-      const contactIndex = contacts.findIndex((c) => c.scene === scene && c.uin === uin);
-      if (contactIndex !== -1) {
-        // update existing contact
-        setContacts((contacts) => {
-          // @ts-expect-error
-          contacts[contactIndex] = { ...contacts[contactIndex], ...contact };
-        });
-      } else {
-        resolveBaseContact(scene, uin).then((baseContact) => {
-          if (baseContact) {
-            setContacts((contacts) => {
-              contacts.push({ ...baseContact, ...contact });
-            });
-          }
-        });
-      }
-    },
-    [setContacts, resolveBaseContact, contacts],
-  );
 
   const switchActiveContact = useCallback((scene: 'friend' | 'group', uin: number) => {
     setActiveContact({ scene, uin });
@@ -83,76 +37,6 @@ export default function MainView() {
       setFocused('input');
     });
   }, []);
-
-  useEffect(() => {
-    (async () => {
-      const preloadedContacts: Contact[] = [];
-
-      const { friends: pinnedFriends, groups: pinnedGroups } = await milky.system.getPeerPins();
-      const pinnedFriendUinSet = new Set(pinnedFriends.map((f) => f.user_id));
-      const pinnedGroupUinSet = new Set(pinnedGroups.map((g) => g.group_id));
-      const { friends } = await milky.system.getFriendList({ no_cache: false });
-      const { groups } = await milky.system.getGroupList({ no_cache: false });
-
-      preloadedContacts.push(
-        ...groups.map((g) => {
-          const isPinned = pinnedGroupUinSet.has(g.group_id);
-          return {
-            ...groupToBaseContact(g),
-            isPinned,
-          };
-        }),
-      );
-      preloadedContacts.push(
-        ...friends.map((f) => {
-          const isPinned = pinnedFriendUinSet.has(f.user_id);
-          return {
-            ...friendToBaseContact(f),
-            isPinned,
-          };
-        }),
-      );
-      setContacts(preloadedContacts);
-    })();
-  }, [milky, setContacts]);
-
-  useEffect(() => {
-    const messageListener = defineMilkyListener('message_receive', ({ data }) => {
-      if (data.message_scene === 'temp') {
-        return;
-      }
-      upsertContact(data.message_scene, data.peer_id, {
-        lastMsg: {
-          time: data.time,
-          content: <IncomingSegmentDisplay segments={data.segments} noFg />,
-        },
-      });
-    });
-
-    const pinListener = defineMilkyListener('peer_pin_change', ({ data }) => {
-      if (data.message_scene === 'temp') {
-        return;
-      }
-      if (data.is_pinned) {
-        upsertContact(data.message_scene, data.peer_id, {
-          isPinned: true,
-        });
-      } else {
-        if (contacts.find((c) => c.scene === data.message_scene && c.uin === data.peer_id)) {
-          upsertContact(data.message_scene, data.peer_id, {
-            isPinned: false,
-          });
-        }
-      }
-    });
-
-    eventSource.on('message_receive', messageListener);
-    eventSource.on('peer_pin_change', pinListener);
-    return () => {
-      eventSource.off('message_receive', messageListener);
-      eventSource.off('peer_pin_change', pinListener);
-    };
-  }, [eventSource, upsertContact, contacts]);
 
   useKeyboard((e) => {
     if (e.name === 'tab') {
@@ -204,10 +88,9 @@ export default function MainView() {
 
   return (
     <box flexGrow={1}>
-      <box backgroundColor="white" height={1}>
+      <box backgroundColor="white" height={1} paddingX={1} alignItems="center">
         <text fg="black">
-          {' '}
-          <b>Cecilia</b> - <b>Tab</b> or click to switch focus
+          <b>{selfInfo.nickname}</b> ({selfInfo.uin})
         </text>
       </box>
       <box flexDirection="row" height={height - 1}>

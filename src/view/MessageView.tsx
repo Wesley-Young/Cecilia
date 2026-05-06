@@ -6,6 +6,7 @@ import { useImmer } from 'use-immer';
 
 import MessageBubble from '../component/MessageBubble';
 import { OutgoingSegmentDisplay } from '../component/MessageSegmentDisplay';
+import { useRuntimeCache } from '../shared/cache';
 import type { Message } from '../shared/model';
 import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol';
 import { transformIncomingMessage } from '../shared/transform';
@@ -49,8 +50,13 @@ export default function MessageView(props: MessageViewProps) {
   const { active, focused, setFocused } = props;
   const milky = useMilky();
   const eventSource = useMilkyEvent();
+  const { selfInfo, friends, groups } = useRuntimeCache();
 
-  const [chatTitle, setChatTitle] = useState('');
+  const chatTitle = active
+    ? active.scene === 'friend'
+      ? friends[active.uin]?.remark || friends[active.uin]?.nickname || String(active.uin)
+      : groups[active.uin]?.group_name || String(active.uin)
+    : 'Messages';
   const [messages, setMessages] = useImmer<Message[]>([]);
   const [isLoadingHistory, setLoadingHistory] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
@@ -59,7 +65,6 @@ export default function MessageView(props: MessageViewProps) {
   const historyRequestRef = useRef(0);
   const isLoadingMoreHistoryRef = useRef(false);
   const textAreaRef = useRef<TextareaRenderable>(null);
-  const selfUinRef = useRef<number>(0);
   const activeScene = active?.scene;
   const activeUin = active?.uin;
 
@@ -171,7 +176,7 @@ export default function MessageView(props: MessageViewProps) {
               scene: activeScene,
               peerUin: activeUin,
               sequence: message_seq,
-              senderUin: selfUinRef.current,
+              senderUin: selfInfo.uin,
               senderName: 'You',
               time: Date.now(),
               content: <OutgoingSegmentDisplay segments={segments} />,
@@ -186,28 +191,8 @@ export default function MessageView(props: MessageViewProps) {
         }
       } catch {}
     },
-    [activeScene, activeUin, milky, setMessages],
+    [activeScene, activeUin, milky, setMessages, selfInfo],
   );
-
-  useEffect(() => {
-    milky.system.getLoginInfo().then(({ uin }) => {
-      selfUinRef.current = uin;
-    });
-  }, [milky]);
-
-  useEffect(() => {
-    if (active) {
-      if (active.scene === 'friend') {
-        milky.system.getFriendInfo({ user_id: active.uin, no_cache: false }).then(({ friend }) => {
-          setChatTitle(friend.remark || friend.nickname);
-        });
-      } else {
-        milky.system.getGroupInfo({ group_id: active.uin, no_cache: false }).then(({ group }) => {
-          setChatTitle(`${group.group_name} (${group.member_count})`);
-        });
-      }
-    }
-  }, [active, milky]);
 
   useEffect(() => {
     setLoadingError(null);
@@ -307,7 +292,7 @@ export default function MessageView(props: MessageViewProps) {
   return (
     <>
       <box
-        title={chatTitle || `${activeScene} ${activeUin}`}
+        title={chatTitle}
         flexGrow={1}
         border
         borderColor={focused === 'messages' ? 'cyan' : undefined}
