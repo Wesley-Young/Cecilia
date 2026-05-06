@@ -1,6 +1,5 @@
 import { TextAttributes } from '@opentui/core';
 import type { BoxProps } from '@opentui/react';
-import { useState } from 'react';
 
 import type { Contact } from '../shared/model';
 import { formatShortDateTime } from '../shared/transform';
