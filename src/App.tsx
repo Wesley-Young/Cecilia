@@ -4,7 +4,7 @@ import { useImmer } from 'use-immer';
 
 import { IncomingSegmentDisplay } from './component/MessageSegmentDisplay';
 import { createEmptyRuntimeCache, RuntimeCacheContext, RuntimeCacheUpdaterContext } from './shared/cache';
-import { defineMilkyListener, devClient, MilkyContext, MilkyEventContext } from './shared/protocol';
+import { defineMilkyListener, devClient, devEventSource, MilkyContext, MilkyEventContext } from './shared/protocol';
 import LoginView from './view/LoginView';
 import MainView from './view/MainView';
 
@@ -28,7 +28,7 @@ async function testApi(client: MilkyClient): Promise<boolean> {
 
 export default function App() {
   const [milky, setMilky] = useState<MilkyClient | null>(devClient);
-  const [eventSource, setEventSource] = useState<MilkyEventSource | null>(devClient?.event() ?? null);
+  const [eventSource, setEventSource] = useState<MilkyEventSource | null>(devEventSource);
   const [runtimeCache, setRuntimeCache] = useImmer(createEmptyRuntimeCache());
 
   useEffect(() => {

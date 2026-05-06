@@ -55,3 +55,4 @@ function createDefaultMilkyClient(): MilkyClient | null {
 }
 
 export const devClient = createDefaultMilkyClient();
+export const devEventSource = devClient?.event() ?? null;
