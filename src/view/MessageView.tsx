@@ -1,9 +1,11 @@
 import type { KeyEvent, ScrollBoxRenderable, TextareaRenderable } from '@opentui/core';
 import { useKeyboard } from '@opentui/react';
+import type { OutgoingSegment } from '@saltify/milky-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useImmer } from 'use-immer';
 
 import MessageBubble from '../component/MessageBubble';
+import { OutgoingSegmentDisplay } from '../component/MessageSegmentDisplay';
 import type { Message } from '../shared/model';
 import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol';
 import { transformIncomingMessage } from '../shared/transform';
@@ -57,6 +59,7 @@ export default function MessageView(props: MessageViewProps) {
   const historyRequestRef = useRef(0);
   const isLoadingMoreHistoryRef = useRef(false);
   const textAreaRef = useRef<TextareaRenderable>(null);
+  const selfUinRef = useRef<number>(0);
   const activeScene = active?.scene;
   const activeUin = active?.uin;
 
@@ -145,25 +148,52 @@ export default function MessageView(props: MessageViewProps) {
 
   const sendMessage = useCallback(
     async (content: string) => {
+      const segments: OutgoingSegment[] = [
+        {
+          type: 'text',
+          data: {
+            text: content,
+          },
+        },
+      ];
       if (!activeScene || activeUin === undefined) {
         return;
       }
       try {
+        scrollRef.current?.scrollTo({ x: 0, y: scrollRef.current.scrollHeight });
         if (activeScene === 'friend') {
-          await milky.message.sendPrivateMessage({
+          const { message_seq } = await milky.message.sendPrivateMessage({
             user_id: activeUin,
-            message: [{ type: 'text', data: { text: content } }],
+            message: segments,
+          });
+          setMessages((messages) => {
+            messages.push({
+              scene: activeScene,
+              peerUin: activeUin,
+              sequence: message_seq,
+              senderUin: selfUinRef.current,
+              senderName: 'You',
+              time: Date.now(),
+              content: <OutgoingSegmentDisplay segments={segments} />,
+            });
           });
         } else {
+          // group message will be pushed back by event, no need to manually add to message list
           await milky.message.sendGroupMessage({
             group_id: activeUin,
-            message: [{ type: 'text', data: { text: content } }],
+            message: segments,
           });
         }
       } catch {}
     },
-    [activeScene, activeUin, milky],
+    [activeScene, activeUin, milky, setMessages],
   );
+
+  useEffect(() => {
+    milky.system.getLoginInfo().then(({ uin }) => {
+      selfUinRef.current = uin;
+    });
+  }, [milky]);
 
   useEffect(() => {
     if (active) {
@@ -301,7 +331,7 @@ export default function MessageView(props: MessageViewProps) {
               </box>
             )}
             {messages.map((m) => {
-              const id = `${m.scene}-${m.peerUin}-${m.sequence}`;
+              const id = `message-${m.scene}-${m.peerUin}-${m.sequence}`;
               return (
                 <box id={id} key={id}>
                   <MessageBubble message={m} />
