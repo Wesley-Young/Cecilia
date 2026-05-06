@@ -87,7 +87,7 @@ export default function MainView() {
   const switchActiveContact = useCallback((scene: 'friend' | 'group', uin: number) => {
     setActiveContact({ scene, uin });
     setTimeout(() => {
-      setFocused('messages');
+      setFocused('input');
     });
   }, []);
 
@@ -168,7 +168,9 @@ export default function MainView() {
   useKeyboard((e) => {
     if (focused === 'contacts' && (e.name === 'up' || e.name === 'down' || e.sequence === '\r')) {
       if (e.name === 'up') {
-        const currentIndex = contacts.findIndex((c) => c.scene === selectedContact?.scene && c.uin === selectedContact?.uin);
+        const currentIndex = contacts.findIndex(
+          (c) => c.scene === selectedContact?.scene && c.uin === selectedContact?.uin,
+        );
         const prevIndex = currentIndex - 1;
         if (prevIndex < 0 || prevIndex >= contacts.length) {
           return;
@@ -178,7 +180,9 @@ export default function MainView() {
         setSelectedContact({ scene: prevContact.scene, uin: prevContact.uin });
         e.preventDefault();
       } else if (e.name === 'down') {
-        const currentIndex = contacts.findIndex((c) => c.scene === selectedContact?.scene && c.uin === selectedContact?.uin);
+        const currentIndex = contacts.findIndex(
+          (c) => c.scene === selectedContact?.scene && c.uin === selectedContact?.uin,
+        );
         const nextIndex = currentIndex + 1;
         if (nextIndex < 0 || nextIndex >= contacts.length) {
           return;
@@ -218,9 +222,9 @@ export default function MainView() {
                 <ContactCard
                   key={`${c.scene}-${c.uin}`}
                   contact={c}
-                  onMouseDown={() => {
-                    switchActiveContact(c.scene, c.uin);
-                  }}
+                  onMouseDown={() => switchActiveContact(c.scene, c.uin)}
+                  onMouseOver={() => setSelectedContact({ scene: c.scene, uin: c.uin })}
+                  onMouseOut={() => setSelectedContact(null)}
                   active={activeContact?.scene === c.scene && activeContact?.uin === c.uin}
                   selected={selectedContact?.scene === c.scene && selectedContact?.uin === c.uin}
                 />

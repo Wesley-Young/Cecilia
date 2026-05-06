@@ -14,20 +14,12 @@ export type ContactCardProps = BoxProps & {
 
 export default function ContactCard(props: ContactCardProps) {
   const c = props.contact;
-  const [isHovered, setHovered] = useState(false);
-  const selectedOrHovered = props.selected || isHovered;
   const activeColor = c.scene === 'friend' ? 'cyan' : 'brightGreen';
   const bg = props.active ? activeColor : undefined;
-  const fg = props.active ? 'black' : selectedOrHovered ? activeColor : undefined;
+  const fg = props.active ? 'black' : props.selected ? activeColor : undefined;
 
   return (
-    <box
-      paddingX={1}
-      onMouseOver={() => setHovered(true)}
-      onMouseOut={() => setHovered(false)}
-      {...props}
-      backgroundColor={bg}
-    >
+    <box paddingX={1} backgroundColor={bg} {...props}>
       <box flexDirection="row" gap={1}>
         <box flexGrow={1}>
           <LimitedLineText attributes={c.isPinned ? TextAttributes.BOLD : undefined} fg={fg}>
