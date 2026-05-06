@@ -48,6 +48,7 @@ export default function MessageView(props: MessageViewProps) {
   const milky = useMilky();
   const eventSource = useMilkyEvent();
 
+  const [chatTitle, setChatTitle] = useState('');
   const [messages, setMessages] = useImmer<Message[]>([]);
   const [isLoadingHistory, setLoadingHistory] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
@@ -165,6 +166,20 @@ export default function MessageView(props: MessageViewProps) {
   );
 
   useEffect(() => {
+    if (active) {
+      if (active.scene === 'friend') {
+        milky.system.getFriendInfo({ user_id: active.uin, no_cache: true }).then(({friend}) => {
+          setChatTitle(friend.remark || friend.nickname);
+        });
+      } else {
+        milky.system.getGroupInfo({ group_id: active.uin, no_cache: true }).then(({group}) => {
+          setChatTitle(`${group.group_name} (${group.member_count})`);
+        });
+      }
+    }
+  });
+
+  useEffect(() => {
     setLoadingError(null);
 
     if (!activeScene || activeUin === undefined) {
@@ -262,7 +277,7 @@ export default function MessageView(props: MessageViewProps) {
   return (
     <>
       <box
-        title={`${active.scene} - ${active.uin}`}
+        title={chatTitle || `${activeScene} ${activeUin}`}
         flexGrow={1}
         border
         borderColor={focused === 'messages' ? 'cyan' : undefined}
