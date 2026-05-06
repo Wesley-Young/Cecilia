@@ -54,6 +54,7 @@ export default function MessageView(props: MessageViewProps) {
 
   const scrollRef = useRef<ScrollBoxRenderable>(null);
   const historyRequestRef = useRef(0);
+  const isLoadingMoreHistoryRef = useRef(false);
   const textAreaRef = useRef<TextareaRenderable>(null);
   const activeScene = active?.scene;
   const activeUin = active?.uin;
@@ -168,16 +169,19 @@ export default function MessageView(props: MessageViewProps) {
 
     if (!activeScene || activeUin === undefined) {
       historyRequestRef.current += 1;
+      isLoadingMoreHistoryRef.current = false;
       setMessages([]);
       setLoadingHistory(false);
       return;
     }
 
     setMessages([]);
+    isLoadingMoreHistoryRef.current = false;
     void loadHistoryMessages({ scene: activeScene, uin: activeUin }, { scrollToBottom: true });
 
     return () => {
       historyRequestRef.current += 1;
+      isLoadingMoreHistoryRef.current = false;
     };
   }, [activeScene, activeUin, loadHistoryMessages, setMessages]);
 
@@ -201,12 +205,20 @@ export default function MessageView(props: MessageViewProps) {
   }, [eventSource, activeScene, activeUin, setMessages]);
 
   useKeyboard((e) => {
-    if (focused === 'messages' && e.name === 'up' && activeScene && activeUin !== undefined && !isLoadingHistory) {
+    if (
+      focused === 'messages' &&
+      e.name === 'up' &&
+      activeScene &&
+      activeUin !== undefined &&
+      !isLoadingHistory &&
+      !isLoadingMoreHistoryRef.current
+    ) {
       const scrollbox = scrollRef.current;
       if (!scrollbox) return;
       const beforeScrollTop = scrollbox.scrollTop;
       if (beforeScrollTop === 0) {
         const beforeSequence = messages[0]?.sequence;
+        isLoadingMoreHistoryRef.current = true;
         void loadHistoryMessages(
           {
             scene: activeScene,
@@ -221,7 +233,9 @@ export default function MessageView(props: MessageViewProps) {
               beforeScrollHeight: scrollbox.scrollHeight,
             },
           },
-        );
+        ).finally(() => {
+          isLoadingMoreHistoryRef.current = false;
+        });
       }
     }
   });
