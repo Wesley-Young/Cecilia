@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { useRuntimeCache } from '../shared/cache';
 import type { Message } from '../shared/model';
+import MessageSegmentDisplay from './MessageSegmentDisplay';
 
 export type MessageBubbleProps = {
   message: Message;
@@ -51,15 +52,30 @@ export default function MessageBubble(props: MessageBubbleProps) {
       {message.reply && (
         <box border borderStyle="rounded" paddingX={1}>
           <box flexDirection="row" gap={1}>
-            <text attributes={TextAttributes.BOLD}>{message.reply.senderName ?? message.reply.senderUin}</text>
+            <text attributes={TextAttributes.BOLD}>
+              {message.reply.senderName ||
+                (message.senderUin === selfInfo.uin
+                  ? selfInfo.nickname
+                  : message.scene === 'friend'
+                    ? friends[message.reply.senderUin]?.remark || friends[message.reply.senderUin]?.nickname
+                    : groupMembers[message.peerUin]?.[message.reply.senderUin]?.card ||
+                      groupMembers[message.peerUin]?.[message.reply.senderUin]?.nickname) ||
+                message.reply.senderUin}
+            </text>
+            <text attributes={TextAttributes.DIM}>({message.reply.senderUin})</text>
+            <text attributes={TextAttributes.DIM}>#{message.reply.sequence}</text>
             <text attributes={TextAttributes.DIM}>
               {new Date(message.reply.time * 1000).toLocaleTimeString([], { hour12: false })}
             </text>
           </box>
-          <text>{message.reply.content}</text>
+          <text attributes={TextAttributes.DIM}>
+            <MessageSegmentDisplay content={message.reply.content} />
+          </text>
         </box>
       )}
-      <text>{message.content}</text>
+      <text>
+        <MessageSegmentDisplay content={message.content} />
+      </text>
     </box>
   );
 }

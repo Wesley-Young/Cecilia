@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useImmer } from 'use-immer';
 
 import MessageBubble from '../component/MessageBubble';
-import { OutgoingSegmentDisplay } from '../component/MessageSegmentDisplay';
 import { useRuntimeCache } from '../shared/cache';
 import type { Message } from '../shared/model';
 import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol';
@@ -270,7 +269,10 @@ export default function MessageView(props: MessageViewProps) {
               sequence: message_seq,
               senderUin: selfInfo.uin,
               time: Date.now(),
-              content: <OutgoingSegmentDisplay segments={segments} />,
+              content: {
+                type: 'outgoing',
+                segments,
+              },
             });
           });
         } else {

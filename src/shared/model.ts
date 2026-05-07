@@ -1,4 +1,14 @@
-import type { ReactNode } from 'react';
+import type { IncomingSegment, OutgoingSegment } from '@saltify/milky-types';
+
+export type MessageContent =
+  | {
+      type: 'incoming';
+      segments: IncomingSegment[];
+    }
+  | {
+      type: 'outgoing';
+      segments: OutgoingSegment[];
+    };
 
 export interface Contact {
   scene: 'friend' | 'group';
@@ -8,7 +18,7 @@ export interface Contact {
   unreadCount?: number;
   lastMsg?: {
     time: number;
-    content: ReactNode;
+    content: MessageContent;
   };
 }
 
@@ -18,11 +28,12 @@ export interface Message {
   sequence: number;
   senderUin: number;
   time: number;
-  content: ReactNode;
+  content: MessageContent;
   reply?: {
+    sequence: number;
     senderUin: number;
     senderName?: string;
     time: number;
-    content: ReactNode;
+    content: MessageContent;
   };
 }

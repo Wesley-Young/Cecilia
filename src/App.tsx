@@ -2,7 +2,6 @@ import { createMilkyClient, type MilkyClient, type MilkyEventSource } from '@sal
 import { useEffect, useState } from 'react';
 import { useImmer } from 'use-immer';
 
-import { IncomingSegmentDisplay } from './component/MessageSegmentDisplay';
 import { createEmptyRuntimeCache, RuntimeCacheContext, RuntimeCacheUpdaterContext } from './shared/cache';
 import { defineMilkyListener, devClient, devEventSource, MilkyContext, MilkyEventContext } from './shared/protocol';
 import LoginView from './view/LoginView';
@@ -107,13 +106,19 @@ export default function App() {
         if (data.message_scene === 'friend') {
           cache.lastMsg.friends[data.peer_id] = {
             time: data.time,
-            content: <IncomingSegmentDisplay segments={data.segments} noFg />,
+            content: {
+              type: 'incoming',
+              segments: data.segments,
+            },
           };
         } else if (data.message_scene === 'group') {
           cache.groups[data.peer_id] = data.group;
           cache.lastMsg.groups[data.peer_id] = {
             time: data.time,
-            content: <IncomingSegmentDisplay segments={data.segments} noFg />,
+            content: {
+              type: 'incoming',
+              segments: data.segments,
+            },
           };
           const members = cache.groupMembers[data.peer_id];
           if (members) {

@@ -4,6 +4,7 @@ import type { BoxProps } from '@opentui/react';
 import type { Contact } from '../shared/model';
 import { formatShortDateTime } from '../shared/transform';
 import LimitedLineText from './LimitedLineText';
+import MessageSegmentDisplay from './MessageSegmentDisplay';
 
 export type ContactCardProps = BoxProps & {
   contact: Contact;
@@ -33,7 +34,7 @@ export default function ContactCard(props: ContactCardProps) {
       </box>
       {c.lastMsg ? (
         <LimitedLineText attributes={TextAttributes.DIM} maxLines={2} fg={fg}>
-          {c.lastMsg.content}
+          <MessageSegmentDisplay content={c.lastMsg.content} noFg />
         </LimitedLineText>
       ) : (
         <text attributes={TextAttributes.DIM} fg={fg}>

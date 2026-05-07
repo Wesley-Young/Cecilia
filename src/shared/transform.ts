@@ -1,6 +1,5 @@
 import type { FriendEntity, GroupEntity, IncomingMessage } from '@saltify/milky-types';
 
-import { IncomingSegmentDisplay } from '../component/MessageSegmentDisplay';
 import type { Contact, Message } from './model';
 
 export function friendToBaseContact(friend: FriendEntity): Contact {
@@ -52,13 +51,14 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         sequence: message.message_seq,
         senderUin: message.sender_id,
         time: message.time,
-        content: IncomingSegmentDisplay({ segments: message.segments }),
+        content: { type: 'incoming', segments: message.segments },
+        // @ts-expect-error
         reply: replyData && {
+          sequence: replyData.message_seq,
           senderUin: replyData.sender_id,
           senderName: replyData.sender_name ?? undefined,
           time: replyData.time,
-          // @ts-expect-error
-          content: IncomingSegmentDisplay({ segments: replyData.segments }),
+          content: { type: 'incoming', segments: replyData.segments },
         },
       };
     case 'group':
@@ -68,13 +68,14 @@ export function transformIncomingMessage(message: IncomingMessage): Message | nu
         sequence: message.message_seq,
         senderUin: message.sender_id,
         time: message.time,
-        content: IncomingSegmentDisplay({ segments: message.segments }),
+        content: { type: 'incoming', segments: message.segments },
+        // @ts-expect-error
         reply: replyData && {
+          sequence: replyData.message_seq,
           senderUin: replyData.sender_id,
           senderName: replyData.sender_name ?? undefined,
           time: replyData.time,
-          // @ts-expect-error
-          content: IncomingSegmentDisplay({ segments: replyData.segments }),
+          content: { type: 'incoming', segments: replyData.segments },
         },
       };
     default:
