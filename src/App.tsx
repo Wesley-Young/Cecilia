@@ -152,7 +152,7 @@ export default function App() {
       ) : (
         <LoginView
           onSubmit={async (endpoint, accessToken) => {
-            endpoint = endpoint || Bun.env.BASE_URL || '';
+            endpoint = endpoint || process.env.BASE_URL || '';
             if (!validateUrl(endpoint)) {
               return {
                 result: 'error',

@@ -46,11 +46,11 @@ export function defineMilkyListener<K extends MilkyEventSourceEventKey, R>(
 }
 
 function createDefaultMilkyClient(): MilkyClient | null {
-  if (!Bun.env.BASE_URL) {
+  if (!process.env.BASE_URL) {
     return null;
   }
   return createMilkyClient({
-    baseURL: Bun.env.BASE_URL,
+    baseURL: process.env.BASE_URL,
   });
 }
 
