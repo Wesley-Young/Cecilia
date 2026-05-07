@@ -111,6 +111,7 @@ export default function MainView() {
       <box flexDirection="row" height={height - 1}>
         <box
           title="Contacts"
+          titleAlignment="center"
           border
           width={30}
           borderColor={focused === 'contacts' ? 'cyan' : undefined}

@@ -386,6 +386,7 @@ export default function MessageView(props: MessageViewProps) {
     <>
       <box
         title={chatTitle}
+        titleAlignment="center"
         flexGrow={1}
         border
         borderColor={focused === 'messages' ? 'cyan' : undefined}
