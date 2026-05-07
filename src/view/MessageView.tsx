@@ -112,21 +112,22 @@ export default function MessageView(props: MessageViewProps) {
           .map(transformIncomingMessage)
           .filter((message): message is Message => message !== null);
 
-        if (!options?.startMessageSeq) {
+        const latest = transformed[transformed.length - 1];
+        if (!options?.startMessageSeq && latest) {
           // first fetch
           updateCache((cache) => {
             if (contact.scene === 'friend') {
-              if (!cache.lastMsg.friends[contact.uin] && transformed[0]) {
+              if (!cache.lastMsg.friends[contact.uin]) {
                 cache.lastMsg.friends[contact.uin] = {
-                  time: transformed[0].time,
-                  content: transformed[0].content,
+                  time: latest.time,
+                  content: latest.content,
                 };
               }
             } else {
-              if (!cache.lastMsg.groups[contact.uin] && transformed[0]) {
+              if (!cache.lastMsg.groups[contact.uin]) {
                 cache.lastMsg.groups[contact.uin] = {
-                  time: transformed[0].time,
-                  content: transformed[0].content,
+                  time: latest.time,
+                  content: latest.content,
                 };
               }
             }
