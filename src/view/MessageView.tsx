@@ -1,4 +1,4 @@
-import type { KeyEvent, ScrollBoxRenderable, TextareaRenderable } from '@opentui/core';
+import type { KeyEvent, MouseEvent, ScrollBoxRenderable, TextareaRenderable } from '@opentui/core';
 import { useKeyboard } from '@opentui/react';
 import type { OutgoingSegment } from '@saltify/milky-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,6 +12,8 @@ import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol
 import { transformIncomingMessage } from '../shared/transform';
 
 import os from 'node:os';
+
+const mouseHistoryLoadRearmDelayMs = 300;
 
 function getSubmitKeySetHint(): string {
   switch (os.platform()) {
@@ -64,6 +66,8 @@ export default function MessageView(props: MessageViewProps) {
   const scrollRef = useRef<ScrollBoxRenderable>(null);
   const historyRequestRef = useRef(0);
   const isLoadingMoreHistoryRef = useRef(false);
+  const isMouseHistoryLoadArmedRef = useRef(true);
+  const mouseHistoryLoadRearmTimerRef = useRef<NodeJS.Timeout | null>(null);
   const textAreaRef = useRef<TextareaRenderable>(null);
   const activeScene = active?.scene;
   const activeUin = active?.uin;
@@ -151,6 +155,94 @@ export default function MessageView(props: MessageViewProps) {
     [milky, setMessages],
   );
 
+  const clearMouseHistoryLoadRearmTimer = useCallback(() => {
+    if (mouseHistoryLoadRearmTimerRef.current) {
+      clearTimeout(mouseHistoryLoadRearmTimerRef.current);
+      mouseHistoryLoadRearmTimerRef.current = null;
+    }
+  }, []);
+
+  const rearmMouseHistoryLoadAfterScrollSettles = useCallback(() => {
+    clearMouseHistoryLoadRearmTimer();
+    mouseHistoryLoadRearmTimerRef.current = setTimeout(() => {
+      isMouseHistoryLoadArmedRef.current = true;
+      mouseHistoryLoadRearmTimerRef.current = null;
+    }, mouseHistoryLoadRearmDelayMs);
+  }, [clearMouseHistoryLoadRearmTimer]);
+
+  const tryLoadHistoryMessageOnScroll = useCallback(
+    (options?: { requireFocused?: boolean }): boolean => {
+      const requireFocused = options?.requireFocused ?? true;
+      if (
+        (!requireFocused || focused === 'messages') &&
+        activeScene &&
+        activeUin !== undefined &&
+        !isLoadingHistory &&
+        !isLoadingMoreHistoryRef.current
+      ) {
+        const scrollbox = scrollRef.current;
+        if (!scrollbox) return false;
+        const beforeScrollTop = scrollbox.scrollTop;
+        if (beforeScrollTop === 0) {
+          const beforeSequence = messages[0]?.sequence;
+          isLoadingMoreHistoryRef.current = true;
+          void loadHistoryMessages(
+            {
+              scene: activeScene,
+              uin: activeUin,
+            },
+            {
+              mode: 'prepend',
+              startMessageSeq: beforeSequence && beforeSequence - 1,
+              preserveScroll: {
+                scrollbox,
+                beforeScrollTop,
+                beforeScrollHeight: scrollbox.scrollHeight,
+              },
+            },
+          ).finally(() => {
+            isLoadingMoreHistoryRef.current = false;
+          });
+          return true;
+        }
+      }
+      return false;
+    },
+    [activeScene, activeUin, focused, isLoadingHistory, loadHistoryMessages, messages],
+  );
+
+  const handleMessageMouseScroll = useCallback(
+    (event: MouseEvent) => {
+      setFocused('messages');
+
+      if (event.scroll?.direction === 'down') {
+        isMouseHistoryLoadArmedRef.current = true;
+        clearMouseHistoryLoadRearmTimer();
+        return;
+      }
+
+      if (event.scroll?.direction !== 'up') {
+        return;
+      }
+
+      rearmMouseHistoryLoadAfterScrollSettles();
+      if (!isMouseHistoryLoadArmedRef.current) {
+        return;
+      }
+
+      const startedLoading = tryLoadHistoryMessageOnScroll({ requireFocused: false });
+      if (startedLoading) {
+        isMouseHistoryLoadArmedRef.current = false;
+      }
+    },
+    [
+      clearMouseHistoryLoadRearmTimer,
+      rearmMouseHistoryLoadAfterScrollSettles,
+      setFocused,
+      tryLoadHistoryMessageOnScroll,
+    ],
+  );
+
   const sendMessage = useCallback(
     async (content: string) => {
       const segments: OutgoingSegment[] = [
@@ -199,6 +291,8 @@ export default function MessageView(props: MessageViewProps) {
     if (!activeScene || activeUin === undefined) {
       historyRequestRef.current += 1;
       isLoadingMoreHistoryRef.current = false;
+      isMouseHistoryLoadArmedRef.current = true;
+      clearMouseHistoryLoadRearmTimer();
       setMessages([]);
       setLoadingHistory(false);
       return;
@@ -206,13 +300,17 @@ export default function MessageView(props: MessageViewProps) {
 
     setMessages([]);
     isLoadingMoreHistoryRef.current = false;
+    isMouseHistoryLoadArmedRef.current = true;
+    clearMouseHistoryLoadRearmTimer();
     void loadHistoryMessages({ scene: activeScene, uin: activeUin }, { scrollToBottom: true });
 
     return () => {
       historyRequestRef.current += 1;
       isLoadingMoreHistoryRef.current = false;
+      isMouseHistoryLoadArmedRef.current = true;
+      clearMouseHistoryLoadRearmTimer();
     };
-  }, [activeScene, activeUin, loadHistoryMessages, setMessages]);
+  }, [activeScene, activeUin, clearMouseHistoryLoadRearmTimer, loadHistoryMessages, setMessages]);
 
   useEffect(() => {
     const listener = defineMilkyListener('message_receive', ({ data }) => {
@@ -234,38 +332,8 @@ export default function MessageView(props: MessageViewProps) {
   }, [eventSource, activeScene, activeUin, setMessages]);
 
   useKeyboard((e) => {
-    if (
-      focused === 'messages' &&
-      e.name === 'up' &&
-      activeScene &&
-      activeUin !== undefined &&
-      !isLoadingHistory &&
-      !isLoadingMoreHistoryRef.current
-    ) {
-      const scrollbox = scrollRef.current;
-      if (!scrollbox) return;
-      const beforeScrollTop = scrollbox.scrollTop;
-      if (beforeScrollTop === 0) {
-        const beforeSequence = messages[0]?.sequence;
-        isLoadingMoreHistoryRef.current = true;
-        void loadHistoryMessages(
-          {
-            scene: activeScene,
-            uin: activeUin,
-          },
-          {
-            mode: 'prepend',
-            startMessageSeq: beforeSequence && beforeSequence - 1,
-            preserveScroll: {
-              scrollbox,
-              beforeScrollTop,
-              beforeScrollHeight: scrollbox.scrollHeight,
-            },
-          },
-        ).finally(() => {
-          isLoadingMoreHistoryRef.current = false;
-        });
-      }
+    if (e.name === 'up') {
+      tryLoadHistoryMessageOnScroll();
     }
   });
 
@@ -296,6 +364,7 @@ export default function MessageView(props: MessageViewProps) {
         border
         borderColor={focused === 'messages' ? 'cyan' : undefined}
         onMouseDown={() => setFocused('messages')}
+        onMouseScroll={handleMessageMouseScroll}
       >
         <scrollbox ref={scrollRef} focused={focused === 'messages'} stickyScroll>
           <box gap={1}>
