@@ -14,8 +14,9 @@ export type ContactCardProps = BoxProps & {
 
 export default function ContactCard(props: ContactCardProps) {
   const c = props.contact;
+  const defaultBg = c.isPinned ? '#202020' : undefined;
   const activeColor = c.scene === 'friend' ? 'cyan' : 'brightGreen';
-  const bg = props.active ? activeColor : undefined;
+  const bg = props.active ? activeColor : defaultBg;
   const fg = props.active ? 'black' : props.selected ? activeColor : undefined;
 
   return (
