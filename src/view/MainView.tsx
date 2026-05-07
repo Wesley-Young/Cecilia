@@ -4,9 +4,61 @@ import { useCallback, useRef, useState } from 'react';
 
 import ContactCard from '../component/ContactCard';
 import { useRuntimeCache, useRuntimeCacheUpdater } from '../shared/cache';
+import type { Contact } from '../shared/model';
 import { useMilky } from '../shared/protocol';
 import { contactComparator, friendToBaseContact, groupToBaseContact } from '../shared/transform';
 import MessageView from './MessageView';
+
+import { platform } from 'node:os';
+
+type KeyBinding = {
+  key: string;
+  description: string;
+};
+
+function getSubmitKeySetHint(): string {
+  switch (platform()) {
+    case 'win32':
+    case 'linux':
+      return 'Ctrl+Enter';
+    case 'darwin':
+      return 'Cmd+Enter';
+    default:
+      return 'Ctrl+Enter';
+  }
+}
+
+const commonKeyBindings: KeyBinding[] = [
+  {
+    key: 'Tab',
+    description: 'Switch focus',
+  },
+];
+
+const keyBindings: Record<'contacts' | 'messages' | 'input', KeyBinding[]> = {
+  contacts: [
+    {
+      key: 'Up/Down',
+      description: 'Navigate',
+    },
+    {
+      key: 'Enter',
+      description: 'Chat',
+    },
+  ],
+  messages: [
+    {
+      key: 'Up/Down',
+      description: 'Scroll',
+    },
+  ],
+  input: [
+    {
+      key: getSubmitKeySetHint(),
+      description: 'Send',
+    },
+  ],
+};
 
 export default function MainView() {
   const { height } = useTerminalDimensions();
@@ -14,9 +66,14 @@ export default function MainView() {
   const { selfInfo, friends, groups, groupMembers, pinned, lastMsg } = useRuntimeCache();
   const updateCache = useRuntimeCacheUpdater();
 
+  const [selectedContact, setSelectedContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
+  const [activeContact, setActiveContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
+  const [focused, setFocused] = useState<'contacts' | 'messages' | 'input'>('contacts');
+  const contactScrollRef = useRef<ScrollBoxRenderable>(null);
+
   const pinnedFriendSet = new Set(pinned.friends);
   const pinnedGroupSet = new Set(pinned.groups);
-  const contacts = [
+  const contacts: Contact[] = [
     ...Object.values(groups).map((g) => ({
       ...groupToBaseContact(g),
       lastMsg: lastMsg.groups[g.group_id],
@@ -28,11 +85,6 @@ export default function MainView() {
       isPinned: pinnedFriendSet.has(f.user_id),
     })),
   ].sort(contactComparator);
-
-  const [selectedContact, setSelectedContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
-  const [activeContact, setActiveContact] = useState<{ scene: 'friend' | 'group'; uin: number } | null>(null);
-  const [focused, setFocused] = useState<'contacts' | 'messages' | 'input'>('contacts');
-  const contactScrollRef = useRef<ScrollBoxRenderable>(null);
 
   const switchActiveContact = useCallback(
     (scene: 'friend' | 'group', uin: number) => {
@@ -108,12 +160,13 @@ export default function MainView() {
           <b>{selfInfo.nickname}</b> ({selfInfo.uin})
         </text>
       </box>
-      <box flexDirection="row" height={height - 1}>
+      <box flexDirection="row" height={height - 2}>
         <box
           title="Contacts"
           titleAlignment="center"
           border
-          width={30}
+          width="30%"
+          minWidth={30}
           borderColor={focused === 'contacts' ? 'cyan' : undefined}
           onMouseDown={() => setFocused('contacts')}
         >
@@ -137,9 +190,19 @@ export default function MainView() {
             </box>
           </scrollbox>
         </box>
-        <box flexGrow={1}>
+        <box width="70%">
           <MessageView active={activeContact ?? undefined} focused={focused} setFocused={setFocused} />
         </box>
+      </box>
+      <box height={1} flexDirection="row" gap={2}>
+        {[...commonKeyBindings, ...keyBindings[focused]].map((kb) => (
+          <box key={kb.key} flexDirection="row" alignItems="center" gap={1}>
+            <text bg="white" fg="black">
+              {kb.key}
+            </text>
+            <text>{kb.description}</text>
+          </box>
+        ))}
       </box>
     </box>
   );

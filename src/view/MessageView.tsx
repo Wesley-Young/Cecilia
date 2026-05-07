@@ -14,18 +14,6 @@ import os from 'node:os';
 
 const mouseHistoryLoadRearmDelayMs = 300;
 
-function getSubmitKeySetHint(): string {
-  switch (os.platform()) {
-    case 'win32':
-    case 'linux':
-      return 'Ctrl+Enter';
-    case 'darwin':
-      return 'Cmd+Enter';
-    default:
-      return 'Ctrl+Enter';
-  }
-}
-
 function isSubmitKeySet(e: KeyEvent): boolean {
   switch (os.platform()) {
     case 'win32':
@@ -396,21 +384,15 @@ export default function MessageView(props: MessageViewProps) {
       >
         <scrollbox ref={scrollRef} focused={focused === 'messages'} stickyScroll>
           <box gap={1}>
-            {loadingError ? (
-              <box backgroundColor="brightRed" alignItems="center">
-                <text fg="black">{loadingError}</text>
-              </box>
-            ) : !isLoadingHistory ? (
-              <box backgroundColor="brightGreen" alignItems="center">
-                <text fg="black">
-                  Press <b>up</b> to load more history messages
-                </text>
-              </box>
-            ) : (
-              <box backgroundColor="brightYellow" alignItems="center">
-                <text fg="black">Loading history messages, please wait...</text>
-              </box>
-            )}
+            <box height={1} alignItems="center">
+              {loadingError ? (
+                <text fg="brightRed">{loadingError}</text>
+              ) : !isLoadingHistory ? (
+                <text fg="brightGreen">Scroll up to load more history messages</text>
+              ) : (
+                <text fg="brightYellow">Loading history messages, please wait...</text>
+              )}
+            </box>
             {messages.map((m) => {
               const id = `message-${m.scene}-${m.peerUin}-${m.sequence}`;
               return (
@@ -429,12 +411,7 @@ export default function MessageView(props: MessageViewProps) {
         borderColor={focused === 'input' ? 'cyan' : undefined}
         onMouseDown={() => setFocused('input')}
       >
-        <textarea
-          ref={textAreaRef}
-          placeholder={`Type a message here; press ${getSubmitKeySetHint()} to send.`}
-          flexGrow={1}
-          focused={focused === 'input'}
-        />
+        <textarea ref={textAreaRef} placeholder="Type message here..." flexGrow={1} focused={focused === 'input'} />
       </box>
     </>
   );
