@@ -57,7 +57,9 @@ export default function MessageView(props: MessageViewProps) {
   const chatTitle = active
     ? active.scene === 'friend'
       ? friends[active.uin]?.remark || friends[active.uin]?.nickname || String(active.uin)
-      : groups[active.uin]?.group_name || String(active.uin)
+      : `${groups[active.uin]?.group_name || String(active.uin)} (${groups[active.uin]?.member_count || '?'}/${
+          groups[active.uin]?.max_member_count || '?'
+        })`
     : 'Messages';
   const [messages, setMessages] = useImmer<Message[]>([]);
   const [isLoadingHistory, setLoadingHistory] = useState(false);
