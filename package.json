@@ -15,8 +15,8 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@opentui/core": "^0.2.1",
-    "@opentui/react": "^0.2.1",
+    "@opentui/core": "^0.2.3",
+    "@opentui/react": "^0.2.3",
     "@saltify/milky-tea": "^0.2.2",
     "@saltify/milky-types": "^1.2.2",
     "immer": "^11.1.6",
