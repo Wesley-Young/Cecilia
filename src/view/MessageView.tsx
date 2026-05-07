@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useImmer } from 'use-immer';
 
 import MessageBubble from '../component/MessageBubble';
-import { useRuntimeCache } from '../shared/cache';
+import { useRuntimeCache, useRuntimeCacheUpdater } from '../shared/cache';
 import type { Message } from '../shared/model';
 import { defineMilkyListener, useMilky, useMilkyEvent } from '../shared/protocol';
 import { transformIncomingMessage } from '../shared/transform';
@@ -52,6 +52,7 @@ export default function MessageView(props: MessageViewProps) {
   const milky = useMilky();
   const eventSource = useMilkyEvent();
   const { selfInfo, friends, groups } = useRuntimeCache();
+  const updateCache = useRuntimeCacheUpdater();
 
   const chatTitle = active
     ? active.scene === 'friend'
@@ -109,6 +110,27 @@ export default function MessageView(props: MessageViewProps) {
           .map(transformIncomingMessage)
           .filter((message): message is Message => message !== null);
 
+        if (!options?.startMessageSeq) {
+          // first fetch
+          updateCache((cache) => {
+            if (contact.scene === 'friend') {
+              if (!cache.lastMsg.friends[contact.uin] && transformed[0]) {
+                cache.lastMsg.friends[contact.uin] = {
+                  time: transformed[0].time,
+                  content: transformed[0].content,
+                };
+              }
+            } else {
+              if (!cache.lastMsg.groups[contact.uin] && transformed[0]) {
+                cache.lastMsg.groups[contact.uin] = {
+                  time: transformed[0].time,
+                  content: transformed[0].content,
+                };
+              }
+            }
+          });
+        }
+
         setMessages((messages) => {
           if (options?.mode === 'prepend') {
             const existingKeys = new Set(messages.map((message) => message.sequence));
@@ -151,7 +173,7 @@ export default function MessageView(props: MessageViewProps) {
         }
       }
     },
-    [milky, setMessages],
+    [milky, setMessages, updateCache],
   );
 
   const clearMouseHistoryLoadRearmTimer = useCallback(() => {
