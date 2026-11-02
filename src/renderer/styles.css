@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* System fonts only: Apple > Windows > other sans-serif > emoji. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI",
+    "Microsoft YaHei", system-ui, "Noto Sans", "Noto Sans CJK SC", "Helvetica Neue", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --color-bubble-out: var(--bubble-out);
+  --color-bubble-out-foreground: var(--bubble-out-foreground);
+  --color-bubble-in: var(--bubble-in);
+  --color-bubble-in-foreground: var(--bubble-in-foreground);
+  --color-sidebar: var(--sidebar);
+}
+
+/*
+ * Cecilia's palette on top of HeroUI's: a vivid accent carries the conversation (your own bubbles, the selection,
+ * unread counts); everything else stays quiet so it stands out.
+ */
+:root {
+  --accent: oklch(0.62 0.2 262);
+  --accent-foreground: oklch(0.99 0 0);
+  --bubble-out: var(--accent);
+  --bubble-out-foreground: var(--accent-foreground);
+  --bubble-in: var(--surface);
+  --bubble-in-foreground: var(--surface-foreground);
+  --sidebar: color-mix(in oklab, var(--background) 70%, var(--surface) 30%);
+}
+
+.dark {
+  --accent: oklch(0.66 0.19 262);
+  --bubble-in: var(--surface-secondary);
+  --sidebar: color-mix(in oklab, var(--background) 85%, black 15%);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-background text-foreground font-sans antialiased;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Message text is the one thing people copy. */
+.selectable {
+  user-select: text;
+}
+
+/* The window has no native title bar on macOS; the top strip of each pane drags the window. */
+.app-drag {
+  -webkit-app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}

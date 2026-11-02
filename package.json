@@ -1,0 +1,70 @@
+{
+  "name": "cecilia",
+  "productName": "Cecilia",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Desktop IM client built on @acidify/core",
+  "author": "Wei FeiYang",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "main": "out/main/index.js",
+  "imports": {
+    "#core/*": "./src/core/*",
+    "#main/*": "./src/main/*",
+    "#account/*": "./src/account/*"
+  },
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=24.13.0",
+    "pnpm": ">=12 <13"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "dev:mock": "CECILIA_MOCK=1 electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "package": "electron-vite build && electron-builder --dir",
+    "dist": "electron-vite build && electron-builder",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "dependencies": {
+    "@acidify/core": "1.7.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "@fraqjs/kernel": "1.1.1",
+    "@fraqjs/plugin-kysely": "1.1.0",
+    "@heroui/react": "3.2.7",
+    "@heroui/styles": "3.2.7",
+    "@internationalized/date": "^3.12.4",
+    "@react-aria/ssr": "^3.10.1",
+    "@react-aria/utils": "^3.34.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@tanstack/react-query": "5.105.2",
+    "@trpc/client": "11.22.1",
+    "@trpc/server": "11.22.1",
+    "@trpc/tanstack-react-query": "11.22.1",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0",
+    "electron-log": "5.4.4",
+    "electron-vite": "6.0.0",
+    "kysely": "0.29.8",
+    "lucide-react": "^1.66.0",
+    "mitt": "3.0.1",
+    "react": "19.3.1",
+    "react-aria": "^3.53.1",
+    "react-aria-components": "^1.22.1",
+    "react-dom": "19.3.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "virtua": "0.54.1",
+    "vite": "8.3.5",
+    "zod": "4.6.7"
+  }
+}
