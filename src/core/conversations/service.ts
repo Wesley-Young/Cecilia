@@ -91,6 +91,11 @@ export class ConversationService {
     }
   }
 
+  /** Forgets every conversation, for when the account changes. */
+  async clear() {
+    await this.db.deleteFrom('cecilia_conversations').execute();
+  }
+
   /** Renames conversations after the contact list changed. */
   async rename() {
     const rows = await this.db.selectFrom('cecilia_conversations').selectAll().execute();

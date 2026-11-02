@@ -1,14 +1,12 @@
 // The control channel between the main process and an account process (`process.parentPort`). RPC from windows
 // does not go through here: each window gets its own MessagePort, handed over with a `connect` message.
 
+/** How the main process starts an account. Everything about logging in is in the account's own settings. */
 export interface AccountConfig {
   /** Holds the database and media cache of this account. */
   profileDir: string;
   /** Use the mock client instead of logging in. */
   mock: boolean;
-  uin: number | undefined;
-  protocol: 'Linux' | 'Mac';
-  sign: { url: string; token: string } | undefined;
 }
 
 export type SecretOperation =

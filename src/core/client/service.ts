@@ -5,6 +5,7 @@ import type { LoginState } from '#core/model/login.ts';
 import type { RemoteMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
 import type { OutgoingSegment } from '#core/model/segment.ts';
+import type { AccountSettings } from '#core/model/settings.ts';
 
 export interface SendResult {
   seq: number;
@@ -37,6 +38,9 @@ export abstract class ChatClient {
 
   /** Goes offline and forgets the saved session, so the next login needs a QR code. */
   abstract logout(): Promise<void>;
+
+  /** Reconnects with new account settings, going offline first. The mock has nothing to configure. */
+  abstract applySettings(settings: AccountSettings): Promise<void>;
 
   abstract getFriends(forceUpdate?: boolean): Promise<Friend[]>;
   abstract getGroups(forceUpdate?: boolean): Promise<Group[]>;

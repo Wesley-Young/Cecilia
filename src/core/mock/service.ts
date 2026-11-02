@@ -92,6 +92,8 @@ export class MockClient extends ChatClient {
     this.setState({ kind: 'idle' });
   }
 
+  async applySettings() {}
+
   async getFriends(): Promise<Friend[]> {
     return friends;
   }

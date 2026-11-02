@@ -1,5 +1,5 @@
 import {
-  AppInfo,
+  type AppInfo,
   Bot,
   type BotOutgoingMessageBuilder,
   CoroutineScope,
@@ -18,17 +18,10 @@ import type { LoginState } from '#core/model/login.ts';
 import type { RemoteMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
 import type { OutgoingSegment } from '#core/model/segment.ts';
+import { type AccountSettings, isComplete } from '#core/model/settings.ts';
 import type { Secrets } from '#core/secrets/service.ts';
+import { bundledAppInfo } from './app-info.ts';
 import { toDataUrl, toFriend, toGroup, toPeer, toQrCodeState, toRemoteMessage, toUinList } from './mapper.ts';
-
-export interface AcidifyOptions {
-  /** The account to log in as. The sign service needs it before the QR code is scanned. */
-  uin: number | undefined;
-  /** Which bundled PC protocol to present as. */
-  protocol: 'Linux' | 'Mac';
-  /** A Lagrange V2 sign service; without it the account cannot log in. */
-  sign?: { url: string; token: string } | undefined;
-}
 
 const sessionKey = 'session';
 /** Delays between reconnect attempts after going offline; the last one repeats. */
@@ -61,80 +54,115 @@ function logHandler(logger: Logger): LogHandler {
 
 const describe = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-/** ChatClient backed by an acidify PC protocol bot. */
+/** One bot and the coroutine scope it runs in, built from one set of settings and replaced as a whole. */
+interface Connection {
+  bot: Bot;
+  scope: CoroutineScope;
+  uin: number;
+}
+
+/**
+ * ChatClient backed by an acidify PC protocol bot. The bot is rebuilt whenever the settings change; callbacks from a
+ * replaced bot are ignored.
+ */
 export class AcidifyClient extends ChatClient {
-  private state: LoginState;
-  private readonly scope = new CoroutineScope(true);
-  private readonly bot: Bot | undefined;
-  private hasSession: boolean;
+  private state: LoginState = { kind: 'unconfigured', message: '请先完成账号设置' };
+  private connection: Connection | undefined;
+  private hasSession = false;
   private loggingIn: Promise<void> | undefined;
   private retries = 0;
   private retryTimer: NodeJS.Timeout | undefined;
   private disposed = false;
   private readonly ctx: ChatContext;
   private readonly secrets: Secrets;
-  private readonly options: AcidifyOptions;
 
-  constructor(ctx: ChatContext, secrets: Secrets, options: AcidifyOptions, savedSession: string | undefined) {
+  constructor(ctx: ChatContext, secrets: Secrets) {
     super();
     this.ctx = ctx;
     this.secrets = secrets;
-    this.options = options;
-    this.hasSession = savedSession !== undefined;
-    const { uin, sign } = options;
-    if (uin === undefined || !sign) {
-      this.state = { kind: 'unconfigured', message: uin === undefined ? '未配置 QQ 号' : '未配置签名服务' };
-      return;
-    }
-    this.state = { kind: 'idle' };
-
-    const appInfo = AppInfo.Bundled[options.protocol];
-    const sessionStore = savedSession ? SessionStore.fromJson(savedSession) : SessionStore.empty();
-    const guid = Buffer.from(sessionStore.guid.buffer, sessionStore.guid.byteOffset, sessionStore.guid.byteLength);
-    const signProvider = new LagrangeUrlSignProvider(
-      this.scope,
-      sign.url,
-      sign.token,
-      BigInt(uin),
-      guid.toString('hex'),
-      qua(appInfo),
-    );
-    const bot = Bot.create(appInfo, sessionStore, signProvider, this.scope, LogLevel.INFO, logHandler(ctx.logger));
-    this.bot = bot;
-
-    bot.onQRCodeGenerated((event) => this.setState({ kind: 'qrcode', image: toDataUrl(event.png), state: 'waiting' }));
-    bot.onQRCodeStateQuery((event) => {
-      const qrState = toQrCodeState(event.state);
-      if (qrState && this.state.kind === 'qrcode' && this.state.state !== qrState) {
-        this.setState({ ...this.state, state: qrState });
-      }
-    });
-    bot.onSessionStoreUpdated((event) => {
-      this.hasSession = true;
-      this.secrets
-        .set(sessionKey, event.sessionStore.toJson())
-        .catch((error: unknown) => ctx.logger.error('Cannot save the session', error));
-    });
-    bot.onBotOffline((event) => {
-      if (this.state.kind === 'online') this.scheduleRetry(event.reason);
-    });
-    bot.onMessageReceive((event) => {
-      const message = toRemoteMessage(event.message);
-      if (message) ctx.emit('client/message', message);
-    });
-    bot.onMessageRecall((event) => {
-      const peer = toPeer(event.scene, event.peerUin);
-      if (peer) ctx.emit('client/recall', { peer, seq: Number(event.messageSeq) });
-    });
   }
 
   get loginState(): LoginState {
     return this.state;
   }
 
-  /** Logs in on startup when a session is saved, so the user does not have to. */
-  start() {
-    if (this.bot && this.hasSession) void this.login();
+  async applySettings(settings: AccountSettings) {
+    await this.disconnect();
+    const appInfo = bundledAppInfo(settings.appInfo);
+    if (!isComplete(settings) || settings.uin === null) {
+      this.setState({ kind: 'unconfigured', message: '请先完成账号设置' });
+      return;
+    }
+    if (!appInfo) {
+      this.setState({ kind: 'unconfigured', message: '所选的协议版本已不可用，请重新选择' });
+      return;
+    }
+
+    const saved = await this.secrets.get(sessionKey);
+    this.hasSession = saved !== undefined;
+    this.retries = 0;
+    const scope = new CoroutineScope(true);
+    const sessionStore = saved ? SessionStore.fromJson(saved) : SessionStore.empty();
+    const guid = Buffer.from(sessionStore.guid.buffer, sessionStore.guid.byteOffset, sessionStore.guid.byteLength);
+    const signProvider = new LagrangeUrlSignProvider(
+      scope,
+      settings.signUrl,
+      settings.signToken,
+      BigInt(settings.uin),
+      guid.toString('hex'),
+      qua(appInfo),
+    );
+    const bot = Bot.create(appInfo, sessionStore, signProvider, scope, LogLevel.INFO, logHandler(this.ctx.logger));
+    const connection: Connection = { bot, scope, uin: settings.uin };
+    this.connection = connection;
+    const current = () => this.connection === connection;
+
+    bot.onQRCodeGenerated((event) => {
+      if (current()) this.setState({ kind: 'qrcode', image: toDataUrl(event.png), state: 'waiting' });
+    });
+    bot.onQRCodeStateQuery((event) => {
+      const qrState = toQrCodeState(event.state);
+      if (current() && qrState && this.state.kind === 'qrcode' && this.state.state !== qrState) {
+        this.setState({ ...this.state, state: qrState });
+      }
+    });
+    bot.onSessionStoreUpdated((event) => {
+      if (!current()) return;
+      this.hasSession = true;
+      this.secrets
+        .set(sessionKey, event.sessionStore.toJson())
+        .catch((error: unknown) => this.ctx.logger.error('Cannot save the session', error));
+    });
+    bot.onBotOffline((event) => {
+      if (current() && this.state.kind === 'online') this.scheduleRetry(event.reason);
+    });
+    bot.onMessageReceive((event) => {
+      const message = current() ? toRemoteMessage(event.message) : undefined;
+      if (message) this.ctx.emit('client/message', message);
+    });
+    bot.onMessageRecall((event) => {
+      const peer = current() ? toPeer(event.scene, event.peerUin) : undefined;
+      if (peer) this.ctx.emit('client/recall', { peer, seq: Number(event.messageSeq) });
+    });
+
+    this.setState({ kind: 'idle' });
+    // A saved session logs in by itself, so the user does not have to.
+    if (this.hasSession) void this.login();
+  }
+
+  /** Goes offline and stops the current bot; nothing it does afterwards reaches the context. */
+  private async disconnect() {
+    const connection = this.connection;
+    if (!connection) return;
+    this.connection = undefined;
+    clearTimeout(this.retryTimer);
+    try {
+      if (connection.bot.isLoggedIn) await connection.bot.offline();
+    } catch (error) {
+      this.ctx.logger.warn('Cannot go offline cleanly', error);
+    } finally {
+      connection.scope.cancel();
+    }
   }
 
   login(): Promise<void> {
@@ -145,22 +173,25 @@ export class AcidifyClient extends ChatClient {
   }
 
   private async doLogin() {
-    const bot = this.bot;
-    if (!bot) return;
+    const connection = this.connection;
+    if (!connection) return;
+    const { bot, uin } = connection;
     clearTimeout(this.retryTimer);
     this.setState({ kind: 'logging-in' });
     try {
       if (this.hasSession) await bot.login();
       else await bot.qrCodeLogin();
-      if (Number(bot.uin) !== this.options.uin) {
+      if (Number(bot.uin) !== uin) {
         await bot.offline();
-        throw new AppError('precondition_failed', `登录的账号 ${bot.uin} 与配置的 ${this.options.uin} 不一致`);
+        throw new AppError('precondition_failed', `登录的账号 ${bot.uin} 与设置的 ${uin} 不一致`);
       }
       const info = await bot.fetchUserInfoByUin(bot.uin);
+      if (this.connection !== connection) return;
       this.retries = 0;
-      this.setState({ kind: 'online', self: { uin: Number(bot.uin), nickname: info.nickname } });
+      this.setState({ kind: 'online', self: { uin, nickname: info.nickname } });
     } catch (error) {
-      if (this.disposed) return;
+      // The settings changed or the client stopped meanwhile; the new bot owns the state now.
+      if (this.disposed || this.connection !== connection) return;
       this.ctx.logger.warn('Login failed', error);
       // A dropped connection with a valid session is worth retrying; anything else needs the user.
       if (this.hasSession && this.retries > 0) this.scheduleRetry(describe(error));
@@ -179,16 +210,18 @@ export class AcidifyClient extends ChatClient {
 
   async logout() {
     clearTimeout(this.retryTimer);
-    if (this.bot?.isLoggedIn) await this.bot.offline();
+    const bot = this.connection?.bot;
+    if (bot?.isLoggedIn) await bot.offline();
     await this.secrets.delete(sessionKey);
     this.hasSession = false;
     this.retries = 0;
-    this.setState({ kind: 'idle' });
+    if (this.connection) this.setState({ kind: 'idle' });
   }
 
   private online(): Bot {
-    if (!this.bot || this.state.kind !== 'online') throw new AppError('precondition_failed', '尚未登录');
-    return this.bot;
+    const bot = this.connection?.bot;
+    if (!bot || this.state.kind !== 'online') throw new AppError('precondition_failed', '尚未登录');
+    return bot;
   }
 
   async getFriends(forceUpdate = false): Promise<Friend[]> {
@@ -259,13 +292,6 @@ export class AcidifyClient extends ChatClient {
 
   async dispose() {
     this.disposed = true;
-    clearTimeout(this.retryTimer);
-    try {
-      if (this.bot?.isLoggedIn) await this.bot.offline();
-    } catch (error) {
-      this.ctx.logger.warn('Cannot go offline cleanly', error);
-    } finally {
-      this.scope.cancel();
-    }
+    await this.disconnect();
   }
 }

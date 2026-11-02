@@ -1,8 +1,9 @@
 import { Button, Spinner } from '@heroui/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import type { LoginState, QrCodeState } from '#core/model/login.ts';
+import SettingsForm from '@/components/SettingsForm';
 import { core, errorMessage, shell } from '@/lib/rpc';
 
 const qrCaptions = {
@@ -14,77 +15,94 @@ const qrCaptions = {
 
 export default function LoginView({ state }: { state: LoginState }) {
   const info = useQuery(shell.system.info.queryOptions());
+  const settings = useQuery(core.settings.get.queryOptions());
   const start = useMutation(core.login.start.mutationOptions());
+  const [editing, setEditing] = useState(false);
   const login = () => start.mutate();
+  // The mock logs in by itself and ignores the settings.
+  const configurable = info.data !== undefined && !info.data.mock;
+  const showSettings = configurable && (state.kind === 'unconfigured' || editing);
 
   let body: ReactNode;
-  switch (state.kind) {
-    case 'idle':
-      body = (
-        <Button variant="primary" fullWidth onPress={login} isPending={start.isPending}>
-          扫码登录
-        </Button>
-      );
-      break;
-    case 'logging-in':
-      body = (
-        <div className="flex flex-col items-center gap-3 text-muted text-sm">
-          <Spinner />
-          正在登录…
-        </div>
-      );
-      break;
-    case 'qrcode': {
-      const ended = state.state === 'expired' || state.state === 'canceled';
-      body = (
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative rounded-2xl bg-white p-3 shadow-sm">
-            <img src={state.image} alt="登录二维码" className={`size-48 ${ended ? 'opacity-20' : ''}`} />
-          </div>
-          <p className="text-sm text-muted">{qrCaptions[state.state]}</p>
-          {ended && (
-            <Button variant="primary" onPress={login}>
-              刷新二维码
-            </Button>
-          )}
-        </div>
-      );
-      break;
-    }
-    case 'failed':
-      body = (
-        <div className="flex flex-col items-center gap-4">
-          <p className="text-center text-sm text-danger">{state.message}</p>
-          <Button variant="primary" onPress={login}>
-            重新登录
+  if (showSettings) {
+    body = settings.data ? (
+      <SettingsForm
+        settings={settings.data}
+        onSaved={() => setEditing(false)}
+        onCancel={state.kind === 'unconfigured' ? undefined : () => setEditing(false)}
+      />
+    ) : (
+      <Spinner />
+    );
+  } else
+    switch (state.kind) {
+      case 'idle':
+        body = (
+          <Button variant="primary" fullWidth onPress={login} isPending={start.isPending}>
+            扫码登录
           </Button>
-        </div>
-      );
-      break;
-    case 'unconfigured':
-      body = (
-        <p className="text-center text-sm text-muted">
-          {state.message}。请设置 CECILIA_UIN、CECILIA_SIGN_URL 和 CECILIA_SIGN_TOKEN 后重启
-        </p>
-      );
-      break;
-    case 'online':
-    case 'offline':
-      body = null;
-      break;
-  }
+        );
+        break;
+      case 'logging-in':
+        body = (
+          <div className="flex flex-col items-center gap-3 text-muted text-sm">
+            <Spinner />
+            正在登录…
+          </div>
+        );
+        break;
+      case 'qrcode': {
+        const ended = state.state === 'expired' || state.state === 'canceled';
+        body = (
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative rounded-2xl bg-white p-3 shadow-sm">
+              <img src={state.image} alt="登录二维码" className={`size-48 ${ended ? 'opacity-20' : ''}`} />
+            </div>
+            <p className="text-sm text-muted">{qrCaptions[state.state]}</p>
+            {ended && (
+              <Button variant="primary" onPress={login}>
+                刷新二维码
+              </Button>
+            )}
+          </div>
+        );
+        break;
+      }
+      case 'failed':
+        body = (
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-center text-sm text-danger">{state.message}</p>
+            <Button variant="primary" onPress={login}>
+              重新登录
+            </Button>
+          </div>
+        );
+        break;
+      case 'unconfigured':
+        body = <p className="text-center text-sm text-muted">{state.message}</p>;
+        break;
+      case 'online':
+      case 'offline':
+        body = null;
+        break;
+    }
 
   return (
     <div className="app-drag flex h-full flex-col items-center justify-center bg-sidebar px-6">
-      <div className="app-no-drag flex w-72 flex-col items-center gap-8">
+      <div className="app-no-drag flex w-80 flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-2">
           <div className="flex size-14 items-center justify-center rounded-2xl bg-accent font-semibold text-2xl text-accent-foreground">
             C
           </div>
-          <h1 className="font-semibold text-xl">Cecilia</h1>
+          <h1 className="font-semibold text-xl">{showSettings ? '账号设置' : 'Cecilia'}</h1>
         </div>
         {body}
         {start.error && <p className="text-center text-sm text-danger">{errorMessage(start.error)}</p>}
+        {configurable && !showSettings && (state.kind === 'idle' || state.kind === 'failed') && (
+          <Button variant="ghost" size="sm" onPress={() => setEditing(true)}>
+            账号设置
+          </Button>
+        )}
       </div>
       {info.data && (
         <p className="absolute bottom-4 text-xs text-muted">

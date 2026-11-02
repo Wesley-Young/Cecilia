@@ -1,20 +1,19 @@
 import { ChatClient } from '#core/client/service.ts';
 import { definePlugin } from '#core/context.ts';
 import { Secrets } from '#core/secrets/service.ts';
-import { AcidifyClient, type AcidifyOptions } from './service.ts';
+import { SettingsStore } from '#core/settings/service.ts';
+import { AcidifyClient } from './service.ts';
 
-export type { AcidifyOptions } from './service.ts';
-
-/** Provides the ChatClient for a real account. */
+/** Provides the ChatClient for a real account, built from the account settings. */
 export const AcidifyPlugin = definePlugin({
   name: 'acidify',
-  inject: { secrets: Secrets },
+  inject: { secrets: Secrets, settings: SettingsStore },
   provides: [ChatClient],
-  async apply(ctx, options: AcidifyOptions) {
-    const session = await ctx.secrets.get('session');
-    ctx.provide(ChatClient, new AcidifyClient(ctx, ctx.secrets, options, session));
+  apply(ctx) {
+    ctx.provide(ChatClient, new AcidifyClient(ctx, ctx.secrets));
   },
-  start(ctx) {
-    (ctx.resolve(ChatClient) as AcidifyClient).start();
+  // Settings can be read once plugin-kysely has migrated, which its own `start` does before this one runs.
+  async start(ctx) {
+    await (ctx.resolve(ChatClient) as AcidifyClient).applySettings(await ctx.settings.load());
   },
 });

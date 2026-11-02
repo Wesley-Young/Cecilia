@@ -1,6 +1,6 @@
 import { Button, Spinner } from '@heroui/react';
-import { useMutation } from '@tanstack/react-query';
-import { LogOut, MessagesSquare, WifiOff } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { LogOut, MessagesSquare, Settings, WifiOff } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
 import type { Conversation } from '#core/model/contact.ts';
@@ -10,7 +10,8 @@ import Composer from '@/components/Composer';
 import ConversationList from '@/components/ConversationList';
 import MessageList from '@/components/MessageList';
 import PeerAvatar from '@/components/PeerAvatar';
-import { core } from '@/lib/rpc';
+import SettingsDialog from '@/components/SettingsDialog';
+import { core, shell } from '@/lib/rpc';
 
 function StatusLine({ state }: { state: LoginState }) {
   if (state.kind === 'online') return null;
@@ -51,6 +52,8 @@ function ChatPane({ conversation, online }: { conversation: Conversation; online
 export default function MainView({ state, conversations }: { state: LoginState; conversations: Conversation[] }) {
   const [selected, setSelected] = useState<Peer>();
   const logout = useMutation(core.login.logout.mutationOptions());
+  const info = useQuery(shell.system.info.queryOptions());
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const current = selected && conversations.find((conversation) => samePeer(conversation.peer, selected));
   const self = state.kind === 'online' ? state.self : undefined;
 
@@ -70,6 +73,11 @@ export default function MainView({ state, conversations }: { state: LoginState; 
             </>
           ) : (
             <span className="flex-1 font-semibold">Cecilia</span>
+          )}
+          {info.data && !info.data.mock && (
+            <Button variant="ghost" size="sm" isIconOnly aria-label="账号设置" onPress={() => setSettingsOpen(true)}>
+              <Settings className="size-4" />
+            </Button>
           )}
           <Button
             variant="ghost"
@@ -95,6 +103,7 @@ export default function MainView({ state, conversations }: { state: LoginState; 
           <p className="text-sm">选择一个会话开始聊天</p>
         </section>
       )}
+      <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

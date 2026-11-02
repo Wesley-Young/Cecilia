@@ -1,6 +1,7 @@
 import { type Logger, serviceToken } from '@fraqjs/kernel';
 import type { MessagePortMain } from 'electron';
 
+import { AccountService } from '#core/account/service.ts';
 import { ChatStore } from '#core/chat-store/service.ts';
 import { ChatClient } from '#core/client/service.ts';
 import { definePlugin } from '#core/context.ts';
@@ -38,7 +39,7 @@ export class RpcServer {
 
 export const RpcPlugin = definePlugin({
   name: 'rpc',
-  inject: { client: ChatClient, store: ChatStore, conversations: ConversationService },
+  inject: { client: ChatClient, store: ChatStore, conversations: ConversationService, account: AccountService },
   provides: [RpcServer],
   apply(ctx) {
     const router = createCoreRouter({
@@ -46,6 +47,7 @@ export const RpcPlugin = definePlugin({
       client: ctx.client,
       store: ctx.store,
       conversations: ctx.conversations,
+      account: ctx.account,
     });
     ctx.provide(RpcServer, new RpcServer(router, ctx.logger));
   },

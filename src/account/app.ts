@@ -1,5 +1,6 @@
 import { KyselyPlugin } from '@fraqjs/plugin-kysely';
 
+import { AccountPlugin } from '#core/account/index.ts';
 import { AcidifyPlugin } from '#core/acidify/index.ts';
 import { ChatStorePlugin } from '#core/chat-store/index.ts';
 import { ContactsPlugin } from '#core/contacts/index.ts';
@@ -7,6 +8,7 @@ import { ChatContext } from '#core/context.ts';
 import { ConversationsPlugin } from '#core/conversations/index.ts';
 import { DatabasePlugin } from '#core/database/index.ts';
 import { MockPlugin } from '#core/mock/index.ts';
+import { SettingsPlugin } from '#core/settings/index.ts';
 import type { AccountConfig } from './control.ts';
 import { RpcPlugin } from './rpc/index.ts';
 import { type HostSecrets, HostSecretsPlugin } from './secrets.ts';
@@ -25,14 +27,12 @@ export function createAccount(config: AccountConfig, secrets: HostSecrets): Chat
     autoVacuum: { enabled: false },
   });
   ctx.install(DatabasePlugin);
-  if (config.mock) {
-    ctx.install(MockPlugin);
-  } else {
-    ctx.install(AcidifyPlugin, { uin: config.uin, protocol: config.protocol, sign: config.sign });
-  }
+  ctx.install(SettingsPlugin);
+  ctx.install(config.mock ? MockPlugin : AcidifyPlugin);
   ctx.install(ContactsPlugin);
   ctx.install(ChatStorePlugin);
   ctx.install(ConversationsPlugin);
+  ctx.install(AccountPlugin);
   ctx.install(RpcPlugin);
   return ctx;
 }

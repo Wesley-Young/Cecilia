@@ -27,29 +27,18 @@ export function applyUserDataPath() {
   if (env.CECILIA_HOME) app.setPath('userData', join(env.CECILIA_HOME, 'electron'));
 }
 
-function parseUin(value: string | undefined): number | undefined {
-  const uin = Number(value);
-  return Number.isSafeInteger(uin) && uin > 0 ? uin : undefined;
-}
-
 /**
- * Read once at startup; `app.ts` hands each plugin its part, and plugins never read `process.env` directly. Until
- * there is a settings screen, the account is configured with CECILIA_* environment variables (see README).
+ * Read once at startup; `app.ts` hands each plugin its part, and plugins never read `process.env` directly. Only
+ * development switches come from the environment; how the account logs in is set in the app.
  */
 export function loadConfig(): AppConfig {
   const base = env.CECILIA_HOME ?? app.getPath('userData');
-  const mock = env.CECILIA_MOCK === '1';
   return {
     version: app.getVersion(),
     dirs: { data: join(base, 'data'), logs: join(base, 'logs') },
     rendererDir: join(import.meta.dirname, '../renderer'),
     rendererDevUrl: app.isPackaged ? undefined : env.ELECTRON_RENDERER_URL,
     accountEntry: join(import.meta.dirname, 'account.js'),
-    account: {
-      mock,
-      uin: mock ? 10000 : parseUin(env.CECILIA_UIN),
-      protocol: env.CECILIA_PROTOCOL === 'Mac' ? 'Mac' : 'Linux',
-      sign: env.CECILIA_SIGN_URL ? { url: env.CECILIA_SIGN_URL, token: env.CECILIA_SIGN_TOKEN ?? '' } : undefined,
-    },
+    account: { mock: env.CECILIA_MOCK === '1' },
   };
 }

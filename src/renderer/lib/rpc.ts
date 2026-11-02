@@ -41,3 +41,10 @@ export const shell = createTRPCOptionsProxy<ShellRouter>({
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败，请稍后重试';
 }
+
+/** The message for each invalid input field of a failed request, by field name. */
+export function fieldErrors(error: unknown): Record<string, string | undefined> {
+  if (!(error instanceof TRPCClientError)) return {};
+  const fields = (error as TRPCClientError<CoreRouter>).data?.fieldErrors ?? {};
+  return Object.fromEntries(Object.entries(fields).map(([field, messages]) => [field, messages?.[0]]));
+}

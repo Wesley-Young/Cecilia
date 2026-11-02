@@ -170,6 +170,11 @@ export class ChatStore {
     if (row) this.ctx.emit('store/message', toChatMessage(row));
   }
 
+  /** Forgets every message, for when the account changes. */
+  async clear() {
+    await this.db.deleteFrom('cecilia_messages').execute();
+  }
+
   /**
    * A page of history before `before` (the newest when omitted). Local rows come first; the server is asked when
    * online and the newest page is requested (to catch up on what arrived while offline), when the local page is

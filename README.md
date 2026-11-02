@@ -26,16 +26,14 @@ ELECTRON_GET_USE_PROXY=1 GLOBAL_AGENT_HTTPS_PROXY=http://127.0.0.1:7890 pnpm ins
 
 ### 配置账号
 
-在设置界面完成之前，账号通过环境变量配置：
+首次启动时在登录界面填写 QQ 号、Lagrange V2 签名服务的地址和 Token，并选择协议版本（`@acidify/core` 内置的 AppInfo）。之后可以在登录界面的「账号设置」或主界面左上角的设置按钮中修改。设置保存在账号的数据库中；更换 QQ 号会清空本机的聊天记录和登录状态。
 
-| 变量                 | 说明                                   |
-| -------------------- | -------------------------------------- |
-| `CECILIA_UIN`        | 登录的 QQ 号（签名服务在扫码前就需要） |
-| `CECILIA_SIGN_URL`   | Lagrange V2 签名服务地址               |
-| `CECILIA_SIGN_TOKEN` | 签名服务的 Token                       |
-| `CECILIA_PROTOCOL`   | `Linux`（默认）或 `Mac`                |
-| `CECILIA_MOCK`       | 设为 `1` 时使用模拟账号                |
-| `CECILIA_HOME`       | 数据目录；设置后不影响已安装的应用     |
+开发时还有两个环境变量：
+
+| 变量           | 说明                               |
+| -------------- | ---------------------------------- |
+| `CECILIA_MOCK` | 设为 `1` 时使用模拟账号            |
+| `CECILIA_HOME` | 数据目录；设置后不影响已安装的应用 |
 
 ### 检查
 

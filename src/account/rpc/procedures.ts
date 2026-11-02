@@ -18,7 +18,12 @@ const t = initTRPC.context<RpcContext>().create({
         error.code === 'INTERNAL_SERVER_ERROR'
           ? '操作失败，请稍后重试'
           : (validation?.issues[0]?.message ?? shape.message),
-      data: { ...shape.data, stack: undefined },
+      data: {
+        ...shape.data,
+        stack: undefined,
+        // Forms show each message next to its field.
+        fieldErrors: validation ? (z.flattenError(validation).fieldErrors as Record<string, string[]>) : undefined,
+      },
     };
   },
 });

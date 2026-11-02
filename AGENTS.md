@@ -20,7 +20,8 @@
 - 异步准备写在插件的 `apply` 中，启动后才开始的工作写在 `start` 中；资源释放写在服务的 `dispose()` 里，kernel 按 provide 的逆序调用。
 - kernel 不支持热插拔：插件在启动前装好，Context 停止后不能重启。
 - 不使用构造函数参数属性（`erasableSyntaxOnly`），字段在类中声明后在构造函数里赋值。
-- 配置在启动时由主进程读取一次，经组装入口作为插件参数传入；插件不读 `process.env`。需要 Electron 能力的服务在 core 中定义为抽象类，由宿主实现（如 `Secrets`）。
+- 进程级的配置（数据目录、是否使用 mock）在启动时由主进程读取一次，经组装入口作为插件参数传入；插件不读 `process.env`。需要 Electron 能力的服务在 core 中定义为抽象类，由宿主实现（如 `Secrets`）。
+- 账号如何登录（QQ 号、签名服务、AppInfo）是账号设置，存在账号数据库的 `cecilia_settings` 中，只通过 `AccountService.update` 修改：它在 QQ 号变化时先清空会话和本地消息，再让 `ChatClient.applySettings` 重建连接，不重启进程。
 
 ## 数据边界
 
