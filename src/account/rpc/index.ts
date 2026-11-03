@@ -4,6 +4,7 @@ import type { MessagePortMain } from 'electron';
 import { AccountService } from '#core/account/service.ts';
 import { ChatStore } from '#core/chat-store/service.ts';
 import { ChatClient } from '#core/client/service.ts';
+import { ContactService } from '#core/contacts/service.ts';
 import { definePlugin } from '#core/context.ts';
 import { ConversationService } from '#core/conversations/service.ts';
 import { servePort } from './port-server.ts';
@@ -39,13 +40,20 @@ export class RpcServer {
 
 export const RpcPlugin = definePlugin({
   name: 'rpc',
-  inject: { client: ChatClient, store: ChatStore, conversations: ConversationService, account: AccountService },
+  inject: {
+    client: ChatClient,
+    store: ChatStore,
+    contacts: ContactService,
+    conversations: ConversationService,
+    account: AccountService,
+  },
   provides: [RpcServer],
   apply(ctx) {
     const router = createCoreRouter({
       ctx,
       client: ctx.client,
       store: ctx.store,
+      contacts: ctx.contacts,
       conversations: ctx.conversations,
       account: ctx.account,
     });

@@ -3,9 +3,11 @@ import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 import type { AccountService } from '#core/account/service.ts';
 import type { ChatStore } from '#core/chat-store/service.ts';
 import type { ChatClient } from '#core/client/service.ts';
+import type { ContactService } from '#core/contacts/service.ts';
 import type { ChatContext } from '#core/context.ts';
 import type { ConversationService } from '#core/conversations/service.ts';
 import { router } from './procedures.ts';
+import { contactRoutes } from './routes/contacts.ts';
 import { conversationRoutes } from './routes/conversations.ts';
 import { loginRoutes } from './routes/login.ts';
 import { mediaRoutes } from './routes/media.ts';
@@ -20,6 +22,7 @@ export interface RouterServices {
   ctx: ChatContext;
   client: ChatClient;
   store: ChatStore;
+  contacts: ContactService;
   conversations: ConversationService;
   account: AccountService;
 }
@@ -29,6 +32,7 @@ export function createCoreRouter(services: RouterServices) {
   return router({
     login: loginRoutes(services.client, services.account),
     conversations: conversationRoutes(services.conversations),
+    contacts: contactRoutes(services.contacts),
     messages: messageRoutes(services.store),
     media: mediaRoutes(services.client),
     settings: settingRoutes(services.account),

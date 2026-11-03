@@ -47,6 +47,10 @@ export class ContactService {
     return this.friends.get(uin);
   }
 
+  group(uin: number): Group | undefined {
+    return this.groups.get(uin);
+  }
+
   /** The display name of a conversation, when the contact is known. */
   nameOf(peer: Peer): string | undefined {
     if (peer.scene === 'group') return this.groups.get(peer.uin)?.name;

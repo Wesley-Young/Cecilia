@@ -8,7 +8,9 @@ import { publicProcedure } from '../procedures.ts';
 export type ChatUpdate =
   | { type: 'login'; state: LoginState }
   | { type: 'message'; message: ChatMessage }
-  | { type: 'conversation'; conversation: Conversation };
+  | { type: 'conversation'; conversation: Conversation }
+  /** The friend and group lists were fetched again; contact queries are out of date. */
+  | { type: 'contacts' };
 
 /** Buffers context events into an async iterable until `signal` aborts. */
 async function* listen(ctx: ChatContext, signal: AbortSignal | undefined): AsyncGenerator<ChatUpdate> {
@@ -22,6 +24,7 @@ async function* listen(ctx: ChatContext, signal: AbortSignal | undefined): Async
     ctx.on('client/login', (state) => push({ type: 'login', state })),
     ctx.on('store/message', (message) => push({ type: 'message', message })),
     ctx.on('store/conversation', (conversation) => push({ type: 'conversation', conversation })),
+    ctx.on('contacts/updated', () => push({ type: 'contacts' })),
   ];
   const stopped = new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve(), { once: true }));
   try {

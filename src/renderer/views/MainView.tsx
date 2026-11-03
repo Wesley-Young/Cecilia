@@ -1,6 +1,6 @@
-import { Button, Spinner } from '@heroui/react';
+import { Button, Chip, Spinner } from '@heroui/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { LogOut, MessagesSquare, Settings, WifiOff } from 'lucide-react';
+import { LogOut, MessagesSquare, Settings, Users, WifiOff } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
 import type { Conversation } from '#core/model/contact.ts';
@@ -29,6 +29,18 @@ function StatusLine({ state }: { state: LoginState }) {
   );
 }
 
+/** A group's size; shown once the group list has loaded. */
+function MemberCount({ group }: { group: number }) {
+  const info = useQuery(core.contacts.group.queryOptions({ uin: group }));
+  if (!info.data) return null;
+  return (
+    <Chip size="sm" variant="soft" className="shrink-0" aria-label={`${info.data.memberCount} 位成员`}>
+      <Users className="size-3" />
+      {info.data.memberCount}
+    </Chip>
+  );
+}
+
 function ChatPane({ conversation, online }: { conversation: Conversation; online: boolean }) {
   const markRead = useMutation(core.conversations.markRead.mutationOptions());
   const { peer, unread } = conversation;
@@ -41,7 +53,7 @@ function ChatPane({ conversation, online }: { conversation: Conversation; online
     <section className="flex min-w-0 flex-1 flex-col bg-background">
       <header className="app-drag flex h-14 shrink-0 items-center gap-3 border-separator border-b px-5">
         <h2 className="truncate font-semibold">{conversation.name}</h2>
-        <span className="text-xs text-muted">{peer.scene === 'group' ? `群 ${peer.uin}` : peer.uin}</span>
+        {peer.scene === 'group' && <MemberCount group={peer.uin} />}
       </header>
       <MessageList key={peerKey(peer)} peer={peer} onReachEnd={onReachEnd} />
       <Composer key={`composer:${peerKey(peer)}`} peer={peer} disabled={!online} />

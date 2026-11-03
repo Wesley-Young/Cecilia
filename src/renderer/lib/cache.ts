@@ -59,5 +59,8 @@ export function applyUpdate(update: ChatUpdate) {
     case 'message':
       applyMessage(update.message);
       break;
+    case 'contacts':
+      void queryClient.invalidateQueries({ queryKey: core.contacts.pathKey() });
+      break;
   }
 }
