@@ -9,9 +9,18 @@ interface Props {
   message: ChatMessage;
   /** The previous message is from the same sender, so the name and avatar are not repeated. */
   continued: boolean;
+  /** The next message is from the same sender, so this bubble joins it. */
+  followed: boolean;
 }
 
-export default function MessageBubble({ message, continued }: Props) {
+// A run from one sender reads as one column: the corner toward the avatar is the tail, and the corners between
+// bubbles of the run are tightened.
+const corners = {
+  in: { end: 'rounded-tl-md', joined: 'rounded-tl-md rounded-bl-md' },
+  out: { end: 'rounded-tr-md', joined: 'rounded-tr-md rounded-br-md' },
+};
+
+export default function MessageBubble({ message, continued, followed }: Props) {
   if (message.status === 'recalled') {
     return (
       <p className="py-1 text-center text-xs text-muted">
@@ -39,9 +48,9 @@ export default function MessageBubble({ message, continued }: Props) {
           )}
           <div
             className={`selectable whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed shadow-xs ${
-              outgoing
-                ? 'rounded-br-md bg-bubble-out text-bubble-out-foreground'
-                : 'rounded-bl-md bg-bubble-in text-bubble-in-foreground'
+              corners[outgoing ? 'out' : 'in'][followed ? 'joined' : 'end']
+            } ${
+              outgoing ? 'bg-bubble-out text-bubble-out-foreground' : 'bg-bubble-in text-bubble-in-foreground'
             } ${message.status === 'sending' ? 'opacity-70' : ''}`}
           >
             {reply && <ReplyQuote segment={reply} />}

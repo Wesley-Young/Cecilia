@@ -17,23 +17,32 @@ const loadThreshold = 400;
 /** Counts as "at the bottom", where new messages keep the view pinned to the end. */
 const bottomThreshold = 80;
 
-type Row =
-  | { kind: 'time'; key: string; time: number }
-  | { kind: 'message'; key: string; message: ChatMessage; continued: boolean };
+interface MessageRow {
+  kind: 'message';
+  key: string;
+  message: ChatMessage;
+  /** The previous message is from the same sender. */
+  continued: boolean;
+  /** The next message is from the same sender. */
+  followed: boolean;
+}
+
+type Row = { kind: 'time'; key: string; time: number } | MessageRow;
 
 function toRows(messages: ChatMessage[]): Row[] {
   const rows: Row[] = [];
-  let previous: ChatMessage | undefined;
+  let previous: MessageRow | undefined;
   for (const message of messages) {
-    const gap = !previous || message.time - previous.time > separatorGap;
+    const gap = !previous || message.time - previous.message.time > separatorGap;
     if (gap) rows.push({ kind: 'time', key: `time:${message.id}`, time: message.time });
     const continued =
       !gap &&
-      previous?.sender.uin === message.sender.uin &&
-      previous.status !== 'recalled' &&
+      previous?.message.sender.uin === message.sender.uin &&
+      previous.message.status !== 'recalled' &&
       message.status !== 'recalled';
-    rows.push({ kind: 'message', key: `message:${message.id}`, message, continued });
-    previous = message;
+    if (continued && previous) previous.followed = true;
+    previous = { kind: 'message', key: `message:${message.id}`, message, continued, followed: false };
+    rows.push(previous);
   }
   return rows;
 }
@@ -97,7 +106,7 @@ export default function MessageList({ peer, onReachEnd }: { peer: Peer; onReachE
             {messageTime(row.time)}
           </p>
         ) : (
-          <MessageBubble key={row.key} message={row.message} continued={row.continued} />
+          <MessageBubble key={row.key} message={row.message} continued={row.continued} followed={row.followed} />
         )
       }
     </VList>
