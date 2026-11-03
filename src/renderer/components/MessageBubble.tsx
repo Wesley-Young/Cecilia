@@ -61,9 +61,10 @@ export default function MessageBubble({ message, continued, followed, highlighte
           <PeerAvatar peer={{ scene: 'friend', uin: message.sender.uin }} name={message.sender.name} size="sm" />
         )}
       </div>
-      <div className={`flex min-w-0 max-w-[70%] flex-col ${outgoing ? 'items-end' : 'items-start'}`}>
+      {/* At most 70% of the row, and no wider than reads comfortably on a wide window. */}
+      <div className={`flex min-w-0 max-w-[min(70%,36rem)] flex-col ${outgoing ? 'items-end' : 'items-start'}`}>
         {showName && <span className="mb-1 px-1 text-xs text-muted">{message.sender.name}</span>}
-        <div className="flex items-end gap-1.5">
+        <div className="flex max-w-full items-end gap-1.5">
           {outgoing && message.status === 'sending' && <Spinner size="sm" className="mb-2" />}
           {outgoing && message.status === 'failed' && (
             <CircleAlert className="mb-2 size-4 shrink-0 text-danger" aria-label="发送失败" />
@@ -72,7 +73,8 @@ export default function MessageBubble({ message, continued, followed, highlighte
             <PictureView segment={picture} className={`rounded-2xl ${sending}`} />
           ) : (
             <div
-              className={`selectable whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed shadow-xs ${
+              // Long links and other unbroken runs wrap anywhere instead of widening the bubble.
+              className={`selectable min-w-0 whitespace-pre-wrap wrap-anywhere rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed shadow-xs ${
                 corners[outgoing ? 'out' : 'in'][followed ? 'joined' : 'end']
               } ${outgoing ? 'bg-bubble-out text-bubble-out-foreground' : 'bg-bubble-in text-bubble-in-foreground'} ${sending}`}
             >
