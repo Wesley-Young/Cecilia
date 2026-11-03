@@ -54,8 +54,9 @@ function MemberCount(props: {
     <Chip
       variant="soft"
       color={!docked && isSelected ? 'accent' : 'default'}
-      // The height of a small button, so the header lines up whichever way it is shown.
-      className="h-9 shrink-0 gap-1 px-3 text-sm"
+      // The height of a small button, so the header lines up whichever way it is shown. Plain where it only counts;
+      // filled, a shade darker than a chip, where it is pressed to show the column.
+      className={`h-9 shrink-0 gap-1 px-3 text-sm ${docked ? 'bg-transparent' : isSelected ? '' : 'bg-default-hover'}`}
     >
       <Users className="size-3.5" />
       {memberCount}
