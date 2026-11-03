@@ -2,6 +2,8 @@ import { Spinner } from '@heroui/react';
 import { CircleAlert } from 'lucide-react';
 
 import type { ChatMessage } from '#core/model/message.ts';
+import Flash from '@/components/Flash';
+import GreyTip from '@/components/GreyTip';
 import PeerAvatar from '@/components/PeerAvatar';
 import { isPicture, PictureView, ReplyQuote, SegmentView, trimAroundPictures } from '@/components/SegmentView';
 
@@ -26,16 +28,6 @@ const corners = {
   out: { end: 'rounded-tr-md', joined: 'rounded-tr-md rounded-br-md' },
 };
 
-/** Flashes the row behind a message jumped to from a reply; 2px past the content on each side. */
-function Flash({ className }: { className: string }) {
-  return (
-    <span
-      aria-hidden
-      className={`pointer-events-none absolute inset-x-0 -z-10 animate-flash bg-accent/15 ${className}`}
-    />
-  );
-}
-
 /** Rises into place; also used for the time separators above new messages. */
 export const enterClass = 'animate-message-enter motion-reduce:animate-none';
 
@@ -44,10 +36,9 @@ export default function MessageBubble(props: Props) {
   const enter = entering ? enterClass : '';
   if (message.status === 'recalled') {
     return (
-      <p className={`relative isolate py-1 text-center text-xs text-muted ${enter}`}>
-        {highlighted && <Flash className="inset-y-0.5" />}
+      <GreyTip highlighted={highlighted} className={enter}>
         {message.outgoing ? '你' : message.sender.name}撤回了一条消息
-      </p>
+      </GreyTip>
     );
   }
 
@@ -62,6 +53,7 @@ export default function MessageBubble(props: Props) {
     <div
       className={`relative isolate flex gap-2.5 px-5 ${continued ? 'pt-0.5' : 'pt-3'} ${outgoing ? 'flex-row-reverse' : ''} ${enter}`}
     >
+      {/* 2px past the bubble on each side. */}
       {highlighted && <Flash className={`-bottom-0.5 ${continued ? 'top-0' : 'top-2.5'}`} />}
       <div className="w-8 shrink-0">
         {!continued && (
