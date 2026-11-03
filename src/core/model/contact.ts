@@ -1,9 +1,20 @@
 import type { Peer } from './peer.ts';
 
+export type Gender = 'male' | 'female' | 'unknown';
+
 export interface Friend {
   uin: number;
   nickname: string;
   remark: string;
+  /** The friend's signature; empty when not set. */
+  bio: string;
+  /** The friend's QID; empty when not set. */
+  qid: string;
+  /** 0 when hidden. */
+  age: number;
+  gender: Gender;
+  /** The friend group (分组) this friend is filed under. */
+  category: string;
 }
 
 export interface Group {
@@ -11,13 +22,36 @@ export interface Group {
   name: string;
   memberCount: number;
   capacity: number;
+  /** Unix time in seconds; 0 when unknown. */
+  createdAt: number;
+  description: string;
+  /** The start of the latest announcement; empty when there is none. */
+  announcement: string;
 }
+
+export type MemberRole = 'owner' | 'admin' | 'member';
 
 export interface GroupMember {
   uin: number;
   nickname: string;
   /** The member's name in this group; empty when not set. */
   card: string;
+  /** The title the owner gave this member; empty when not set. */
+  title: string;
+  level: number;
+  role: MemberRole;
+  /** Unix time in seconds. */
+  joinedAt: number;
+  /** Unix time in seconds. */
+  lastSpokeAt: number;
+}
+
+/** What a user's profile adds to the friend list; fetched each time it is shown. */
+export interface UserProfile {
+  uin: number;
+  level: number;
+  country: string;
+  city: string;
 }
 
 export interface SelfInfo {

@@ -1,7 +1,14 @@
 import { ChatClient, type PinnedPeers, type SendResult } from '#core/client/service.ts';
 import type { ChatContext } from '#core/context.ts';
 import { AppError } from '#core/errors.ts';
-import { type Friend, type Group, type GroupMember, memberName, type SelfInfo } from '#core/model/contact.ts';
+import {
+  type Friend,
+  type Group,
+  type GroupMember,
+  memberName,
+  type SelfInfo,
+  type UserProfile,
+} from '#core/model/contact.ts';
 import type { LoginState } from '#core/model/login.ts';
 import type { RemoteMessage, Sender } from '#core/model/message.ts';
 import { type Peer, peerKey } from '#core/model/peer.ts';
@@ -10,21 +17,102 @@ import { type OutgoingSegment, type Segment, toLocalSegments } from '#core/model
 const self: SelfInfo = { uin: 10000, nickname: 'Cecilia' };
 
 const friends: Friend[] = [
-  { uin: 10001, nickname: '星野', remark: '' },
-  { uin: 10002, nickname: 'kobayashi', remark: '小林' },
-  { uin: 10003, nickname: 'Aria', remark: '' },
+  {
+    uin: 10001,
+    nickname: '星野',
+    remark: '',
+    bio: '今天也要好好写代码。',
+    qid: 'hoshino',
+    age: 22,
+    gender: 'female',
+    category: '同学',
+  },
+  {
+    uin: 10002,
+    nickname: 'kobayashi',
+    remark: '小林',
+    bio: '',
+    qid: '',
+    age: 0,
+    gender: 'unknown',
+    category: '我的好友',
+  },
+  {
+    uin: 10003,
+    nickname: 'Aria',
+    remark: '',
+    bio: '在写一个很长很长的签名，用来看看悬浮窗里的签名会不会好好地换行，以及超过三行之后会不会被截断成省略号，再多写几个字凑够长度。',
+    qid: 'aria_dev',
+    age: 25,
+    gender: 'male',
+    category: '同事',
+  },
 ];
 
-const groups: Group[] = [
-  { uin: 20001, name: 'Cecilia 开发组', memberCount: 4, capacity: 200 },
-  { uin: 20002, name: '摸鱼小队', memberCount: 3, capacity: 500 },
+const member = (uin: number, nickname: string, extra: Partial<GroupMember> = {}): GroupMember => ({
+  uin,
+  nickname,
+  card: '',
+  title: '',
+  level: 1 + (uin % 80),
+  role: 'member',
+  joinedAt: 1_600_000_000 + (uin % 1000) * 86_400,
+  lastSpokeAt: 0,
+  ...extra,
+});
+
+/** The first few speak in the mock's groups; the rest fill the member list. */
+const speakers = 4;
+
+const names = [
+  '阿木',
+  'Leo',
+  '小鱼干',
+  'Nana',
+  '柚子',
+  'Kai',
+  '米粒',
+  'Sora',
+  '一只路过的猫',
+  'Mint',
+  '橘子汽水',
+  'Rin',
 ];
 
 const members: GroupMember[] = [
-  { uin: 10001, nickname: '星野', card: '星野 | 前端' },
-  { uin: 10002, nickname: 'kobayashi', card: '' },
-  { uin: 10003, nickname: 'Aria', card: '' },
-  { uin: 10004, nickname: 'Momo', card: '桃桃' },
+  member(10001, '星野', { card: '星野 | 前端', role: 'owner', title: '鸽王' }),
+  member(10002, 'kobayashi'),
+  member(10003, 'Aria', { title: '摸鱼' }),
+  member(10004, 'Momo', { card: '桃桃', role: 'admin' }),
+  member(self.uin, self.nickname, { role: 'admin' }),
+  member(10005, '一个名字特别特别特别长的群成员，长到要截断'),
+  ...Array.from({ length: 60 }, (_, index) =>
+    member(10100 + index, `${names[index % names.length]}${index >= names.length ? index : ''}`, {
+      card: index % 7 === 0 ? `${names[index % names.length]}（${index}号）` : '',
+      title: index % 13 === 5 ? '活跃' : '',
+    }),
+  ),
+];
+
+const groups: Group[] = [
+  {
+    uin: 20001,
+    name: 'Cecilia 开发组',
+    memberCount: members.length,
+    capacity: 200,
+    createdAt: 1_616_000_000,
+    description: '桌面 IM 客户端开发讨论，提 bug 请带上日志。',
+    announcement: '本周五晚上八点发版，请大家提前合并分支，有问题在群里说。',
+  },
+  {
+    uin: 20002,
+    name: '摸鱼小队',
+    memberCount: members.length,
+    capacity: 500,
+    createdAt: 1_680_000_000,
+    description: '',
+    announcement: '',
+  },
 ];
 
 const lines = [
@@ -155,6 +243,12 @@ export class MockClient extends ChatClient {
     return members;
   }
 
+  async getUserProfile(uin: number): Promise<UserProfile> {
+    this.ensureOnline();
+    await delay(400);
+    return { uin, level: 1 + (uin % 64), country: '中国', city: ['上海', '杭州', '成都'][uin % 3] ?? '' };
+  }
+
   async getPinned(): Promise<PinnedPeers> {
     return { friends: [], groups: [20001] };
   }
@@ -269,7 +363,7 @@ export class MockClient extends ChatClient {
       if (seq % 4 === 0) return { uin: self.uin, name: self.nickname };
       return { uin: peer.uin, name: '' };
     }
-    const member = members[seq % members.length] ?? members[0];
+    const member = members[seq % speakers] ?? members[0];
     // Like acidify, every third message (one with a reply) comes without the sender's name.
     return { uin: member?.uin ?? 0, name: member && seq % 3 !== 0 ? memberName(member) : '' };
   }

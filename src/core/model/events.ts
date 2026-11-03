@@ -12,6 +12,8 @@ export type ChatEvents = {
   'client/message': RemoteMessage;
   'client/recall': { peer: Peer; seq: number };
   'contacts/updated': { friends: Friend[]; groups: Group[] };
+  /** A group's member list was fetched. */
+  'contacts/members': { group: number };
   'store/message': ChatMessage;
   'store/conversation': Conversation;
 };

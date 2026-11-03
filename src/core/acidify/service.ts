@@ -13,7 +13,7 @@ import type { Logger } from '@fraqjs/kernel';
 import { ChatClient, type PinnedPeers, type SendResult } from '#core/client/service.ts';
 import type { ChatContext } from '#core/context.ts';
 import { AppError } from '#core/errors.ts';
-import type { Friend, Group, GroupMember } from '#core/model/contact.ts';
+import type { Friend, Group, GroupMember, UserProfile } from '#core/model/contact.ts';
 import type { LoginState } from '#core/model/login.ts';
 import type { RemoteMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
@@ -30,6 +30,7 @@ import {
   toQrCodeState,
   toRemoteMessage,
   toUinList,
+  toUserProfile,
 } from './mapper.ts';
 
 const sessionKey = 'session';
@@ -243,6 +244,10 @@ export class AcidifyClient extends ChatClient {
 
   async getGroupMembers(group: number, forceUpdate = false): Promise<GroupMember[]> {
     return ((await this.online().getGroupMembers(BigInt(group), forceUpdate)) ?? []).map(toGroupMember);
+  }
+
+  async getUserProfile(uin: number): Promise<UserProfile> {
+    return toUserProfile(await this.online().fetchUserInfoByUin(BigInt(uin)));
   }
 
   async getPinned(): Promise<PinnedPeers> {

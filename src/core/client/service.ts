@@ -1,6 +1,6 @@
 import { serviceToken } from '@fraqjs/kernel';
 
-import type { Friend, Group, GroupMember, SelfInfo } from '#core/model/contact.ts';
+import type { Friend, Group, GroupMember, SelfInfo, UserProfile } from '#core/model/contact.ts';
 import type { LoginState } from '#core/model/login.ts';
 import type { RemoteMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
@@ -45,6 +45,7 @@ export abstract class ChatClient {
   abstract getFriends(forceUpdate?: boolean): Promise<Friend[]>;
   abstract getGroups(forceUpdate?: boolean): Promise<Group[]>;
   abstract getGroupMembers(group: number, forceUpdate?: boolean): Promise<GroupMember[]>;
+  abstract getUserProfile(uin: number): Promise<UserProfile>;
   abstract getPinned(): Promise<PinnedPeers>;
 
   /** `clientSeq` and `random` come back on the echoed message, so the caller can match it to its pending copy. */

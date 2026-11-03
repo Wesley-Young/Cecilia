@@ -1,3 +1,4 @@
+import type { MemberRole } from '#core/model/contact.ts';
 import type { Peer } from '#core/model/peer.ts';
 
 export function avatarUrl(peer: Peer): string {
@@ -35,3 +36,11 @@ export function messageTime(seconds: number): string {
 export function initial(name: string): string {
   return Array.from(name.trim())[0] ?? '?';
 }
+
+/** A calendar date, for things like when a group was created. */
+export function fullDate(seconds: number): string {
+  const date = new Date(seconds * 1000);
+  return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日`;
+}
+
+export const roleLabels = { owner: '群主', admin: '管理员', member: '成员' } satisfies Record<MemberRole, string>;

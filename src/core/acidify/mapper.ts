@@ -4,12 +4,15 @@ import {
   type BotGroupMember,
   type BotIncomingMessage,
   BotIncomingSegment,
+  type BotUserInfo,
+  type GroupMemberRole,
   type KtList,
   MessageScene,
   type QRCodeState,
+  type UserInfoGender,
 } from '@acidify/core';
 
-import type { Friend, Group, GroupMember } from '#core/model/contact.ts';
+import type { Friend, Gender, Group, GroupMember, MemberRole, UserProfile } from '#core/model/contact.ts';
 import type { QrCodeState } from '#core/model/login.ts';
 import type { RemoteMessage } from '#core/model/message.ts';
 import type { Peer, Scene } from '#core/model/peer.ts';
@@ -114,16 +117,63 @@ export function toRemoteMessage(message: BotIncomingMessage): RemoteMessage | un
   };
 }
 
+function toGender(gender: UserInfoGender): Gender {
+  switch (gender.name) {
+    case 'MALE':
+      return 'male';
+    case 'FEMALE':
+      return 'female';
+    default:
+      return 'unknown';
+  }
+}
+
 export function toFriend(friend: BotFriend): Friend {
-  return { uin: Number(friend.uin), nickname: friend.nickname, remark: friend.remark };
+  return {
+    uin: Number(friend.uin),
+    nickname: friend.nickname,
+    remark: friend.remark,
+    bio: friend.bio,
+    qid: friend.qid,
+    age: friend.age,
+    gender: toGender(friend.gender),
+    category: friend.categoryName,
+  };
 }
 
 export function toGroup(group: BotGroup): Group {
-  return { uin: Number(group.uin), name: group.name, memberCount: group.memberCount, capacity: group.capacity };
+  // `owner` is left out: acidify throws until the member list has been fetched.
+  return {
+    uin: Number(group.uin),
+    name: group.name,
+    memberCount: group.memberCount,
+    capacity: group.capacity,
+    createdAt: Number(group.createdAt),
+    description: group.description,
+    announcement: group.announcementPreview,
+  };
 }
 
+const roles = { OWNER: 'owner', ADMIN: 'admin', MEMBER: 'member' } satisfies Record<
+  GroupMemberRole['name'],
+  MemberRole
+>;
+
 export function toGroupMember(member: BotGroupMember): GroupMember {
-  return { uin: Number(member.uin), nickname: member.nickname, card: member.card };
+  return {
+    uin: Number(member.uin),
+    nickname: member.nickname,
+    card: member.card,
+    title: member.specialTitle,
+    level: member.level,
+    role: roles[member.role.name],
+    joinedAt: Number(member.joinedAt),
+    lastSpokeAt: Number(member.lastSpokeAt),
+  };
+}
+
+export function toUserProfile(info: BotUserInfo): UserProfile {
+  return { uin: Number(info.uin), level: info.level, country: info.country, city: info.city };
 }
 
 export function toUinList(uins: KtList<bigint>): number[] {

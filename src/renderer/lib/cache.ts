@@ -62,5 +62,8 @@ export function applyUpdate(update: ChatUpdate) {
     case 'contacts':
       void queryClient.invalidateQueries({ queryKey: core.contacts.pathKey() });
       break;
+    case 'members':
+      void queryClient.invalidateQueries({ queryKey: core.contacts.members.queryKey({ group: update.group }) });
+      break;
   }
 }

@@ -2,7 +2,15 @@ import { serviceToken } from '@fraqjs/kernel';
 
 import type { ChatClient } from '#core/client/service.ts';
 import type { ChatContext } from '#core/context.ts';
-import { type Friend, friendName, type Group, type GroupMember, memberName } from '#core/model/contact.ts';
+import { AppError } from '#core/errors.ts';
+import {
+  type Friend,
+  friendName,
+  type Group,
+  type GroupMember,
+  memberName,
+  type UserProfile,
+} from '#core/model/contact.ts';
 import type { Peer } from '#core/model/peer.ts';
 
 /** A member list is fetched again for an unknown member at most this often. */
@@ -68,17 +76,33 @@ export class ContactService {
       await previous.done;
       const latest = this.memberFetches.get(group);
       if (latest !== previous) return latest?.done;
-      if (uin === undefined || this.members.get(group)?.has(uin)) return;
-      if (Date.now() - previous.at < memberRefreshInterval) return;
+      // A list that failed to load is fetched again at once.
+      const loaded = this.members.get(group);
+      if (loaded && (uin === undefined || loaded.has(uin))) return;
+      if (loaded && Date.now() - previous.at < memberRefreshInterval) return;
     }
     const done = this.client.getGroupMembers(group, previous !== undefined).then(
       (members) => {
         this.members.set(group, new Map(members.map((member) => [member.uin, member])));
+        this.ctx.emit('contacts/members', { group });
       },
       (error) => this.ctx.logger.warn(`Cannot fetch members of group ${group}`, error),
     );
     this.memberFetches.set(group, { at: Date.now(), done });
     await done;
+  }
+
+  /** A group's members, fetched if they have not been yet. */
+  async membersOf(group: number): Promise<GroupMember[]> {
+    await this.loadMembers(group);
+    const members = this.members.get(group);
+    if (!members) throw new AppError('bad_gateway', '无法获取群成员');
+    return [...members.values()];
+  }
+
+  /** Fetched from the server each time; the friend list does not carry it. */
+  profile(uin: number): Promise<UserProfile> {
+    return this.client.getUserProfile(uin);
   }
 
   /** A member's group card or nickname; undefined until the group's member list has been loaded. */

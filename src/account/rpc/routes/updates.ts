@@ -10,7 +10,9 @@ export type ChatUpdate =
   | { type: 'message'; message: ChatMessage }
   | { type: 'conversation'; conversation: Conversation }
   /** The friend and group lists were fetched again; contact queries are out of date. */
-  | { type: 'contacts' };
+  | { type: 'contacts' }
+  /** A group's member list was fetched again. */
+  | { type: 'members'; group: number };
 
 /** Buffers context events into an async iterable until `signal` aborts. */
 async function* listen(ctx: ChatContext, signal: AbortSignal | undefined): AsyncGenerator<ChatUpdate> {
@@ -25,6 +27,7 @@ async function* listen(ctx: ChatContext, signal: AbortSignal | undefined): Async
     ctx.on('store/message', (message) => push({ type: 'message', message })),
     ctx.on('store/conversation', (conversation) => push({ type: 'conversation', conversation })),
     ctx.on('contacts/updated', () => push({ type: 'contacts' })),
+    ctx.on('contacts/members', ({ group }) => push({ type: 'members', group })),
   ];
   const stopped = new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve(), { once: true }));
   try {
