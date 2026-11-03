@@ -1,7 +1,7 @@
 import { Button, Chip, SearchField, Spinner } from '@heroui/react';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { VList } from 'virtua';
 
 import { type GroupMember, type MemberRole, memberName } from '#core/model/contact.ts';
@@ -64,6 +64,21 @@ interface Props {
 export default function MemberPanel({ group, docked, isOpen, onClose }: Props) {
   const members = useQuery(core.contacts.members.queryOptions({ group }));
   const [query, setQuery] = useState('');
+  const panel = useRef<HTMLElement>(null);
+
+  // Floating over the messages, it closes on a press anywhere else. The header's toggle is left out: it closes the
+  // column itself, and closing here first would have it open again.
+  useEffect(() => {
+    if (docked || !isOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || panel.current?.contains(target)) return;
+      if (target.closest('[data-members-toggle]')) return;
+      onClose();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [docked, isOpen, onClose]);
   const rows = useMemo(() => (members.data ? toRows(members.data, query) : []), [members.data, query]);
 
   let body: ReactNode;
@@ -106,6 +121,7 @@ export default function MemberPanel({ group, docked, isOpen, onClose }: Props) {
   }`;
   return (
     <aside
+      ref={panel}
       aria-label="群成员"
       inert={!docked && !isOpen}
       className={`flex w-52 shrink-0 flex-col border-separator border-l bg-background ${docked ? '' : floating}`}

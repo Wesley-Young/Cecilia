@@ -1,4 +1,4 @@
-import { Button, Spinner, ToggleButton } from '@heroui/react';
+import { Button, Chip, Spinner } from '@heroui/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { LogOut, MessagesSquare, Settings, Users, WifiOff } from 'lucide-react';
 import { useCallback, useState } from 'react';
@@ -35,23 +35,45 @@ function StatusLine({ state }: { state: LoginState }) {
 /** The member column stays beside the messages from this window width: the sidebar's 288px and 720px for the chat. */
 const dockedQuery = '(min-width: 1008px)';
 
-/** A group's size, once the group list has loaded; shows and hides the member column where it does not stay. */
-function MemberToggle(props: { group: number; isSelected: boolean; onChange: (selected: boolean) => void }) {
-  const { group, isSelected, onChange } = props;
+/**
+ * A group's size, once the group list has loaded. Where the member column does not stay on screen, it also shows and
+ * hides the column.
+ */
+function MemberCount(props: {
+  group: number;
+  docked: boolean;
+  isSelected: boolean;
+  onChange: (selected: boolean) => void;
+}) {
+  const { group, docked, isSelected, onChange } = props;
   const info = useQuery(core.contacts.group.queryOptions({ uin: group }));
   if (!info.data) return null;
-  return (
-    <ToggleButton
-      size="sm"
-      variant="ghost"
-      isSelected={isSelected}
-      onChange={onChange}
-      aria-label={`群成员，${info.data.memberCount} 人`}
-      className="app-no-drag shrink-0 gap-1"
+  const { memberCount } = info.data;
+  // The same badge either way; on narrow windows it is wrapped in a button and turns accent while the column is open.
+  const badge = (
+    <Chip
+      variant="soft"
+      color={!docked && isSelected ? 'accent' : 'default'}
+      // The height of a small button, so the header lines up whichever way it is shown.
+      className="h-9 shrink-0 gap-1 px-3 text-sm"
     >
       <Users className="size-3.5" />
-      {info.data.memberCount}
-    </ToggleButton>
+      {memberCount}
+      <span className="sr-only"> 位成员</span>
+    </Chip>
+  );
+  if (docked) return badge;
+  return (
+    <button
+      type="button"
+      aria-pressed={isSelected}
+      // The member column ignores presses on it when closing on outside presses.
+      data-members-toggle
+      onClick={() => onChange(!isSelected)}
+      className="app-no-drag flex shrink-0 cursor-pointer rounded-full outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-focus"
+    >
+      {badge}
+    </button>
   );
 }
 
@@ -59,6 +81,7 @@ function ChatPane({ conversation, online }: { conversation: Conversation; online
   const markRead = useMutation(core.conversations.markRead.mutationOptions());
   const docked = useMediaQuery(dockedQuery);
   const [membersOpen, setMembersOpen] = useState(false);
+  const closeMembers = useCallback(() => setMembersOpen(false), []);
   const { peer, unread } = conversation;
   const group = peer.scene === 'group';
   const { mutate } = markRead;
@@ -72,7 +95,7 @@ function ChatPane({ conversation, online }: { conversation: Conversation; online
         <h2 className="-ml-2 flex min-w-0">
           <ChatTitle conversation={conversation} onShowMembers={docked ? undefined : () => setMembersOpen(true)} />
         </h2>
-        {group && !docked && <MemberToggle group={peer.uin} isSelected={membersOpen} onChange={setMembersOpen} />}
+        {group && <MemberCount group={peer.uin} docked={docked} isSelected={membersOpen} onChange={setMembersOpen} />}
       </header>
       {/* Clips the member column while it slides in and out. */}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
@@ -81,13 +104,7 @@ function ChatPane({ conversation, online }: { conversation: Conversation; online
           <Composer key={`composer:${peerKey(peer)}`} peer={peer} disabled={!online} />
         </div>
         {group && (
-          <MemberPanel
-            key={peer.uin}
-            group={peer.uin}
-            docked={docked}
-            isOpen={membersOpen}
-            onClose={() => setMembersOpen(false)}
-          />
+          <MemberPanel key={peer.uin} group={peer.uin} docked={docked} isOpen={membersOpen} onClose={closeMembers} />
         )}
       </div>
     </section>
