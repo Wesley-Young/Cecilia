@@ -1,6 +1,4 @@
-import { Button, TextArea } from '@heroui/react';
 import { useMutation } from '@tanstack/react-query';
-import { SendHorizontal } from 'lucide-react';
 import { type KeyboardEvent, useState } from 'react';
 
 import type { Peer } from '#core/model/peer.ts';
@@ -26,25 +24,19 @@ export default function Composer({ peer, disabled }: { peer: Peer; disabled: boo
     }
   };
 
+  // The whole block is the field: no border or send button, Enter is the way to send.
   return (
-    <div className="border-separator border-t px-4 pt-3 pb-4">
-      {send.error && <p className="mb-2 text-xs text-danger">{errorMessage(send.error)}</p>}
-      <div className="flex items-end gap-2">
-        <TextArea
-          aria-label="消息"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder={disabled ? '离线中，暂时无法发送' : '输入消息'}
-          disabled={disabled}
-          rows={2}
-          fullWidth
-          className="max-h-40 resize-none"
-        />
-        <Button variant="primary" isIconOnly aria-label="发送" isDisabled={!canSend} onPress={submit}>
-          <SendHorizontal className="size-4" />
-        </Button>
-      </div>
+    <div className="flex h-32 shrink-0 flex-col border-separator border-t bg-surface text-surface-foreground">
+      {send.error && <p className="px-5 pt-2 text-xs text-danger">{errorMessage(send.error)}</p>}
+      <textarea
+        aria-label="消息"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder={disabled ? '离线中，暂时无法发送' : '输入消息，Enter 发送，Shift + Enter 换行'}
+        disabled={disabled}
+        className="selectable min-h-0 flex-1 resize-none bg-transparent px-5 py-3 text-[14px] leading-relaxed outline-none placeholder:text-muted disabled:cursor-not-allowed"
+      />
     </div>
   );
 }
