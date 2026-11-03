@@ -113,6 +113,8 @@ export class ChatStore {
    * been loaded) rather than the message, which acidify leaves without a name when it has a reply.
    */
   private async senderName(peer: Peer, uin: number): Promise<string | undefined> {
+    // Recalled messages fetched from the server come from uin 0; looking it up would refetch the member list.
+    if (uin === 0) return undefined;
     if (peer.scene === 'group') return this.contacts.memberName(peer.uin, uin);
     return this.contacts.nameOf({ scene: 'friend', uin });
   }

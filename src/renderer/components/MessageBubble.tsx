@@ -1,7 +1,7 @@
 import { Spinner } from '@heroui/react';
 import { CircleAlert } from 'lucide-react';
 
-import type { ChatMessage } from '#core/model/message.ts';
+import { type ChatMessage, recallNotice } from '#core/model/message.ts';
 import Flash from '@/components/Flash';
 import GreyTip from '@/components/GreyTip';
 import PeerAvatar from '@/components/PeerAvatar';
@@ -34,10 +34,11 @@ export const enterClass = 'animate-message-enter motion-reduce:animate-none';
 export default function MessageBubble(props: Props) {
   const { message, continued, followed, highlighted, entering, onJumpToReply } = props;
   const enter = entering ? enterClass : '';
-  if (message.status === 'recalled') {
+  const notice = recallNotice(message);
+  if (notice !== undefined) {
     return (
       <GreyTip highlighted={highlighted} className={enter}>
-        {message.outgoing ? '你' : message.sender.name}撤回了一条消息
+        {notice}
       </GreyTip>
     );
   }

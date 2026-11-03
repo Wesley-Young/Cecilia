@@ -3,7 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { VList, type VListHandle } from 'virtua';
 
-import type { ChatMessage } from '#core/model/message.ts';
+import { type ChatMessage, recallNotice } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
 import { ImageViewerProvider } from '@/components/ImageViewer';
 import MessageBubble, { enterClass } from '@/components/MessageBubble';
@@ -48,8 +48,8 @@ function toRows(messages: ChatMessage[]): Row[] {
     const continued =
       !gap &&
       previous?.message.sender.uin === message.sender.uin &&
-      previous.message.status !== 'recalled' &&
-      message.status !== 'recalled';
+      recallNotice(previous.message) === undefined &&
+      recallNotice(message) === undefined;
     if (continued && previous) previous.followed = true;
     const reply = message.segments.find((segment) => segment.type === 'reply');
     const target = reply && bySeq.get(reply.seq);

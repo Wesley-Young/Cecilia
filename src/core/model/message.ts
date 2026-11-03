@@ -36,3 +36,17 @@ export interface ChatMessage {
   /** Sent by this account, from this device or another. */
   outgoing: boolean;
 }
+
+/** What the server returns, in history it fetches, in place of a message recalled before this device saw it. */
+const deletedText = '[已删除]';
+
+/** The notice shown in place of a recalled message; undefined for any other message. */
+export function recallNotice(message: ChatMessage): string | undefined {
+  if (message.status === 'recalled') return `${message.outgoing ? '你' : message.sender.name}撤回了一条消息`;
+  // The server no longer knows who sent it: it comes from uin 0 and reads `deletedText`.
+  const [only] = message.segments;
+  if (message.sender.uin === 0 && message.segments.length === 1 && only?.type === 'text' && only.text === deletedText) {
+    return '有人撤回了一条消息';
+  }
+  return undefined;
+}

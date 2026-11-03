@@ -292,6 +292,20 @@ export class MockClient extends ChatClient {
         if (at % 10 === 8) return [text(at), mockImage(at), text(at + 1)];
         return [text(at)];
       };
+      // Now and then, a message recalled before this run, as the server returns it.
+      if (seq % 17 === 0) {
+        const deleted: Segment[] = [{ type: 'text', text: '[已删除]' }];
+        messages.push({
+          peer,
+          seq,
+          time: time(seq),
+          sender: { uin: 0, name: '' },
+          segments: deleted,
+          clientSeq: 0,
+          random: 0,
+        });
+        continue;
+      }
       const segments = content(seq);
       // Every third group message quotes the one before it, without the quoted sender's name.
       if (peer.scene === 'group' && seq % 3 === 0) {

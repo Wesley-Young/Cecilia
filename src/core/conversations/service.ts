@@ -5,13 +5,14 @@ import type { ChatClient } from '#core/client/service.ts';
 import type { ContactService } from '#core/contacts/service.ts';
 import type { ChatContext } from '#core/context.ts';
 import type { Conversation } from '#core/model/contact.ts';
-import type { ChatMessage } from '#core/model/message.ts';
+import { type ChatMessage, recallNotice } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
 import { summarize } from '#core/model/segment.ts';
 import { type ConversationRow, toConversation } from './schema.ts';
 
 function preview(message: ChatMessage): string {
-  if (message.status === 'recalled') return `${message.outgoing ? '你' : message.sender.name}撤回了一条消息`;
+  const notice = recallNotice(message);
+  if (notice !== undefined) return notice;
   const text = summarize(message.segments);
   return message.peer.scene === 'group' && !message.outgoing ? `${message.sender.name}: ${text}` : text;
 }
