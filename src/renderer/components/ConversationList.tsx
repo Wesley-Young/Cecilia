@@ -39,7 +39,7 @@ export default function ConversationList({ conversations, selected, onSelect }: 
                     {listTime(conversation.time)}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex h-5 items-center gap-2">
                   <span className={`truncate text-xs ${active ? 'opacity-80' : 'text-muted'}`}>
                     {conversation.summary || ' '}
                   </span>
