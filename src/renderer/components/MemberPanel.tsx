@@ -30,7 +30,7 @@ function toRows(members: GroupMember[], query: string): Row[] {
       .sort((a, b) => collator.compare(memberName(a), memberName(b)));
     if (inRole.length === 0) continue;
     // There is one owner; counting it says nothing.
-    const label = role === 'owner' ? roleLabels[role] : `${roleLabels[role]} · ${inRole.length}`;
+    const label = role === 'owner' ? roleLabels[role] : `${roleLabels[role]} (${inRole.length})`;
     rows.push({ kind: 'section', key: `section:${role}`, label });
     for (const member of inRole) rows.push({ kind: 'member', key: `member:${member.uin}`, member });
   }

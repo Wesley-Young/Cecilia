@@ -13,6 +13,8 @@ interface Props {
   followed: boolean;
   /** Just jumped to from a reply. */
   highlighted: boolean;
+  /** Just arrived: it rises into place. */
+  entering: boolean;
   /** Scrolls to the quoted message; absent when it is not loaded or too far back. */
   onJumpToReply: (() => void) | undefined;
 }
@@ -34,10 +36,15 @@ function Flash({ className }: { className: string }) {
   );
 }
 
-export default function MessageBubble({ message, continued, followed, highlighted, onJumpToReply }: Props) {
+/** Rises into place; also used for the time separators above new messages. */
+export const enterClass = 'animate-message-enter motion-reduce:animate-none';
+
+export default function MessageBubble(props: Props) {
+  const { message, continued, followed, highlighted, entering, onJumpToReply } = props;
+  const enter = entering ? enterClass : '';
   if (message.status === 'recalled') {
     return (
-      <p className="relative isolate py-1 text-center text-xs text-muted">
+      <p className={`relative isolate py-1 text-center text-xs text-muted ${enter}`}>
         {highlighted && <Flash className="inset-y-0.5" />}
         {message.outgoing ? '你' : message.sender.name}撤回了一条消息
       </p>
@@ -53,7 +60,7 @@ export default function MessageBubble({ message, continued, followed, highlighte
   const showName = !outgoing && !continued && message.peer.scene === 'group';
   return (
     <div
-      className={`relative isolate flex gap-2.5 px-5 ${continued ? 'pt-0.5' : 'pt-3'} ${outgoing ? 'flex-row-reverse' : ''}`}
+      className={`relative isolate flex gap-2.5 px-5 ${continued ? 'pt-0.5' : 'pt-3'} ${outgoing ? 'flex-row-reverse' : ''} ${enter}`}
     >
       {highlighted && <Flash className={`-bottom-0.5 ${continued ? 'top-0' : 'top-2.5'}`} />}
       <div className="w-8 shrink-0">

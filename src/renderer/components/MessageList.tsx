@@ -6,7 +6,7 @@ import { VList, type VListHandle } from 'virtua';
 import type { ChatMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
 import { ImageViewerProvider } from '@/components/ImageViewer';
-import MessageBubble from '@/components/MessageBubble';
+import MessageBubble, { enterClass } from '@/components/MessageBubble';
 import { historyInput } from '@/lib/cache';
 import { messageTime } from '@/lib/format';
 import { core, errorMessage } from '@/lib/rpc';
@@ -21,6 +21,8 @@ const bottomThreshold = 80;
 const jumpLimit = 50;
 /** How long the message jumped to flashes, in ms; the length of `animate-flash`. */
 const highlightDuration = 1500;
+/** How long a new message takes to rise into place, in ms; the length of `animate-message-enter`. */
+const enterDuration = 180;
 
 interface MessageRow {
   kind: 'message';
@@ -74,16 +76,46 @@ export default function MessageList({ peer, onReachEnd }: { peer: Peer; onReachE
   const list = useRef<VListHandle>(null);
   const atBottom = useRef(true);
   const edges = useRef<{ first?: string; last?: string }>({});
+  // An empty conversation counts as loaded too, so its first message rises in.
+  const loaded = history.data !== undefined;
+  /** The rows of the last render; undefined until the first page has loaded. */
+  const known = useRef<Set<string>>(undefined);
+  const [entering, setEntering] = useState<ReadonlySet<string>>(new Set());
+  const enterTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(enterTimer.current), []);
   // Older pages are prepended: virtua keeps the visible rows in place when `shift` is set for that render.
   const first = rows[0]?.key;
-  const last = rows.at(-1)?.key;
+  const lastRow = rows.at(-1);
+  const last = lastRow?.key;
   const shift = edges.current.first !== undefined && first !== edges.current.first && last === edges.current.last;
+  // A message this window just started sending takes the view to the end wherever the reader was. One that failed at
+  // once counts too: it may arrive already failed.
+  const sending =
+    lastRow?.kind === 'message' &&
+    lastRow.message.outgoing &&
+    (lastRow.message.status === 'sending' || lastRow.message.status === 'failed');
+
+  // Rows that arrive after the first page rise into place; the first page and older pages just appear. Set before
+  // paint, so a new row never shows without its animation.
+  useLayoutEffect(() => {
+    if (!loaded) return;
+    const before = known.current;
+    known.current = new Set(rows.map((row) => row.key));
+    if (!before || shift) return;
+    const arrived = rows.filter((row) => !before.has(row.key)).map((row) => row.key);
+    if (arrived.length === 0) return;
+    setEntering(new Set(arrived));
+    clearTimeout(enterTimer.current);
+    enterTimer.current = setTimeout(() => setEntering(new Set()), enterDuration);
+  }, [loaded, rows, shift]);
 
   useLayoutEffect(() => {
     const appended = last !== edges.current.last;
     edges.current = { first, last };
-    if (appended && atBottom.current && rows.length > 0) list.current?.scrollToIndex(rows.length - 1, { align: 'end' });
-  }, [first, last, rows.length]);
+    if (!appended || rows.length === 0 || !(atBottom.current || sending)) return;
+    atBottom.current = true;
+    list.current?.scrollToIndex(rows.length - 1, { align: 'end' });
+  }, [first, last, rows.length, sending]);
 
   // Reading the newest message clears the unread count.
   useEffect(() => {
@@ -129,7 +161,10 @@ export default function MessageList({ peer, onReachEnd }: { peer: Peer; onReachE
       <VList ref={list} data={rows} shift={shift} onScroll={onScroll} className="flex-1 pb-3">
         {(row) =>
           row.kind === 'time' ? (
-            <p key={row.key} className="pt-4 pb-1 text-center text-[11px] text-muted">
+            <p
+              key={row.key}
+              className={`pt-4 pb-1 text-center text-[11px] text-muted ${entering.has(row.key) ? enterClass : ''}`}
+            >
               {messageTime(row.time)}
             </p>
           ) : (
@@ -139,6 +174,7 @@ export default function MessageList({ peer, onReachEnd }: { peer: Peer; onReachE
               continued={row.continued}
               followed={row.followed}
               highlighted={row.message.id === highlighted}
+              entering={entering.has(row.key)}
               onJumpToReply={row.replyTarget === undefined ? undefined : () => jumpToReply(row)}
             />
           )
