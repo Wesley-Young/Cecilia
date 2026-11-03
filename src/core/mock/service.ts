@@ -43,6 +43,8 @@ const lines = [
 /** History that exists before the mock starts, per conversation. */
 const initialHistory = 120;
 
+const svgUrl = (svg: string) => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+
 function placeholderQrCode(): string {
   const cells: string[] = [];
   for (let y = 0; y < 21; y++) {
@@ -51,7 +53,46 @@ function placeholderQrCode(): string {
     }
   }
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 23 23"><rect x="-1" y="-1" width="23" height="23" fill="#fff"/><g fill="#111">${cells.join('')}</g></svg>`;
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+  return svgUrl(svg);
+}
+
+interface Picture {
+  width: number;
+  height: number;
+  /** Animated: its dot spins. */
+  sticker: boolean;
+  hue: number;
+}
+
+/** A gradient picture; mock file ids are its JSON, so `getImageUrl` can draw it again. */
+function placeholderImage({ width, height, sticker, hue }: Picture): string {
+  const [x, y, r] = [width / 2, height / 3, Math.min(width, height) / 8];
+  const spin = sticker
+    ? `<animateTransform attributeName="transform" type="rotate" from="0 ${x} ${height / 2}" to="360 ${x} ${height / 2}" dur="2s" repeatCount="indefinite"/>`
+    : '';
+  return svgUrl(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs><linearGradient id="g" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue} 70% 65%)"/><stop offset="1" stop-color="hsl(${hue + 60} 70% 45%)"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><circle cx="${x}" cy="${y}" r="${r}" fill="#fff" fill-opacity=".8">${spin}</circle></svg>`,
+  );
+}
+
+/** A landscape photo, a portrait one, or an animated sticker. */
+function mockImage(at: number): Segment {
+  const hue = (at * 47) % 360;
+  const [width, height, sticker] = [
+    [1200, 800, false],
+    [900, 1600, false],
+    [240, 240, true],
+  ][at % 3] as [number, number, boolean];
+  const picture: Picture = { width, height, sticker, hue };
+  return { type: 'image', fileId: JSON.stringify(picture), width, height, summary: sticker ? '[动画表情]' : '[图片]' };
+}
+
+function mockMarketFace(at: number): Segment {
+  return {
+    type: 'market-face',
+    url: placeholderImage({ width: 300, height: 300, sticker: true, hue: (at * 83) % 360 }),
+    summary: '[好耶]',
+  };
 }
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -150,7 +191,14 @@ export class MockClient extends ChatClient {
       const sender = this.senderOf(peer, seq);
       const time = (at: number) => Math.floor(Date.now() / 1000) - (this.latestSeq(peer) - at + 1) * 300;
       const text = (at: number): Segment => ({ type: 'text', text: lines[at % lines.length] ?? '' });
-      const segments: Segment[] = [text(seq)];
+      // A few messages are a picture, a market face, or a picture between two lines of text.
+      const content = (at: number): Segment[] => {
+        if (at % 10 === 1) return [mockImage(at)];
+        if (at % 10 === 5) return [mockMarketFace(at)];
+        if (at % 10 === 8) return [text(at), mockImage(at), text(at + 1)];
+        return [text(at)];
+      };
+      const segments = content(seq);
       // Every third group message quotes the one before it, without the quoted sender's name.
       if (peer.scene === 'group' && seq % 3 === 0) {
         segments.unshift({
@@ -159,7 +207,7 @@ export class MockClient extends ChatClient {
           senderUin: this.senderOf(peer, seq - 1).uin,
           senderName: null,
           time: time(seq - 1),
-          segments: [text(seq - 1)],
+          segments: content(seq - 1),
         });
       }
       messages.push({
@@ -176,6 +224,12 @@ export class MockClient extends ChatClient {
   }
 
   async markRead() {}
+
+  async getImageUrl(fileId: string): Promise<string> {
+    this.ensureOnline();
+    await delay(300);
+    return placeholderImage(JSON.parse(fileId) as Picture);
+  }
 
   /** Some group chatter now and then, so there is something to receive. */
   startChatter() {

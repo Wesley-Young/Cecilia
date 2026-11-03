@@ -8,6 +8,7 @@ import type { ConversationService } from '#core/conversations/service.ts';
 import { router } from './procedures.ts';
 import { conversationRoutes } from './routes/conversations.ts';
 import { loginRoutes } from './routes/login.ts';
+import { mediaRoutes } from './routes/media.ts';
 import { messageRoutes } from './routes/messages.ts';
 import { settingRoutes } from './routes/settings.ts';
 import { updateRoutes } from './routes/updates.ts';
@@ -29,6 +30,7 @@ export function createCoreRouter(services: RouterServices) {
     login: loginRoutes(services.client, services.account),
     conversations: conversationRoutes(services.conversations),
     messages: messageRoutes(services.store),
+    media: mediaRoutes(services.client),
     settings: settingRoutes(services.account),
     ...updateRoutes(services.ctx),
   });

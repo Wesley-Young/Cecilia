@@ -298,6 +298,10 @@ export class AcidifyClient extends ChatClient {
     else await bot.markGroupMessagesAsRead(BigInt(peer.uin), BigInt(seq));
   }
 
+  async getImageUrl(fileId: string): Promise<string> {
+    return this.online().getDownloadUrl(fileId);
+  }
+
   private setState(state: LoginState) {
     this.state = state;
     this.ctx.emit('client/login', state);

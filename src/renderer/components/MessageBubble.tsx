@@ -3,7 +3,7 @@ import { CircleAlert } from 'lucide-react';
 
 import type { ChatMessage } from '#core/model/message.ts';
 import PeerAvatar from '@/components/PeerAvatar';
-import { ReplyQuote, SegmentView } from '@/components/SegmentView';
+import { isPicture, PictureView, ReplyQuote, SegmentView, trimAroundPictures } from '@/components/SegmentView';
 
 interface Props {
   message: ChatMessage;
@@ -46,6 +46,10 @@ export default function MessageBubble({ message, continued, followed, highlighte
 
   const { outgoing } = message;
   const reply = message.segments.find((segment) => segment.type === 'reply');
+  // A lone picture stands without a bubble.
+  const [only] = message.segments;
+  const picture = message.segments.length === 1 && only && isPicture(only) ? only : undefined;
+  const sending = message.status === 'sending' ? 'opacity-70' : '';
   const showName = !outgoing && !continued && message.peer.scene === 'group';
   return (
     <div
@@ -64,20 +68,22 @@ export default function MessageBubble({ message, continued, followed, highlighte
           {outgoing && message.status === 'failed' && (
             <CircleAlert className="mb-2 size-4 shrink-0 text-danger" aria-label="发送失败" />
           )}
-          <div
-            className={`selectable whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed shadow-xs ${
-              corners[outgoing ? 'out' : 'in'][followed ? 'joined' : 'end']
-            } ${
-              outgoing ? 'bg-bubble-out text-bubble-out-foreground' : 'bg-bubble-in text-bubble-in-foreground'
-            } ${message.status === 'sending' ? 'opacity-70' : ''}`}
-          >
-            {reply && <ReplyQuote segment={reply} onJump={onJumpToReply} />}
-            {message.segments.map((segment, index) => (
-              // Segments never reorder within a message.
-              // biome-ignore lint/suspicious/noArrayIndexKey: see above
-              <SegmentView key={index} segment={segment} />
-            ))}
-          </div>
+          {picture ? (
+            <PictureView segment={picture} className={`rounded-2xl ${sending}`} />
+          ) : (
+            <div
+              className={`selectable whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed shadow-xs ${
+                corners[outgoing ? 'out' : 'in'][followed ? 'joined' : 'end']
+              } ${outgoing ? 'bg-bubble-out text-bubble-out-foreground' : 'bg-bubble-in text-bubble-in-foreground'} ${sending}`}
+            >
+              {reply && <ReplyQuote segment={reply} onJump={onJumpToReply} />}
+              {trimAroundPictures(message.segments).map((segment, index) => (
+                // Segments never reorder within a message.
+                // biome-ignore lint/suspicious/noArrayIndexKey: see above
+                <SegmentView key={index} segment={segment} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

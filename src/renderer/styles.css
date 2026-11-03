@@ -14,6 +14,8 @@
   --color-bubble-in: var(--bubble-in);
   --color-bubble-in-foreground: var(--bubble-in-foreground);
   --color-sidebar: var(--sidebar);
+  --color-viewer: var(--viewer);
+  --color-viewer-foreground: var(--viewer-foreground);
   /* A message jumped to from a reply flashes once, then fades. */
   --animate-flash: flash 1.5s ease-out forwards;
 
@@ -40,6 +42,9 @@
   --bubble-in: var(--surface);
   --bubble-in-foreground: var(--surface-foreground);
   --sidebar: color-mix(in oklab, var(--background) 70%, var(--surface) 30%);
+  /* The image viewer dims the whole window, in either mode. */
+  --viewer: oklch(0 0 0 / 0.85);
+  --viewer-foreground: oklch(0.98 0 0);
 }
 
 .dark {

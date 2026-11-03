@@ -54,4 +54,7 @@ export abstract class ChatClient {
   abstract getHistory(peer: Peer, limit: number, startSeq?: number): Promise<RemoteMessage[]>;
 
   abstract markRead(peer: Peer, seq: number, time: number): Promise<void>;
+
+  /** A temporary URL for an image segment's `fileId`; it expires after a while. */
+  abstract getImageUrl(fileId: string): Promise<string>;
 }

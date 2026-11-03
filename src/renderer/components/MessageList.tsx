@@ -5,6 +5,7 @@ import { VList, type VListHandle } from 'virtua';
 
 import type { ChatMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
+import { ImageViewerProvider } from '@/components/ImageViewer';
 import MessageBubble from '@/components/MessageBubble';
 import { historyInput } from '@/lib/cache';
 import { messageTime } from '@/lib/format';
@@ -124,23 +125,25 @@ export default function MessageList({ peer, onReachEnd }: { peer: Peer; onReachE
   }
 
   return (
-    <VList ref={list} data={rows} shift={shift} onScroll={onScroll} className="flex-1 pb-3">
-      {(row) =>
-        row.kind === 'time' ? (
-          <p key={row.key} className="pt-4 pb-1 text-center text-[11px] text-muted">
-            {messageTime(row.time)}
-          </p>
-        ) : (
-          <MessageBubble
-            key={row.key}
-            message={row.message}
-            continued={row.continued}
-            followed={row.followed}
-            highlighted={row.message.id === highlighted}
-            onJumpToReply={row.replyTarget === undefined ? undefined : () => jumpToReply(row)}
-          />
-        )
-      }
-    </VList>
+    <ImageViewerProvider>
+      <VList ref={list} data={rows} shift={shift} onScroll={onScroll} className="flex-1 pb-3">
+        {(row) =>
+          row.kind === 'time' ? (
+            <p key={row.key} className="pt-4 pb-1 text-center text-[11px] text-muted">
+              {messageTime(row.time)}
+            </p>
+          ) : (
+            <MessageBubble
+              key={row.key}
+              message={row.message}
+              continued={row.continued}
+              followed={row.followed}
+              highlighted={row.message.id === highlighted}
+              onJumpToReply={row.replyTarget === undefined ? undefined : () => jumpToReply(row)}
+            />
+          )
+        }
+      </VList>
+    </ImageViewerProvider>
   );
 }
