@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronDown, ChevronRight, Copy, Megaphone } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
-import { type Conversation, friendName, type Gender, memberName } from '#core/model/contact.ts';
+import { type Conversation, friendName, type Gender } from '#core/model/contact.ts';
 import type { Peer } from '#core/model/peer.ts';
 import PeerAvatar from '@/components/PeerAvatar';
-import { fullDate, roleLabels } from '@/lib/format';
+import { fullDate } from '@/lib/format';
 import { core } from '@/lib/rpc';
 
 /** Profiles change rarely; one this old is fetched again the next time the card opens. */
@@ -115,18 +115,9 @@ function FriendCard({ uin, name }: { uin: number; name: string }) {
   );
 }
 
-function GroupCard(props: {
-  uin: number;
-  name: string;
-  self: number | undefined;
-  onShowMembers: (() => void) | undefined;
-}) {
-  const { uin, name, self, onShowMembers } = props;
+function GroupCard(props: { uin: number; name: string; onShowMembers: (() => void) | undefined }) {
+  const { uin, name, onShowMembers } = props;
   const group = useQuery(core.contacts.group.queryOptions({ uin })).data ?? undefined;
-  const members = useQuery(core.contacts.members.queryOptions({ group: uin }));
-  const owner = members.data?.find((member) => member.role === 'owner');
-  const mine = members.data?.find((member) => member.uin === self);
-  const loading = members.isPending;
   return (
     <>
       <CardHeader peer={{ scene: 'group', uin }} name={group?.name ?? name} subtitle={undefined} copyLabel="复制群号" />
@@ -158,8 +149,6 @@ function GroupCard(props: {
             </button>
           </Field>
         )}
-        {(loading || owner) && <Field label="群主">{owner ? memberName(owner) : <Pending />}</Field>}
-        {(loading || mine) && <Field label="我的身份">{mine ? roleLabels[mine.role] : <Pending />}</Field>}
         {group && group.createdAt > 0 && <Field label="创建于">{fullDate(group.createdAt)}</Field>}
       </Fields>
     </>
@@ -168,8 +157,6 @@ function GroupCard(props: {
 
 interface Props {
   conversation: Conversation;
-  /** The logged-in account, to show its role in a group. */
-  self: number | undefined;
   /** Shows the member column; absent while the column is always on screen. */
   onShowMembers: (() => void) | undefined;
 }
@@ -178,7 +165,7 @@ interface Props {
  * The conversation's name; opens a card about the friend or group. Its padding hangs into the header's gutter, so
  * the parent offsets it (a negative margin here would shrink the width it asks for and cut the name short).
  */
-export default function ChatTitle({ conversation, self, onShowMembers }: Props) {
+export default function ChatTitle({ conversation, onShowMembers }: Props) {
   const { peer, name } = conversation;
   const [open, setOpen] = useState(false);
   return (
@@ -193,7 +180,6 @@ export default function ChatTitle({ conversation, self, onShowMembers }: Props) 
             <GroupCard
               uin={peer.uin}
               name={name}
-              self={self}
               onShowMembers={
                 onShowMembers &&
                 (() => {

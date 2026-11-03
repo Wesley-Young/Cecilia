@@ -55,8 +55,7 @@ function MemberToggle(props: { group: number; isSelected: boolean; onChange: (se
   );
 }
 
-function ChatPane(props: { conversation: Conversation; self: number | undefined; online: boolean }) {
-  const { conversation, self, online } = props;
+function ChatPane({ conversation, online }: { conversation: Conversation; online: boolean }) {
   const markRead = useMutation(core.conversations.markRead.mutationOptions());
   const docked = useMediaQuery(dockedQuery);
   const [membersOpen, setMembersOpen] = useState(false);
@@ -71,11 +70,7 @@ function ChatPane(props: { conversation: Conversation; self: number | undefined;
     <section className="flex min-w-0 flex-1 flex-col bg-background">
       <header className="app-drag flex h-14 shrink-0 items-center gap-2 border-separator border-b px-5">
         <h2 className="-ml-2 flex min-w-0">
-          <ChatTitle
-            conversation={conversation}
-            self={self}
-            onShowMembers={docked ? undefined : () => setMembersOpen(true)}
-          />
+          <ChatTitle conversation={conversation} onShowMembers={docked ? undefined : () => setMembersOpen(true)} />
         </h2>
         {group && !docked && <MemberToggle group={peer.uin} isSelected={membersOpen} onChange={setMembersOpen} />}
       </header>
@@ -146,7 +141,7 @@ export default function MainView({ state, conversations }: { state: LoginState; 
         </div>
       </aside>
       {current ? (
-        <ChatPane conversation={current} self={self?.uin} online={state.kind === 'online'} />
+        <ChatPane conversation={current} online={state.kind === 'online'} />
       ) : (
         <section className="app-drag flex flex-1 flex-col items-center justify-center gap-3 text-muted">
           <MessagesSquare className="size-10 opacity-40" />
