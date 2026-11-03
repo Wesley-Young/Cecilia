@@ -14,6 +14,18 @@
   --color-bubble-in: var(--bubble-in);
   --color-bubble-in-foreground: var(--bubble-in-foreground);
   --color-sidebar: var(--sidebar);
+  /* A message jumped to from a reply flashes once, then fades. */
+  --animate-flash: flash 1.5s ease-out forwards;
+
+  @keyframes flash {
+    0%,
+    40% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
 }
 
 /*

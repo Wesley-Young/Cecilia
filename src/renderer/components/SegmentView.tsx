@@ -37,11 +37,24 @@ export function SegmentView({ segment }: { segment: Segment }) {
   }
 }
 
-export function ReplyQuote({ segment }: { segment: Extract<Segment, { type: 'reply' }> }) {
+/** The quoted message above a reply; with `onJump`, it scrolls to that message. */
+export function ReplyQuote({ segment, onJump }: { segment: Extract<Segment, { type: 'reply' }>; onJump?: () => void }) {
+  const quote = 'mb-1.5 block border-current/40 border-l-2 pl-2 text-xs opacity-75';
+  // Spans, since a button only holds phrasing content.
+  const content = (
+    <>
+      {segment.senderName && <span className="block truncate font-medium">{segment.senderName}</span>}
+      <span className="line-clamp-2">{summarize(segment.segments) || '[消息]'}</span>
+    </>
+  );
+  if (!onJump) return <div className={quote}>{content}</div>;
   return (
-    <div className="mb-1.5 border-current/40 border-l-2 pl-2 text-xs opacity-75">
-      {segment.senderName && <p className="truncate font-medium">{segment.senderName}</p>}
-      <p className="line-clamp-2">{summarize(segment.segments) || '[消息]'}</p>
-    </div>
+    <button
+      type="button"
+      onClick={onJump}
+      className={`${quote} w-full cursor-pointer text-left outline-none transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-current/60`}
+    >
+      {content}
+    </button>
   );
 }

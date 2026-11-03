@@ -11,6 +11,10 @@ interface Props {
   continued: boolean;
   /** The next message is from the same sender, so this bubble joins it. */
   followed: boolean;
+  /** Just jumped to from a reply. */
+  highlighted: boolean;
+  /** Scrolls to the quoted message; absent when it is not loaded or too far back. */
+  onJumpToReply: (() => void) | undefined;
 }
 
 // A run from one sender reads as one column: the corner toward the avatar is the tail, and the corners between
@@ -20,10 +24,21 @@ const corners = {
   out: { end: 'rounded-tr-md', joined: 'rounded-tr-md rounded-br-md' },
 };
 
-export default function MessageBubble({ message, continued, followed }: Props) {
+/** Flashes the row behind a message jumped to from a reply; 2px past the content on each side. */
+function Flash({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute inset-x-0 -z-10 animate-flash bg-accent/15 ${className}`}
+    />
+  );
+}
+
+export default function MessageBubble({ message, continued, followed, highlighted, onJumpToReply }: Props) {
   if (message.status === 'recalled') {
     return (
-      <p className="py-1 text-center text-xs text-muted">
+      <p className="relative isolate py-1 text-center text-xs text-muted">
+        {highlighted && <Flash className="inset-y-0.5" />}
         {message.outgoing ? '你' : message.sender.name}撤回了一条消息
       </p>
     );
@@ -33,7 +48,10 @@ export default function MessageBubble({ message, continued, followed }: Props) {
   const reply = message.segments.find((segment) => segment.type === 'reply');
   const showName = !outgoing && !continued && message.peer.scene === 'group';
   return (
-    <div className={`flex gap-2.5 px-5 ${continued ? 'pt-0.5' : 'pt-3'} ${outgoing ? 'flex-row-reverse' : ''}`}>
+    <div
+      className={`relative isolate flex gap-2.5 px-5 ${continued ? 'pt-0.5' : 'pt-3'} ${outgoing ? 'flex-row-reverse' : ''}`}
+    >
+      {highlighted && <Flash className={`-bottom-0.5 ${continued ? 'top-0' : 'top-2.5'}`} />}
       <div className="w-8 shrink-0">
         {!continued && (
           <PeerAvatar peer={{ scene: 'friend', uin: message.sender.uin }} name={message.sender.name} size="sm" />
@@ -53,7 +71,7 @@ export default function MessageBubble({ message, continued, followed }: Props) {
               outgoing ? 'bg-bubble-out text-bubble-out-foreground' : 'bg-bubble-in text-bubble-in-foreground'
             } ${message.status === 'sending' ? 'opacity-70' : ''}`}
           >
-            {reply && <ReplyQuote segment={reply} />}
+            {reply && <ReplyQuote segment={reply} onJump={onJumpToReply} />}
             {message.segments.map((segment, index) => (
               // Segments never reorder within a message.
               // biome-ignore lint/suspicious/noArrayIndexKey: see above

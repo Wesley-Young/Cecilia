@@ -1,6 +1,6 @@
 import { Spinner } from '@heroui/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { VList, type VListHandle } from 'virtua';
 
 import type { ChatMessage } from '#core/model/message.ts';
@@ -16,6 +16,10 @@ const separatorGap = 5 * 60;
 const loadThreshold = 400;
 /** Counts as "at the bottom", where new messages keep the view pinned to the end. */
 const bottomThreshold = 80;
+/** A reply jumps to the quoted message only when it is loaded and at most this many messages back. */
+const jumpLimit = 50;
+/** How long the message jumped to flashes, in ms; the length of `animate-flash`. */
+const highlightDuration = 1500;
 
 interface MessageRow {
   kind: 'message';
@@ -25,14 +29,17 @@ interface MessageRow {
   continued: boolean;
   /** The next message is from the same sender. */
   followed: boolean;
+  /** The row of the quoted message, when the reply can jump to it. */
+  replyTarget: number | undefined;
 }
 
 type Row = { kind: 'time'; key: string; time: number } | MessageRow;
 
 function toRows(messages: ChatMessage[]): Row[] {
   const rows: Row[] = [];
+  const bySeq = new Map<number, { row: number; index: number }>();
   let previous: MessageRow | undefined;
-  for (const message of messages) {
+  for (const [index, message] of messages.entries()) {
     const gap = !previous || message.time - previous.message.time > separatorGap;
     if (gap) rows.push({ kind: 'time', key: `time:${message.id}`, time: message.time });
     const continued =
@@ -41,7 +48,11 @@ function toRows(messages: ChatMessage[]): Row[] {
       previous.message.status !== 'recalled' &&
       message.status !== 'recalled';
     if (continued && previous) previous.followed = true;
-    previous = { kind: 'message', key: `message:${message.id}`, message, continued, followed: false };
+    const reply = message.segments.find((segment) => segment.type === 'reply');
+    const target = reply && bySeq.get(reply.seq);
+    const replyTarget = target && index - target.index <= jumpLimit ? target.row : undefined;
+    previous = { kind: 'message', key: `message:${message.id}`, message, continued, followed: false, replyTarget };
+    if (message.seq !== null) bySeq.set(message.seq, { row: rows.length, index });
     rows.push(previous);
   }
   return rows;
@@ -78,6 +89,20 @@ export default function MessageList({ peer, onReachEnd }: { peer: Peer; onReachE
     if (last && atBottom.current) onReachEnd();
   }, [last, onReachEnd]);
 
+  const [highlighted, setHighlighted] = useState<number>();
+  const highlightTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(highlightTimer.current), []);
+
+  const jumpToReply = (from: MessageRow) => {
+    const index = from.replyTarget;
+    const target = index === undefined ? undefined : rows[index];
+    if (index === undefined || target?.kind !== 'message') return;
+    list.current?.scrollToIndex(index, { align: 'center', smooth: true });
+    setHighlighted(target.message.id);
+    clearTimeout(highlightTimer.current);
+    highlightTimer.current = setTimeout(() => setHighlighted(undefined), highlightDuration);
+  };
+
   const onScroll = (offset: number) => {
     const handle = list.current;
     if (!handle) return;
@@ -106,7 +131,14 @@ export default function MessageList({ peer, onReachEnd }: { peer: Peer; onReachE
             {messageTime(row.time)}
           </p>
         ) : (
-          <MessageBubble key={row.key} message={row.message} continued={row.continued} followed={row.followed} />
+          <MessageBubble
+            key={row.key}
+            message={row.message}
+            continued={row.continued}
+            followed={row.followed}
+            highlighted={row.message.id === highlighted}
+            onJumpToReply={row.replyTarget === undefined ? undefined : () => jumpToReply(row)}
+          />
         )
       }
     </VList>
