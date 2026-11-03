@@ -1,6 +1,7 @@
 import {
   type BotFriend,
   type BotGroup,
+  type BotGroupMember,
   type BotIncomingMessage,
   BotIncomingSegment,
   type KtList,
@@ -8,7 +9,7 @@ import {
   type QRCodeState,
 } from '@acidify/core';
 
-import type { Friend, Group } from '#core/model/contact.ts';
+import type { Friend, Group, GroupMember } from '#core/model/contact.ts';
 import type { QrCodeState } from '#core/model/login.ts';
 import type { RemoteMessage } from '#core/model/message.ts';
 import type { Peer, Scene } from '#core/model/peer.ts';
@@ -119,6 +120,10 @@ export function toFriend(friend: BotFriend): Friend {
 
 export function toGroup(group: BotGroup): Group {
   return { uin: Number(group.uin), name: group.name, memberCount: group.memberCount, capacity: group.capacity };
+}
+
+export function toGroupMember(member: BotGroupMember): GroupMember {
+  return { uin: Number(member.uin), nickname: member.nickname, card: member.card };
 }
 
 export function toUinList(uins: KtList<bigint>): number[] {

@@ -17,8 +17,10 @@ export default function LoginView({ state }: { state: LoginState }) {
   const info = useQuery(shell.system.info.queryOptions());
   const settings = useQuery(core.settings.get.queryOptions());
   const start = useMutation(core.login.start.mutationOptions());
+  const reset = useMutation(core.login.reset.mutationOptions());
   const [editing, setEditing] = useState(false);
   const login = () => start.mutate();
+  const error = start.error ?? reset.error;
   // The mock logs in by itself and ignores the settings.
   const configurable = info.data !== undefined && !info.data.mock;
   const showSettings = configurable && (state.kind === 'unconfigured' || editing);
@@ -72,9 +74,16 @@ export default function LoginView({ state }: { state: LoginState }) {
         body = (
           <div className="flex flex-col items-center gap-4">
             <p className="text-center text-sm text-danger">{state.message}</p>
-            <Button variant="primary" onPress={login}>
-              重新登录
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="primary" onPress={login} isDisabled={reset.isPending}>
+                重新登录
+              </Button>
+              {state.withSession && (
+                <Button variant="ghost" onPress={() => reset.mutate()} isPending={reset.isPending}>
+                  扫码登录
+                </Button>
+              )}
+            </div>
           </div>
         );
         break;
@@ -97,7 +106,7 @@ export default function LoginView({ state }: { state: LoginState }) {
           <h1 className="font-semibold text-xl">{showSettings ? '账号设置' : 'Cecilia'}</h1>
         </div>
         {body}
-        {start.error && <p className="text-center text-sm text-danger">{errorMessage(start.error)}</p>}
+        {error && <p className="text-center text-sm text-danger">{errorMessage(error)}</p>}
         {configurable && !showSettings && (state.kind === 'idle' || state.kind === 'failed') && (
           <Button variant="ghost" size="sm" onPress={() => setEditing(true)}>
             账号设置

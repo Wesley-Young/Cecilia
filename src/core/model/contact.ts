@@ -13,6 +13,13 @@ export interface Group {
   capacity: number;
 }
 
+export interface GroupMember {
+  uin: number;
+  nickname: string;
+  /** The member's name in this group; empty when not set. */
+  card: string;
+}
+
 export interface SelfInfo {
   uin: number;
   nickname: string;
@@ -31,4 +38,8 @@ export interface Conversation {
 
 export function friendName(friend: Friend): string {
   return friend.remark || friend.nickname || String(friend.uin);
+}
+
+export function memberName(member: GroupMember): string {
+  return member.card || member.nickname || String(member.uin);
 }

@@ -1,7 +1,7 @@
 import { ChatClient, type PinnedPeers, type SendResult } from '#core/client/service.ts';
 import type { ChatContext } from '#core/context.ts';
 import { AppError } from '#core/errors.ts';
-import type { Friend, Group, SelfInfo } from '#core/model/contact.ts';
+import { type Friend, type Group, type GroupMember, memberName, type SelfInfo } from '#core/model/contact.ts';
 import type { LoginState } from '#core/model/login.ts';
 import type { RemoteMessage, Sender } from '#core/model/message.ts';
 import { type Peer, peerKey } from '#core/model/peer.ts';
@@ -18,6 +18,13 @@ const friends: Friend[] = [
 const groups: Group[] = [
   { uin: 20001, name: 'Cecilia 开发组', memberCount: 4, capacity: 200 },
   { uin: 20002, name: '摸鱼小队', memberCount: 3, capacity: 500 },
+];
+
+const members: GroupMember[] = [
+  { uin: 10001, nickname: '星野', card: '星野 | 前端' },
+  { uin: 10002, nickname: 'kobayashi', card: '' },
+  { uin: 10003, nickname: 'Aria', card: '' },
+  { uin: 10004, nickname: 'Momo', card: '桃桃' },
 ];
 
 const lines = [
@@ -100,6 +107,11 @@ export class MockClient extends ChatClient {
 
   async getGroups(): Promise<Group[]> {
     return groups;
+  }
+
+  async getGroupMembers(): Promise<GroupMember[]> {
+    await delay(300);
+    return members;
   }
 
   async getPinned(): Promise<PinnedPeers> {
@@ -189,8 +201,9 @@ export class MockClient extends ChatClient {
       if (seq % 4 === 0) return { uin: self.uin, name: self.nickname };
       return { uin: peer.uin, name: '' };
     }
-    const member = friends[seq % friends.length] ?? friends[0];
-    return { uin: member?.uin ?? 0, name: member ? member.remark || member.nickname : '' };
+    const member = members[seq % members.length] ?? members[0];
+    // Like acidify, every third message (one with a reply, there) comes without the sender's name.
+    return { uin: member?.uin ?? 0, name: member && seq % 3 !== 0 ? memberName(member) : '' };
   }
 
   private latestSeq(peer: Peer): number {

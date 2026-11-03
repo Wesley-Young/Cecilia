@@ -1,6 +1,6 @@
 import { serviceToken } from '@fraqjs/kernel';
 import type { KyselyService } from '@fraqjs/plugin-kysely';
-import { sql } from 'kysely';
+import { sql, type Updateable } from 'kysely';
 
 import type { ChatClient } from '#core/client/service.ts';
 import type { ContactService } from '#core/contacts/service.ts';
@@ -9,7 +9,7 @@ import { AppError } from '#core/errors.ts';
 import type { ChatMessage, RemoteMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
 import { type OutgoingSegment, toLocalSegments } from '#core/model/segment.ts';
-import { type MessageRow, toChatMessage } from './schema.ts';
+import { type MessageRow, type MessageTable, toChatMessage } from './schema.ts';
 
 import { randomInt } from 'node:crypto';
 
@@ -28,7 +28,8 @@ const newestFirst = sql<number>`coalesce(seq, ${Number.MAX_SAFE_INTEGER})`;
 
 /**
  * The local message database. Messages from the server and messages sent from here end up as one row each: a sent
- * message is saved before it goes out, and the server's echo is matched to it by `clientSeq` and `random`.
+ * message is saved before it goes out, and the server's echo is matched to it by `random` (and `clientSeq`, which
+ * group echoes leave at 0).
  */
 export class ChatStore {
   static readonly token = serviceToken<ChatStore>('cecilia/ChatStore');
@@ -65,16 +66,14 @@ export class ChatStore {
     const outgoing = message.sender.uin === self?.uin;
     let row: MessageRow | undefined;
     if (outgoing && message.random !== 0) {
-      const pending = await where
-        .where('seq', 'is', null)
-        .where('client_seq', '=', message.clientSeq)
-        .where('random', '=', message.random)
-        .executeTakeFirst();
-      if (pending) {
+      let pending = where.where('seq', 'is', null).where('random', '=', message.random);
+      if (message.clientSeq !== 0) pending = pending.where('client_seq', '=', message.clientSeq);
+      const match = await pending.executeTakeFirst();
+      if (match) {
         row = await this.db
           .updateTable('cecilia_messages')
           .set({ seq: message.seq, time: message.time, segments: JSON.stringify(message.segments), status: 'sent' })
-          .where('id', '=', pending.id)
+          .where('id', '=', match.id)
           .returningAll()
           .executeTakeFirst();
       }
@@ -88,8 +87,8 @@ export class ChatStore {
         time: message.time,
         sender_uin: message.sender.uin,
         sender_name:
+          (outgoing ? message.sender.name || self?.nickname : await this.senderName(peer, message.sender.uin)) ||
           message.sender.name ||
-          (outgoing ? self?.nickname : this.contacts.nameOf({ scene: 'friend', uin: message.sender.uin })) ||
           String(message.sender.uin),
         segments: JSON.stringify(message.segments),
         status: 'sent',
@@ -104,6 +103,28 @@ export class ChatStore {
     const saved = toChatMessage(row);
     if (live) this.ctx.emit('store/message', saved);
     return saved;
+  }
+
+  /**
+   * The sender's current name in this conversation. In groups it comes from the member list (when the group's has
+   * been loaded) rather than the message, which acidify leaves without a name when it has a reply.
+   */
+  private async senderName(peer: Peer, uin: number): Promise<string | undefined> {
+    if (peer.scene === 'group') return this.contacts.memberName(peer.uin, uin);
+    return this.contacts.nameOf({ scene: 'friend', uin });
+  }
+
+  /** Shows group members under their current names; the name saved with a message is the fallback. */
+  private async withSenderNames(peer: Peer, messages: ChatMessage[]): Promise<ChatMessage[]> {
+    if (peer.scene !== 'group') return messages;
+    const names = new Map<number, string | undefined>();
+    for (const { sender, outgoing } of messages) {
+      if (!outgoing && !names.has(sender.uin)) names.set(sender.uin, await this.senderName(peer, sender.uin));
+    }
+    return messages.map((message) => {
+      const name = names.get(message.sender.uin);
+      return name && !message.outgoing ? { ...message, sender: { ...message.sender, name } } : message;
+    });
   }
 
   /** Saves the message as sending and returns it right away; the outcome follows as a `store/message` event. */
@@ -131,30 +152,29 @@ export class ChatStore {
       .executeTakeFirstOrThrow();
     const message = toChatMessage(row);
     this.ctx.emit('store/message', message);
-    void this.deliver(message.id, peer, segments, clientSeq, random);
+    this.deliver(message.id, peer, segments, clientSeq, random).catch((error: unknown) =>
+      this.ctx.logger.error(`Cannot save the message sent to ${peer.scene} ${peer.uin}`, error),
+    );
     return message;
   }
 
   private async deliver(id: number, peer: Peer, segments: OutgoingSegment[], clientSeq: number, random: number) {
-    let row: MessageRow | undefined;
+    let outcome: Updateable<MessageTable>;
     try {
       const result = await this.client.sendMessage(peer, segments, clientSeq, random);
-      row = await this.db
-        .updateTable('cecilia_messages')
-        .set({ seq: result.seq, time: result.time, status: 'sent' })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+      outcome = { seq: result.seq, time: result.time, status: 'sent' };
     } catch (error) {
       this.ctx.logger.warn(`Cannot send to ${peer.scene} ${peer.uin}`, error);
-      row = await this.db
-        .updateTable('cecilia_messages')
-        .set({ status: 'failed' })
-        .where('id', '=', id)
-        .where('seq', 'is', null)
-        .returningAll()
-        .executeTakeFirst();
+      outcome = { status: 'failed' };
     }
+    // Nothing to do when the echo has already filled the row in.
+    const row = await this.db
+      .updateTable('cecilia_messages')
+      .set(outcome)
+      .where('id', '=', id)
+      .where('seq', 'is', null)
+      .returningAll()
+      .executeTakeFirst();
     if (row) this.ctx.emit('store/message', toChatMessage(row));
   }
 
@@ -181,9 +201,12 @@ export class ChatStore {
    * short, or when a group's page has a hole in its seqs.
    */
   async history(peer: Peer, before?: number): Promise<HistoryPage> {
+    const online = this.client.loginState.kind === 'online';
+    // Fetched alongside the history; the names looked up below wait for it.
+    if (online && peer.scene === 'group') void this.contacts.loadMembers(peer.uin);
     let local = await this.localPage(peer, before);
     let remoteCount: number | undefined;
-    if (this.client.loginState.kind === 'online' && (before === undefined || this.incomplete(peer, local, before))) {
+    if (online && (before === undefined || this.incomplete(peer, local, before))) {
       try {
         const remote = await this.client.getHistory(
           peer,
@@ -200,7 +223,7 @@ export class ChatStore {
     const oldest = local.find((message) => message.seq !== null)?.seq;
     // Without an answer from the server, only a full local page suggests there is more.
     const more = remoteCount === undefined ? local.length === historyPageSize : remoteCount > 0;
-    return { messages: local, hasMore: more && oldest != null && oldest > 1 };
+    return { messages: await this.withSenderNames(peer, local), hasMore: more && oldest != null && oldest > 1 };
   }
 
   private incomplete(peer: Peer, page: ChatMessage[], before: number): boolean {

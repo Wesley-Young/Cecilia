@@ -14,6 +14,7 @@ export type LoginState =
   | { kind: 'online'; self: SelfInfo }
   /** Lost the connection after being online; `retryAt` is when the next attempt starts, in epoch milliseconds. */
   | { kind: 'offline'; reason: string; retryAt: number | null }
-  | { kind: 'failed'; message: string };
+  /** `withSession` is whether the attempt used a saved session, which the user can drop to scan a QR code instead. */
+  | { kind: 'failed'; message: string; withSession: boolean };
 
 export type LoginStateKind = LoginState['kind'];

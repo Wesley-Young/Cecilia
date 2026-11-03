@@ -26,7 +26,7 @@ export interface RouterServices {
 /** Combines every module's routes; this is the complete RPC surface of an account. */
 export function createCoreRouter(services: RouterServices) {
   return router({
-    login: loginRoutes(services.client),
+    login: loginRoutes(services.client, services.account),
     conversations: conversationRoutes(services.conversations),
     messages: messageRoutes(services.store),
     settings: settingRoutes(services.account),

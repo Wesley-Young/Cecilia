@@ -59,6 +59,15 @@ export class AccountService {
     await this.client.applySettings(next);
     return toView(next);
   }
+
+  /**
+   * Forgets the saved session and rebuilds the connection with a fresh one, for when logging in with it keeps
+   * failing. The next login shows a QR code; local messages stay.
+   */
+  async resetSession() {
+    await this.client.logout();
+    await this.client.applySettings(await this.settings.load());
+  }
 }
 
 function toView(settings: AccountSettings): SettingsView {

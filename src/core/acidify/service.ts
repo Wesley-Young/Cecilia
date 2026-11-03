@@ -13,7 +13,7 @@ import type { Logger } from '@fraqjs/kernel';
 import { ChatClient, type PinnedPeers, type SendResult } from '#core/client/service.ts';
 import type { ChatContext } from '#core/context.ts';
 import { AppError } from '#core/errors.ts';
-import type { Friend, Group } from '#core/model/contact.ts';
+import type { Friend, Group, GroupMember } from '#core/model/contact.ts';
 import type { LoginState } from '#core/model/login.ts';
 import type { RemoteMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
@@ -21,7 +21,16 @@ import type { OutgoingSegment } from '#core/model/segment.ts';
 import { type AccountSettings, isComplete } from '#core/model/settings.ts';
 import type { Secrets } from '#core/secrets/service.ts';
 import { bundledAppInfo } from './app-info.ts';
-import { toDataUrl, toFriend, toGroup, toPeer, toQrCodeState, toRemoteMessage, toUinList } from './mapper.ts';
+import {
+  toDataUrl,
+  toFriend,
+  toGroup,
+  toGroupMember,
+  toPeer,
+  toQrCodeState,
+  toRemoteMessage,
+  toUinList,
+} from './mapper.ts';
 
 const sessionKey = 'session';
 /** Delays between reconnect attempts after going offline; the last one repeats. */
@@ -195,7 +204,7 @@ export class AcidifyClient extends ChatClient {
       this.ctx.logger.warn('Login failed', error);
       // A dropped connection with a valid session is worth retrying; anything else needs the user.
       if (this.hasSession && this.retries > 0) this.scheduleRetry(describe(error));
-      else this.setState({ kind: 'failed', message: describe(error) });
+      else this.setState({ kind: 'failed', message: describe(error), withSession: this.hasSession });
     }
   }
 
@@ -230,6 +239,10 @@ export class AcidifyClient extends ChatClient {
 
   async getGroups(forceUpdate = false): Promise<Group[]> {
     return (await this.online().getGroups(forceUpdate)).map(toGroup);
+  }
+
+  async getGroupMembers(group: number, forceUpdate = false): Promise<GroupMember[]> {
+    return ((await this.online().getGroupMembers(BigInt(group), forceUpdate)) ?? []).map(toGroupMember);
   }
 
   async getPinned(): Promise<PinnedPeers> {
