@@ -101,7 +101,10 @@ export class ChatStore {
       .executeTakeFirst();
     if (!row) return undefined;
     const saved = toChatMessage(row);
-    if (live) this.ctx.emit('store/message', saved);
+    if (live) {
+      const [named] = await this.withSenderNames(peer, [saved]);
+      this.ctx.emit('store/message', named ?? saved);
+    }
     return saved;
   }
 
@@ -114,17 +117,62 @@ export class ChatStore {
     return this.contacts.nameOf({ scene: 'friend', uin });
   }
 
-  /** Shows group members under their current names; the name saved with a message is the fallback. */
+  /**
+   * Shows group members under their current names, with the name saved with a message as the fallback, and names
+   * the sender of each quoted message: by the current name, then the name the server sent with the reply, the name
+   * saved with the quoted message, and the uin.
+   */
   private async withSenderNames(peer: Peer, messages: ChatMessage[]): Promise<ChatMessage[]> {
-    if (peer.scene !== 'group') return messages;
     const names = new Map<number, string | undefined>();
-    for (const { sender, outgoing } of messages) {
-      if (!outgoing && !names.has(sender.uin)) names.set(sender.uin, await this.senderName(peer, sender.uin));
+    // One at a time, so a missing member refetches the member list once.
+    const nameOf = async (uin: number) => {
+      if (!names.has(uin)) names.set(uin, await this.senderName(peer, uin));
+      return names.get(uin);
+    };
+    const quoted = messages.flatMap((message) =>
+      message.segments.flatMap((segment) => (segment.type === 'reply' ? [segment.seq] : [])),
+    );
+    const saved = await this.savedSenderNames(peer, quoted);
+    const self = this.client.self;
+    const named: ChatMessage[] = [];
+    for (const message of messages) {
+      let { sender, segments } = message;
+      if (peer.scene === 'group' && !message.outgoing) {
+        const name = await nameOf(sender.uin);
+        if (name) sender = { ...sender, name };
+      }
+      if (segments.some((segment) => segment.type === 'reply')) {
+        segments = [];
+        for (const segment of message.segments) {
+          if (segment.type !== 'reply') {
+            segments.push(segment);
+            continue;
+          }
+          const senderName =
+            (await nameOf(segment.senderUin)) ||
+            segment.senderName ||
+            saved.get(segment.seq) ||
+            (segment.senderUin === self?.uin ? self.nickname : '') ||
+            String(segment.senderUin);
+          segments.push({ ...segment, senderName });
+        }
+      }
+      named.push({ ...message, sender, segments });
     }
-    return messages.map((message) => {
-      const name = names.get(message.sender.uin);
-      return name && !message.outgoing ? { ...message, sender: { ...message.sender, name } } : message;
-    });
+    return named;
+  }
+
+  /** The names saved with the messages of these seqs, by seq. */
+  private async savedSenderNames(peer: Peer, seqs: number[]): Promise<Map<number, string>> {
+    if (seqs.length === 0) return new Map();
+    const rows = await this.db
+      .selectFrom('cecilia_messages')
+      .select(['seq', 'sender_name'])
+      .where('scene', '=', peer.scene)
+      .where('peer_uin', '=', peer.uin)
+      .where('seq', 'in', seqs)
+      .execute();
+    return new Map(rows.flatMap((row) => (row.seq === null ? [] : [[row.seq, row.sender_name] as const])));
   }
 
   /** Saves the message as sending and returns it right away; the outcome follows as a `store/message` event. */

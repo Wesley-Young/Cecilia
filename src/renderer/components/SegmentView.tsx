@@ -40,8 +40,8 @@ export function SegmentView({ segment }: { segment: Segment }) {
 export function ReplyQuote({ segment }: { segment: Extract<Segment, { type: 'reply' }> }) {
   return (
     <div className="mb-1.5 border-current/40 border-l-2 pl-2 text-xs opacity-75">
-      {segment.senderName && <span className="font-medium">{segment.senderName}: </span>}
-      <span className="line-clamp-2">{summarize(segment.segments) || '[消息]'}</span>
+      {segment.senderName && <p className="truncate font-medium">{segment.senderName}</p>}
+      <p className="line-clamp-2">{summarize(segment.segments) || '[消息]'}</p>
     </div>
   );
 }

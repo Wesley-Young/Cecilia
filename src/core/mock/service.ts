@@ -148,12 +148,26 @@ export class MockClient extends ChatClient {
     for (let seq = Math.max(this.base - initialHistory + 1, end - limit + 1); seq <= end; seq++) {
       // Every message is made up from its seq, so asking twice gives the same history.
       const sender = this.senderOf(peer, seq);
+      const time = (at: number) => Math.floor(Date.now() / 1000) - (this.latestSeq(peer) - at + 1) * 300;
+      const text = (at: number): Segment => ({ type: 'text', text: lines[at % lines.length] ?? '' });
+      const segments: Segment[] = [text(seq)];
+      // Every third group message quotes the one before it, without the quoted sender's name.
+      if (peer.scene === 'group' && seq % 3 === 0) {
+        segments.unshift({
+          type: 'reply',
+          seq: seq - 1,
+          senderUin: this.senderOf(peer, seq - 1).uin,
+          senderName: null,
+          time: time(seq - 1),
+          segments: [text(seq - 1)],
+        });
+      }
       messages.push({
         peer,
         seq,
-        time: Math.floor(Date.now() / 1000) - (this.latestSeq(peer) - seq + 1) * 300,
+        time: time(seq),
         sender,
-        segments: [{ type: 'text', text: lines[seq % lines.length] ?? '' }],
+        segments,
         clientSeq: 0,
         random: 0,
       });
@@ -202,7 +216,7 @@ export class MockClient extends ChatClient {
       return { uin: peer.uin, name: '' };
     }
     const member = members[seq % members.length] ?? members[0];
-    // Like acidify, every third message (one with a reply, there) comes without the sender's name.
+    // Like acidify, every third message (one with a reply) comes without the sender's name.
     return { uin: member?.uin ?? 0, name: member && seq % 3 !== 0 ? memberName(member) : '' };
   }
 
