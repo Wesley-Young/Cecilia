@@ -25,8 +25,9 @@ export default function Composer({ peer, disabled }: { peer: Peer; disabled: boo
   };
 
   // The whole block is the field: no border or send button, Enter is the way to send.
+  // It takes a share of the window's height, within bounds for very short and very tall windows.
   return (
-    <div className="flex h-32 shrink-0 flex-col border-separator border-t bg-surface text-surface-foreground">
+    <div className="flex h-[clamp(8rem,25vh,16rem)] shrink-0 flex-col border-separator border-t bg-surface text-surface-foreground">
       {send.error && <p className="px-5 pt-2 text-xs text-danger">{errorMessage(send.error)}</p>}
       <textarea
         aria-label="消息"
