@@ -139,7 +139,7 @@ export class ChatStore {
     const named: ChatMessage[] = [];
     for (const message of messages) {
       let { sender, segments } = message;
-      if (peer.scene === 'group' && !message.outgoing) {
+      if (peer.scene === 'group') {
         const name = await nameOf(sender.uin);
         if (name) sender = { ...sender, name };
       }
@@ -183,6 +183,8 @@ export class ChatStore {
     if (!self) throw new AppError('precondition_failed', '尚未登录');
     const clientSeq = randomInt(1, 2 ** 31 - 1);
     const random = randomInt(1, 2 ** 31 - 1);
+    // In a group, the message goes out under the account's group card when the member list has it.
+    const name = (peer.scene === 'group' && (await this.senderName(peer, self.uin))) || self.nickname;
     const row = await this.db
       .insertInto('cecilia_messages')
       .values({
@@ -191,7 +193,7 @@ export class ChatStore {
         seq: null,
         time: Math.floor(Date.now() / 1000),
         sender_uin: self.uin,
-        sender_name: self.nickname,
+        sender_name: name,
         segments: JSON.stringify(toLocalSegments(segments)),
         status: 'sending',
         outgoing: 1,

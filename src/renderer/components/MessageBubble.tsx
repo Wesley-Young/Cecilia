@@ -49,7 +49,7 @@ export default function MessageBubble(props: Props) {
   const [only] = message.segments;
   const picture = message.segments.length === 1 && only && isPicture(only) ? only : undefined;
   const sending = message.status === 'sending' ? 'opacity-70' : '';
-  const showName = !outgoing && !continued && message.peer.scene === 'group';
+  const showName = !continued && message.peer.scene === 'group';
   return (
     <div
       className={`relative isolate flex gap-2.5 px-5 ${continued ? 'pt-0.5' : 'pt-3'} ${outgoing ? 'flex-row-reverse' : ''} ${enter}`}
