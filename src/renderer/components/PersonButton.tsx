@@ -1,7 +1,7 @@
 import { Dropdown, Popover, Separator, toast } from '@heroui/react';
 import { useQuery } from '@tanstack/react-query';
 import { BellRing, Copy, MessageCircle, PenLine, UserRound } from 'lucide-react';
-import { type Key, type MouseEvent, type ReactNode, useState } from 'react';
+import { type Key, type MouseEvent, type ReactNode, useCallback, useRef, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { createPortal } from 'react-dom';
 
@@ -129,6 +129,16 @@ export default function PersonButton({ chat, uin, name, placement, className, ch
   const [cardOpen, setCardOpen] = useState(false);
   const [menuAt, setMenuAt] = useState<{ x: number; y: number }>();
   const [editing, setEditing] = useState<GroupMember>();
+  const card = useRef<HTMLElement>(null);
+
+  // React Aria caps the card's height at the room it had when it opened, so a card that grows as the profile loads
+  // would spill past its bottom. Lifting the cap lets the card grow, which makes React Aria place it again.
+  const cardContent = useCallback((content: HTMLDivElement | null) => {
+    if (!content) return;
+    const observer = new ResizeObserver(() => card.current?.style.removeProperty('max-height'));
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
 
   const openMenu = (event: MouseEvent) => {
     event.preventDefault();
@@ -170,9 +180,11 @@ export default function PersonButton({ chat, uin, name, placement, className, ch
         >
           {children}
         </Popover.Trigger>
-        <Popover.Content placement={placement} offset={8} className="app-no-drag w-80">
+        <Popover.Content ref={card} placement={placement} offset={8} className="app-no-drag w-80">
           <Popover.Dialog aria-label={`${name} 的资料`} className="p-0 text-sm">
-            <PersonCard chat={chat} uin={uin} name={name} onDone={() => setCardOpen(false)} />
+            <div ref={cardContent}>
+              <PersonCard chat={chat} uin={uin} name={name} onDone={() => setCardOpen(false)} />
+            </div>
           </Popover.Dialog>
         </Popover.Content>
       </Popover>
