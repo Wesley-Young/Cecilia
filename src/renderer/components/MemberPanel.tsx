@@ -8,6 +8,7 @@ import { type GroupMember, type MemberRole, memberName } from '#core/model/conta
 import PeerAvatar from '@/components/PeerAvatar';
 import { roleLabels } from '@/lib/format';
 import { core, errorMessage } from '@/lib/rpc';
+import { SearchIndex } from '@/lib/search';
 
 const roles: MemberRole[] = ['owner', 'admin', 'member'];
 
@@ -15,24 +16,24 @@ const collator = new Intl.Collator('zh-Hans-CN', { numeric: true });
 
 type Row = { kind: 'section'; key: string; label: string } | { kind: 'member'; key: string; member: GroupMember };
 
-/** Members matching `query` by name or number, under a heading per role and in name order within it. */
-function toRows(members: GroupMember[], query: string): Row[] {
-  const needle = query.trim().toLowerCase();
-  const matches = (member: GroupMember) =>
-    member.card.toLowerCase().includes(needle) ||
-    member.nickname.toLowerCase().includes(needle) ||
-    String(member.uin).includes(needle);
-  const found = needle ? members.filter(matches) : members;
+const memberRow = (member: GroupMember): Row => ({ kind: 'member', key: `member:${member.uin}`, member });
+
+/**
+ * Every member under a heading per role and in name order within it; while searching, the members found, best match
+ * first.
+ */
+function toRows(members: GroupMember[], index: SearchIndex<GroupMember>, query: string): Row[] {
+  if (query.trim()) return index.search(query).map(memberRow);
   const rows: Row[] = [];
   for (const role of roles) {
-    const inRole = found
+    const inRole = members
       .filter((member) => member.role === role)
       .sort((a, b) => collator.compare(memberName(a), memberName(b)));
     if (inRole.length === 0) continue;
     // There is one owner; counting it says nothing.
     const label = role === 'owner' ? roleLabels[role] : `${roleLabels[role]} (${inRole.length})`;
     rows.push({ kind: 'section', key: `section:${role}`, label });
-    for (const member of inRole) rows.push({ kind: 'member', key: `member:${member.uin}`, member });
+    for (const member of inRole) rows.push(memberRow(member));
   }
   return rows;
 }
@@ -79,7 +80,13 @@ export default function MemberPanel({ group, docked, isOpen, onClose }: Props) {
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [docked, isOpen, onClose]);
-  const rows = useMemo(() => (members.data ? toRows(members.data, query) : []), [members.data, query]);
+  // Spelling out every name is the costly part of searching, so it is done once per member list.
+  const index = useMemo(
+    () =>
+      new SearchIndex(members.data ?? [], (member) => ({ names: [member.card, member.nickname], number: member.uin })),
+    [members.data],
+  );
+  const rows = useMemo(() => (members.data ? toRows(members.data, index, query) : []), [members.data, index, query]);
 
   let body: ReactNode;
   if (members.isPending) {
