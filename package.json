@@ -39,6 +39,8 @@
     "@heroui/react": "3.2.7",
     "@heroui/styles": "3.2.7",
     "@internationalized/date": "^3.12.4",
+    "@lexical/history": "0.53.0",
+    "@lexical/plain-text": "0.53.0",
     "@lexical/react": "0.53.0",
     "@react-aria/ssr": "^3.10.1",
     "@react-aria/utils": "^3.34.1",

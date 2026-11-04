@@ -1,10 +1,9 @@
 import { Button } from '@heroui/react';
-import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { HistoryExtension } from '@lexical/history';
+import { PlainTextExtension } from '@lexical/plain-text';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
-import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
+import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionComposer';
 import { useMutation } from '@tanstack/react-query';
 import {
   $createParagraphNode,
@@ -14,6 +13,7 @@ import {
   $isRangeSelection,
   CLEAR_HISTORY_COMMAND,
   COMMAND_PRIORITY_HIGH,
+  defineExtension,
   KEY_BACKSPACE_COMMAND,
   KEY_ENTER_COMMAND,
   type LexicalEditor,
@@ -218,44 +218,41 @@ function Editor({ peer, disabled, replyTo, onCancelReply }: Props) {
         {replyTo && <ReplyBar message={replyTo} onCancel={onCancelReply} />}
         {/* The text fills the rest, so a click anywhere below the reply lands in it. */}
         <div className="relative flex flex-1 flex-col">
-          <PlainTextPlugin
-            contentEditable={
-              <ContentEditable
-                aria-label="消息"
-                aria-placeholder={placeholder}
-                placeholder={
-                  <p className="pointer-events-none absolute top-3 left-5 text-[14px] text-muted leading-relaxed">
-                    {placeholder}
-                  </p>
-                }
-                className={`selectable flex-1 whitespace-pre-wrap wrap-anywhere px-5 py-3 text-[14px] leading-relaxed outline-none ${
-                  disabled ? 'cursor-not-allowed' : ''
-                }`}
-              />
+          <ContentEditable
+            aria-label="消息"
+            aria-placeholder={placeholder}
+            placeholder={
+              <p className="pointer-events-none absolute top-3 left-5 text-[14px] text-muted leading-relaxed">
+                {placeholder}
+              </p>
             }
-            ErrorBoundary={LexicalErrorBoundary}
+            className={`selectable flex-1 whitespace-pre-wrap wrap-anywhere px-5 py-3 text-[14px] leading-relaxed outline-none ${
+              disabled ? 'cursor-not-allowed' : ''
+            }`}
           />
         </div>
       </div>
-      <HistoryPlugin />
     </div>
   );
 }
 
+/** Plain text, which takes images among it, and undo. */
+const composerExtension = defineExtension({
+  name: '@cecilia/composer',
+  namespace: 'composer',
+  nodes: [ImageNode],
+  dependencies: [PlainTextExtension, HistoryExtension],
+  onError: (error) => {
+    throw error;
+  },
+});
+
 /** Text with images among it: Enter sends, Shift+Enter starts a new line, Backspace at the start drops the reply. */
 export default function Composer(props: Props) {
+  // The editor is placed by `Editor`, below the reply, rather than first in the composer.
   return (
-    <LexicalComposer
-      initialConfig={{
-        namespace: 'composer',
-        nodes: [ImageNode],
-        editable: !props.disabled,
-        onError: (error) => {
-          throw error;
-        },
-      }}
-    >
+    <LexicalExtensionComposer extension={composerExtension} contentEditable={null}>
       <Editor {...props} />
-    </LexicalComposer>
+    </LexicalExtensionComposer>
   );
 }
