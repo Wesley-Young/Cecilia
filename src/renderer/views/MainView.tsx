@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 
 import type { Conversation } from '#core/model/contact.ts';
 import type { LoginState } from '#core/model/login.ts';
+import type { ChatMessage } from '#core/model/message.ts';
 import { type Peer, peerKey, samePeer } from '#core/model/peer.ts';
 import ChatTitle from '@/components/ChatTitle';
 import Composer from '@/components/Composer';
@@ -83,6 +84,8 @@ function ChatPane({ conversation, online }: { conversation: Conversation; online
   const docked = useMediaQuery(dockedQuery);
   const [membersOpen, setMembersOpen] = useState(false);
   const closeMembers = useCallback(() => setMembersOpen(false), []);
+  const [replyTo, setReplyTo] = useState<ChatMessage>();
+  const cancelReply = useCallback(() => setReplyTo(undefined), []);
   const { peer, unread } = conversation;
   const group = peer.scene === 'group';
   const { mutate } = markRead;
@@ -101,12 +104,10 @@ function ChatPane({ conversation, online }: { conversation: Conversation; online
       {/* Clips the member column while it slides in and out. */}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-w-0 flex-1 flex-col">
-          <MessageList key={peerKey(peer)} peer={peer} onReachEnd={onReachEnd} />
-          <Composer key={`composer:${peerKey(peer)}`} peer={peer} disabled={!online} />
+          <MessageList peer={peer} onReachEnd={onReachEnd} onReply={setReplyTo} />
+          <Composer peer={peer} disabled={!online} replyTo={replyTo} onCancelReply={cancelReply} />
         </div>
-        {group && (
-          <MemberPanel key={peer.uin} group={peer.uin} docked={docked} isOpen={membersOpen} onClose={closeMembers} />
-        )}
+        {group && <MemberPanel group={peer.uin} docked={docked} isOpen={membersOpen} onClose={closeMembers} />}
       </div>
     </section>
   );
@@ -159,7 +160,8 @@ export default function MainView({ state, conversations }: { state: LoginState; 
         </div>
       </aside>
       {current ? (
-        <ChatPane conversation={current} online={state.kind === 'online'} />
+        // Everything in it, from the draft to the message being replied to, belongs to one conversation.
+        <ChatPane key={peerKey(current.peer)} conversation={current} online={state.kind === 'online'} />
       ) : (
         <section className="app-drag flex flex-1 flex-col items-center justify-center gap-3 text-muted">
           <MessagesSquare className="size-10 opacity-40" />

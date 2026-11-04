@@ -24,6 +24,10 @@ const highlightDuration = 1500;
 /** How long a new message takes to rise into place, in ms; the length of `animate-message-enter`. */
 const enterDuration = 180;
 
+/** Only a message the server has and that still says something can be replied to. */
+const canReply = (message: ChatMessage) =>
+  message.seq !== null && message.status === 'sent' && recallNotice(message) === undefined;
+
 interface MessageRow {
   kind: 'message';
   key: string;
@@ -61,7 +65,14 @@ function toRows(messages: ChatMessage[]): Row[] {
   return rows;
 }
 
-export default function MessageList({ peer, onReachEnd }: { peer: Peer; onReachEnd: () => void }) {
+interface Props {
+  peer: Peer;
+  onReachEnd: () => void;
+  /** Starts a reply to a message, on a double click on its row. */
+  onReply: (message: ChatMessage) => void;
+}
+
+export default function MessageList({ peer, onReachEnd, onReply }: Props) {
   const history = useInfiniteQuery(
     core.messages.history.infiniteQueryOptions(historyInput(peer), {
       getNextPageParam: (page) => page.nextCursor,
@@ -176,6 +187,7 @@ export default function MessageList({ peer, onReachEnd }: { peer: Peer; onReachE
               highlighted={row.message.id === highlighted}
               entering={entering.has(row.key)}
               onJumpToReply={row.replyTarget === undefined ? undefined : () => jumpToReply(row)}
+              onReply={canReply(row.message) ? () => onReply(row.message) : undefined}
             />
           )
         }

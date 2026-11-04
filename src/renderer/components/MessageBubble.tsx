@@ -1,5 +1,6 @@
 import { Spinner } from '@heroui/react';
 import { CircleAlert } from 'lucide-react';
+import type { MouseEvent } from 'react';
 
 import { type ChatMessage, recallNotice } from '#core/model/message.ts';
 import Flash from '@/components/Flash';
@@ -19,6 +20,8 @@ interface Props {
   entering: boolean;
   /** Scrolls to the quoted message; absent when it is not loaded or too far back. */
   onJumpToReply: (() => void) | undefined;
+  /** Replies to this message; absent when it cannot be replied to. */
+  onReply: (() => void) | undefined;
 }
 
 // A run from one sender reads as one column: the corner toward the avatar is the tail, and the corners between
@@ -32,7 +35,7 @@ const corners = {
 export const enterClass = 'animate-message-enter motion-reduce:animate-none';
 
 export default function MessageBubble(props: Props) {
-  const { message, continued, followed, highlighted, entering, onJumpToReply } = props;
+  const { message, continued, followed, highlighted, entering, onJumpToReply, onReply } = props;
   const enter = entering ? enterClass : '';
   const notice = recallNotice(message);
   if (notice !== undefined) {
@@ -50,8 +53,16 @@ export default function MessageBubble(props: Props) {
   const picture = message.segments.length === 1 && only && isPicture(only) ? only : undefined;
   const sending = message.status === 'sending' ? 'opacity-70' : '';
   const showName = !continued && message.peer.scene === 'group';
+  // A double click anywhere on the row replies, except on the quote and other controls, which act on single clicks.
+  const onDoubleClick = (event: MouseEvent) => {
+    if (event.target instanceof Element && event.target.closest('button, a')) return;
+    onReply?.();
+  };
   return (
     <div
+      // The second press would select a word as well.
+      onMouseDown={onReply && ((event) => event.detail > 1 && event.preventDefault())}
+      onDoubleClick={onReply && onDoubleClick}
       className={`relative isolate flex gap-2.5 px-5 ${continued ? 'pt-0.5' : 'pt-3'} ${outgoing ? 'flex-row-reverse' : ''} ${enter}`}
     >
       {/* 2px past the bubble on each side. */}

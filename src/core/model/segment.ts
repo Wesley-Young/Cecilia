@@ -83,7 +83,7 @@ export function toLocalSegments(segments: readonly OutgoingSegment[]): Segment[]
       case 'face':
         return [{ type: 'face', faceId: segment.faceId, summary: '[表情]', isLarge: segment.isLarge ?? false }];
       case 'reply':
-        // The quoted message is resolved from the local store when rendering.
+        // Showing it needs the quoted message, which the store fills in.
         return [];
       default:
         return unreachable(segment);

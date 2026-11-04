@@ -8,7 +8,7 @@ import type { ChatContext } from '#core/context.ts';
 import { AppError } from '#core/errors.ts';
 import type { ChatMessage, RemoteMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
-import { type OutgoingSegment, toLocalSegments } from '#core/model/segment.ts';
+import { type OutgoingSegment, type Segment, toLocalSegments } from '#core/model/segment.ts';
 import { type MessageRow, type MessageTable, toChatMessage } from './schema.ts';
 
 import { randomInt } from 'node:crypto';
@@ -185,6 +185,9 @@ export class ChatStore {
     const random = randomInt(1, 2 ** 31 - 1);
     // In a group, the message goes out under the account's group card when the member list has it.
     const name = (peer.scene === 'group' && (await this.senderName(peer, self.uin))) || self.nickname;
+    const reply = segments.find((segment) => segment.type === 'reply');
+    const quote = reply && (await this.localQuote(peer, reply.seq));
+    const local = toLocalSegments(segments);
     const row = await this.db
       .insertInto('cecilia_messages')
       .values({
@@ -194,7 +197,7 @@ export class ChatStore {
         time: Math.floor(Date.now() / 1000),
         sender_uin: self.uin,
         sender_name: name,
-        segments: JSON.stringify(toLocalSegments(segments)),
+        segments: JSON.stringify(quote ? [quote, ...local] : local),
         status: 'sending',
         outgoing: 1,
         client_seq: clientSeq,
@@ -208,6 +211,28 @@ export class ChatStore {
       this.ctx.logger.error(`Cannot save the message sent to ${peer.scene} ${peer.uin}`, error),
     );
     return message;
+  }
+
+  /** The reply segment for a message sent from here, built from the quoted message saved locally. */
+  private async localQuote(peer: Peer, seq: number): Promise<Segment | undefined> {
+    const row = await this.db
+      .selectFrom('cecilia_messages')
+      .selectAll()
+      .where('scene', '=', peer.scene)
+      .where('peer_uin', '=', peer.uin)
+      .where('seq', '=', seq)
+      .executeTakeFirst();
+    if (!row) return undefined;
+    const quoted = toChatMessage(row);
+    return {
+      type: 'reply',
+      seq,
+      senderUin: quoted.sender.uin,
+      senderName: quoted.sender.name,
+      time: quoted.time,
+      // A quote shows what the message says, not what it quoted in turn.
+      segments: quoted.segments.filter((segment) => segment.type !== 'reply'),
+    };
   }
 
   private async deliver(id: number, peer: Peer, segments: OutgoingSegment[], clientSeq: number, random: number) {

@@ -196,6 +196,8 @@ export class MockClient extends ChatClient {
    */
   private readonly base = Math.floor(Date.now() / 1000) - 1_700_000_000;
   private readonly timers = new Set<NodeJS.Timeout>();
+  /** Messages sent and received this run, by `peerKey:seq`; the others are made up from their seq. */
+  private readonly recent = new Map<string, RemoteMessage>();
   private loggedInBefore = true;
   private readonly ctx: ChatContext;
 
@@ -260,13 +262,17 @@ export class MockClient extends ChatClient {
     if (text.includes('失败')) throw new AppError('bad_gateway', '模拟的发送失败');
     const seq = this.nextSeq(peer);
     const time = Math.floor(Date.now() / 1000);
+    // Like the server, it sends the quoted message along with a reply.
+    const echoed = segments.flatMap((segment) =>
+      segment.type === 'reply' ? [this.quote(peer, segment.seq)] : toLocalSegments([segment]),
+    );
     // The server echoes messages sent from this account back to every device, this one included.
-    this.ctx.emit('client/message', {
+    this.emitMessage({
       peer,
       seq,
       time,
       sender: { uin: self.uin, name: self.nickname },
-      segments: toLocalSegments(segments),
+      segments: echoed,
       clientSeq,
       random,
     });
@@ -281,54 +287,54 @@ export class MockClient extends ChatClient {
     const messages: RemoteMessage[] = [];
     // Only `initialHistory` messages exist before this run's first seq.
     for (let seq = Math.max(this.base - initialHistory + 1, end - limit + 1); seq <= end; seq++) {
-      // Every message is made up from its seq, so asking twice gives the same history.
-      const sender = this.senderOf(peer, seq);
-      const time = (at: number) => Math.floor(Date.now() / 1000) - (this.latestSeq(peer) - at + 1) * 300;
-      const text = (at: number): Segment => ({ type: 'text', text: lines[at % lines.length] ?? '' });
-      // A few messages are a picture, a market face, or a picture between two lines of text.
-      const content = (at: number): Segment[] => {
-        if (at % 10 === 1) return [mockImage(at)];
-        if (at % 10 === 5) return [mockMarketFace(at)];
-        if (at % 10 === 8) return [text(at), mockImage(at), text(at + 1)];
-        return [text(at)];
-      };
-      // Now and then, a message recalled before this run, as the server returns it.
-      if (seq % 17 === 0) {
-        const deleted: Segment[] = [{ type: 'text', text: '[已删除]' }];
-        messages.push({
-          peer,
-          seq,
-          time: time(seq),
-          sender: { uin: 0, name: '' },
-          segments: deleted,
-          clientSeq: 0,
-          random: 0,
-        });
-        continue;
-      }
-      const segments = content(seq);
-      // Every third group message quotes the one before it, without the quoted sender's name.
-      if (peer.scene === 'group' && seq % 3 === 0) {
-        segments.unshift({
-          type: 'reply',
-          seq: seq - 1,
-          senderUin: this.senderOf(peer, seq - 1).uin,
-          senderName: null,
-          time: time(seq - 1),
-          segments: content(seq - 1),
-        });
-      }
-      messages.push({
-        peer,
-        seq,
-        time: time(seq),
-        sender,
-        segments,
-        clientSeq: 0,
-        random: 0,
-      });
+      messages.push(this.recent.get(`${peerKey(peer)}:${seq}`) ?? this.generated(peer, seq));
     }
     return messages;
+  }
+
+  /** A message from before this run, made up from its seq, so asking twice gives the same one. */
+  private generated(peer: Peer, seq: number): RemoteMessage {
+    const sender = this.senderOf(peer, seq);
+    const time = (at: number) => Math.floor(Date.now() / 1000) - (this.latestSeq(peer) - at + 1) * 300;
+    const text = (at: number): Segment => ({ type: 'text', text: lines[at % lines.length] ?? '' });
+    // A few messages are a picture, a market face, or a picture between two lines of text.
+    const content = (at: number): Segment[] => {
+      if (at % 10 === 1) return [mockImage(at)];
+      if (at % 10 === 5) return [mockMarketFace(at)];
+      if (at % 10 === 8) return [text(at), mockImage(at), text(at + 1)];
+      return [text(at)];
+    };
+    // Now and then, a message recalled before this run, as the server returns it.
+    if (seq % 17 === 0) {
+      const deleted: Segment[] = [{ type: 'text', text: '[已删除]' }];
+      return { peer, seq, time: time(seq), sender: { uin: 0, name: '' }, segments: deleted, clientSeq: 0, random: 0 };
+    }
+    const segments = content(seq);
+    // Every third group message quotes the one before it, without the quoted sender's name.
+    if (peer.scene === 'group' && seq % 3 === 0) {
+      segments.unshift({
+        type: 'reply',
+        seq: seq - 1,
+        senderUin: this.senderOf(peer, seq - 1).uin,
+        senderName: null,
+        time: time(seq - 1),
+        segments: content(seq - 1),
+      });
+    }
+    return { peer, seq, time: time(seq), sender, segments, clientSeq: 0, random: 0 };
+  }
+
+  /** The reply segment quoting `seq`, as the server sends it: without a reply of its own. */
+  private quote(peer: Peer, seq: number): Segment {
+    const quoted = this.recent.get(`${peerKey(peer)}:${seq}`) ?? this.generated(peer, seq);
+    return {
+      type: 'reply',
+      seq,
+      senderUin: quoted.sender.uin,
+      senderName: quoted.sender.name || null,
+      time: quoted.time,
+      segments: quoted.segments.filter((segment) => segment.type !== 'reply'),
+    };
   }
 
   async markRead() {}
@@ -360,7 +366,7 @@ export class MockClient extends ChatClient {
   private receive(peer: Peer, segments: Segment[]) {
     if (this.state.kind !== 'online') return;
     const seq = this.nextSeq(peer);
-    this.ctx.emit('client/message', {
+    this.emitMessage({
       peer,
       seq,
       time: Math.floor(Date.now() / 1000),
@@ -369,6 +375,11 @@ export class MockClient extends ChatClient {
       clientSeq: 0,
       random: 0,
     });
+  }
+
+  private emitMessage(message: RemoteMessage) {
+    this.recent.set(`${peerKey(message.peer)}:${message.seq}`, message);
+    this.ctx.emit('client/message', message);
   }
 
   private senderOf(peer: Peer, seq: number): Sender {
