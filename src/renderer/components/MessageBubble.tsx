@@ -91,10 +91,13 @@ export default function MessageBubble(props: Props) {
       {/* At most 70% of the row, and no wider than reads comfortably on a wide window. */}
       <div className={`flex min-w-0 max-w-[min(70%,36rem)] flex-col ${outgoing ? 'items-end' : 'items-start'}`}>
         {showName && <span className="mb-1 px-1 text-xs text-muted">{message.sender.name}</span>}
-        <div className="flex max-w-full items-end gap-1.5">
-          {outgoing && message.status === 'sending' && <Spinner size="sm" className="mb-2" />}
+        <div className="relative flex max-w-full">
+          {/* Beside the bubble rather than in the row, so the bubble keeps its width while it sends. */}
+          {outgoing && message.status === 'sending' && (
+            <Spinner size="sm" className="absolute right-full bottom-2 mr-1.5" />
+          )}
           {outgoing && message.status === 'failed' && (
-            <CircleAlert className="mb-2 size-4 shrink-0 text-danger" aria-label="发送失败" />
+            <CircleAlert className="absolute right-full bottom-2 mr-1.5 size-4 text-danger" aria-label="发送失败" />
           )}
           {picture ? (
             <PictureView segment={picture} className={`rounded-2xl ${sending}`} />
