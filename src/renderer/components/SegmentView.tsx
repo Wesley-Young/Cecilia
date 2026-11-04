@@ -14,6 +14,8 @@ const maxAspect = 3;
 const marketFaceSize = 120;
 /** Image URLs expire; one this old is fetched again the next time it is shown. */
 const imageUrlLifetime = 30 * 60 * 1000;
+/** Carries the address of a picture dragged out of a message, so the composer can insert the picture itself. */
+export const imageDragType = 'application/x-cecilia-image';
 /** How long a picture says it was copied, or why it was not. */
 const copyNoteDuration = 1500;
 
@@ -93,6 +95,11 @@ function Picture(props: {
       alt={alt}
       onLoad={() => setLoaded(src)}
       onError={() => setBroken(src)}
+      // Other apps still get the image as the browser offers it; the composer reads this instead.
+      onDragStart={(event) => {
+        event.dataTransfer.setData(imageDragType, src);
+        event.dataTransfer.effectAllowed = 'copy';
+      }}
       className="size-full object-cover"
     />
   );

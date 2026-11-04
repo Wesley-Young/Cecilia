@@ -7,11 +7,13 @@ import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionCompose
 import { useMutation } from '@tanstack/react-query';
 import {
   $createParagraphNode,
+  $createRangeSelectionFromDom,
   $createTextNode,
   $getRoot,
   $getSelection,
   $isElementNode,
   $isRangeSelection,
+  $setSelection,
   CLEAR_HISTORY_COMMAND,
   COMMAND_PRIORITY_HIGH,
   defineExtension,
@@ -21,7 +23,7 @@ import {
   PASTE_COMMAND,
 } from 'lexical';
 import { Reply, X } from 'lucide-react';
-import { type Ref, useEffect, useEffectEvent, useImperativeHandle, useRef, useState } from 'react';
+import { type DragEvent, type Ref, useEffect, useEffectEvent, useImperativeHandle, useRef, useState } from 'react';
 
 import type { ChatMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
@@ -29,7 +31,8 @@ import { type ImageFormat, imageFormats, maxImageSize, summarize } from '#core/m
 import { $createImageNode, $isImageNode, ImageNode, type PastedImage } from '@/components/ImageNode';
 import MentionMenu from '@/components/MentionMenu';
 import { $createMentionNode, $isMentionNode, MentionNode } from '@/components/MentionNode';
-import { type CoreInputs, core, errorMessage } from '@/lib/rpc';
+import { imageDragType } from '@/components/SegmentView';
+import { type CoreInputs, core, errorMessage, queryClient } from '@/lib/rpc';
 
 type Content = CoreInputs['messages']['send']['content'];
 
@@ -53,6 +56,7 @@ const formatOf = (type: string): ImageFormat | undefined => imageFormats.find((f
 
 /** Reads a pasted file as an image, or says why it cannot be sent. */
 async function toPastedImage(file: File): Promise<PastedImage | string> {
+  if (!file.type.startsWith('image/')) return '只能插入图片';
   const format = formatOf(file.type);
   if (!format) return '不支持这种图片格式';
   if (file.size > maxImageSize) return '图片不能超过 30 MB';
@@ -101,6 +105,30 @@ function readContent(editor: LexicalEditor) {
   return parts.filter((part) => part.type !== 'text' || part.text);
 }
 
+/** Puts the caret where something was dropped, or at the end when that is not in the text. */
+function $selectAtPoint(editor: LexicalEditor, x: number, y: number) {
+  const root = editor.getRootElement();
+  const range = document.caretRangeFromPoint(x, y);
+  const dom = window.getSelection();
+  if (root && range && dom && root.contains(range.startContainer)) {
+    dom.removeAllRanges();
+    dom.addRange(range);
+    const selection = $createRangeSelectionFromDom(dom, editor);
+    if (selection) {
+      $setSelection(selection);
+      return;
+    }
+  }
+  $getRoot().selectEnd();
+}
+
+/**
+ * Files dragged from outside the window, or a picture dragged out of a message; text and the editor's own drags are
+ * left to the editor.
+ */
+const carriesImages = (event: DragEvent) =>
+  event.dataTransfer.types.includes('Files') || event.dataTransfer.types.includes(imageDragType);
+
 /** Whether the caret is before everything, where Backspace removes the reply instead. */
 function $caretAtStart(): boolean {
   const selection = $getSelection();
@@ -144,6 +172,7 @@ function Editor({ peer, disabled, replyTo, onCancelReply, ref }: Props) {
   const send = useMutation(core.messages.send.mutationOptions());
   const [hasContent, setHasContent] = useState(false);
   const [pasteError, setPasteError] = useState<string>();
+  const [dropping, setDropping] = useState(false);
   const urls = useRef(new Set<string>());
   const mentioning = useRef(false);
   const canSend = !disabled && hasContent;
@@ -190,7 +219,8 @@ function Editor({ peer, disabled, replyTo, onCancelReply, ref }: Props) {
     send.mutate({ peer, content, reply });
   };
 
-  const paste = async (files: File[]) => {
+  /** Inserts pasted or dropped files at the caret; files that are not images say so instead. */
+  const insertImages = async (files: File[]) => {
     const results = await Promise.all(files.map(toPastedImage));
     const images = results.filter((result) => typeof result !== 'string');
     setPasteError(results.find((result) => typeof result === 'string'));
@@ -201,6 +231,20 @@ function Editor({ peer, disabled, replyTo, onCancelReply, ref }: Props) {
       const selection = $getSelection() ?? $getRoot().selectEnd();
       selection.insertNodes(images.map($createImageNode));
     });
+  };
+
+  /** Inserts a picture shown in a message, by downloading it to send it again. */
+  const insertShownImage = async (src: string) => {
+    let file: File;
+    try {
+      const { data, type } = await queryClient.fetchQuery({ ...core.media.download.queryOptions({ src }), gcTime: 0 });
+      // tRPC types its output as JSON would come back, but the port uses structured clone, which keeps the bytes.
+      file = new File([data as unknown as Uint8Array<ArrayBuffer>], 'image', { type });
+    } catch (error) {
+      setPasteError(errorMessage(error));
+      return;
+    }
+    await insertImages([file]);
   };
 
   const onEnter = useEffectEvent((event: KeyboardEvent | null) => {
@@ -226,7 +270,7 @@ function Editor({ peer, disabled, replyTo, onCancelReply, ref }: Props) {
     const files = [...event.clipboardData.files].filter((file) => file.type.startsWith('image/'));
     if (files.length === 0) return false;
     event.preventDefault();
-    void paste(files);
+    void insertImages(files);
     return true;
   });
   useEffect(() => {
@@ -245,7 +289,35 @@ function Editor({ peer, disabled, replyTo, onCancelReply, ref }: Props) {
   // The whole block is the field: no border or send button, Enter is the way to send.
   // It takes a share of the window's height, within bounds for very short and very tall windows.
   return (
-    <div className="relative flex h-[clamp(8rem,25vh,16rem)] shrink-0 flex-col border-separator border-t bg-surface text-surface-foreground">
+    // Files can be dropped anywhere on it, not only on the text, so it is the drop target as a whole. Left to the
+    // browser, a dropped file goes in as its path.
+    <div
+      onDragOver={(event) => {
+        if (!carriesImages(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = disabled ? 'none' : 'copy';
+        if (!disabled) setDropping(true);
+      }}
+      onDragLeave={(event) => {
+        if (!(event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)))
+          setDropping(false);
+      }}
+      onDrop={(event) => {
+        if (!carriesImages(event)) return;
+        event.preventDefault();
+        setDropping(false);
+        if (disabled) return;
+        const shown = event.dataTransfer.getData(imageDragType);
+        const files = [...event.dataTransfer.files];
+        const { clientX, clientY } = event;
+        editor.update(() => $selectAtPoint(editor, clientX, clientY));
+        editor.focus();
+        void (shown ? insertShownImage(shown) : insertImages(files));
+      }}
+      className={`relative flex h-[clamp(8rem,25vh,16rem)] shrink-0 flex-col border-separator border-t bg-surface text-surface-foreground ${
+        dropping ? 'ring-2 ring-accent ring-inset' : ''
+      }`}
+    >
       {error && <p className="px-5 pt-2 text-xs text-danger">{error}</p>}
       {/* The reply comes first in the message, so it scrolls with the text instead of staying on top. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">

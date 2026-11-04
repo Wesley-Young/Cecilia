@@ -8,7 +8,13 @@ import type { ChatContext } from '#core/context.ts';
 import { AppError } from '#core/errors.ts';
 import type { ChatMessage, RemoteMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
-import { type ImageFormat, type OutgoingSegment, type Segment, toLocalSegments } from '#core/model/segment.ts';
+import {
+  type ImageFormat,
+  type OutgoingSegment,
+  type Segment,
+  sniffImageFormat,
+  toLocalSegments,
+} from '#core/model/segment.ts';
 import { type MessageRow, type MessageTable, toChatMessage } from './schema.ts';
 
 import { createHash, randomInt } from 'node:crypto';
@@ -258,6 +264,23 @@ export class ChatStore {
       throw new AppError('not_found', '图片已不存在');
     }
     return `data:${mimeTypes[format as ImageFormat]};base64,${data.toString('base64')}`;
+  }
+
+  /**
+   * The bytes of an image the window shows, by the address it shows it from (from `imageUrl`, or a market face's),
+   * so it can be sent again. The type is read from the bytes, as the server's label is not always right.
+   */
+  async downloadImage(src: string): Promise<{ data: Uint8Array; type: string }> {
+    let response: Response;
+    try {
+      response = await fetch(src);
+    } catch {
+      throw new AppError('bad_gateway', '图片下载失败');
+    }
+    if (!response.ok) throw new AppError('bad_gateway', '图片下载失败');
+    const data = new Uint8Array(await response.arrayBuffer());
+    const format = sniffImageFormat(data);
+    return { data, type: format ? `image/${format}` : (response.headers.get('content-type') ?? '') };
   }
 
   /** Deletes the saved images that no unsent message shows any more; the server has the rest. */

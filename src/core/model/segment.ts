@@ -29,6 +29,27 @@ export type SegmentType = Segment['type'];
 export const imageFormats = ['png', 'jpeg', 'gif', 'webp', 'bmp', 'tiff'] as const;
 export type ImageFormat = (typeof imageFormats)[number];
 
+/** An image's format from its first bytes, which servers do not always label right; undefined for others. */
+export function sniffImageFormat(data: Uint8Array): ImageFormat | undefined {
+  const starts = (...bytes: number[]) => bytes.every((byte, index) => data[index] === byte);
+  if (starts(0x89, 0x50, 0x4e, 0x47)) return 'png';
+  if (starts(0xff, 0xd8, 0xff)) return 'jpeg';
+  if (starts(0x47, 0x49, 0x46, 0x38)) return 'gif';
+  // RIFF....WEBP
+  if (
+    starts(0x52, 0x49, 0x46, 0x46) &&
+    data[8] === 0x57 &&
+    data[9] === 0x45 &&
+    data[10] === 0x42 &&
+    data[11] === 0x50
+  ) {
+    return 'webp';
+  }
+  if (starts(0x42, 0x4d)) return 'bmp';
+  if (starts(0x49, 0x49, 0x2a, 0x00) || starts(0x4d, 0x4d, 0x00, 0x2a)) return 'tiff';
+  return undefined;
+}
+
 /** The largest image that can be sent, in bytes. */
 export const maxImageSize = 30 * 1024 * 1024;
 
