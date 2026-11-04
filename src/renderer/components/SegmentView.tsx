@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { File, ImageOff, Mic, Video } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { type Segment, summarize } from '#core/model/segment.ts';
 import { useImageViewer } from '@/components/ImageViewer';
-import { core } from '@/lib/rpc';
+import { core, errorMessage, shell } from '@/lib/rpc';
 
 /** Images are scaled down to fit this box, keeping their shape. */
 const imageBox = 240;
@@ -14,6 +14,8 @@ const maxAspect = 3;
 const marketFaceSize = 120;
 /** Image URLs expire; one this old is fetched again the next time it is shown. */
 const imageUrlLifetime = 30 * 60 * 1000;
+/** How long a picture says it was copied, or why it was not. */
+const copyNoteDuration = 1500;
 
 export type PictureSegment = Extract<Segment, { type: 'image' | 'market-face' }>;
 
@@ -44,7 +46,10 @@ function fit(width: number, height: number) {
     : { width: Math.round(long * ratio), height: long };
 }
 
-/** Keeps its size while loading, so the message list does not jump when the picture arrives; opens in the viewer. */
+/**
+ * Keeps its size while loading, so the message list does not jump when the picture arrives. Once loaded, a click
+ * selects it, Ctrl+C (Cmd+C on macOS) copies it, and a double click (or Enter) opens it in the viewer.
+ */
 function Picture(props: {
   src: string | undefined;
   failed: boolean;
@@ -55,6 +60,10 @@ function Picture(props: {
 }) {
   const { src, width, height, alt, className } = props;
   const openViewer = useImageViewer();
+  const copy = useMutation(shell.clipboard.copyImage.mutationOptions());
+  const [note, setNote] = useState<string>();
+  const noteTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(noteTimer.current), []);
   const [loaded, setLoaded] = useState<string>();
   const [broken, setBroken] = useState<string>();
   const failed = props.failed || (src !== undefined && src === broken);
@@ -76,21 +85,45 @@ function Picture(props: {
       className="size-full object-cover"
     />
   );
-  if (!openViewer || !src || src !== loaded) {
+  if (!src || src !== loaded) {
     return (
       <span className={box} style={style}>
         {image}
       </span>
     );
   }
+
+  const open = () => openViewer?.({ src, alt });
+  const showNote = (text: string) => {
+    setNote(text);
+    clearTimeout(noteTimer.current);
+    noteTimer.current = setTimeout(() => setNote(undefined), copyNoteDuration);
+  };
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key.toLowerCase() !== 'c' || !(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    copy.mutate({ src }, { onSuccess: () => showNote('已复制'), onError: (error) => showNote(errorMessage(error)) });
+  };
   return (
     <button
       type="button"
-      onClick={() => openViewer({ src, alt })}
-      className={`${box} cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-focus`}
+      // Focus is the selection: a click selects, a click anywhere else clears it.
+      onClick={(event) => {
+        event.currentTarget.focus();
+        // Enter and Space, which report no clicks, stand in for the double click.
+        if (event.detail === 0) open();
+      }}
+      onDoubleClick={open}
+      onKeyDown={onKeyDown}
+      className={`${box} relative cursor-default outline-none focus:ring-2 focus:ring-focus`}
       style={style}
     >
       {image}
+      {note && (
+        <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-viewer px-2 py-0.5 text-[11px] text-viewer-foreground">
+          {note}
+        </span>
+      )}
     </button>
   );
 }

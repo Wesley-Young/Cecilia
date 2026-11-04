@@ -25,7 +25,7 @@ const pinchSpeed = 0.01;
 
 const ViewerContext = createContext<((shown: Shown) => void) | undefined>(undefined);
 
-/** Opens a picture in the viewer; undefined outside a provider, where pictures are not clickable. */
+/** Opens a picture in the viewer; undefined outside a provider, where pictures do not open. */
 export const useImageViewer = () => useContext(ViewerContext);
 
 /**
