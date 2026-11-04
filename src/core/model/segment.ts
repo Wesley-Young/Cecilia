@@ -35,6 +35,7 @@ export const maxImageSize = 30 * 1024 * 1024;
 /** A segment the client can send. */
 export type OutgoingSegment =
   | { type: 'text'; text: string }
+  /** `uin` is null for @all. `name` is without the '@', which the server adds. */
   | { type: 'mention'; uin: number | null; name: string }
   | { type: 'face'; faceId: number; isLarge?: boolean }
   | { type: 'reply'; seq: number }
@@ -87,7 +88,7 @@ export function toLocalSegments(segments: readonly OutgoingSegment[]): Segment[]
       case 'text':
         return [segment];
       case 'mention':
-        return [segment];
+        return [{ ...segment, name: `@${segment.name}` }];
       case 'face':
         return [{ type: 'face', faceId: segment.faceId, summary: '[表情]', isLarge: segment.isLarge ?? false }];
       case 'reply':

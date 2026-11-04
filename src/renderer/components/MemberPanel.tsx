@@ -4,31 +4,26 @@ import { X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { VList } from 'virtua';
 
-import { type GroupMember, type MemberRole, memberName } from '#core/model/contact.ts';
+import { type GroupMember, memberName } from '#core/model/contact.ts';
 import PeerAvatar from '@/components/PeerAvatar';
 import { roleLabels } from '@/lib/format';
+import { memberRoles, sortMembers } from '@/lib/members';
 import { core, errorMessage } from '@/lib/rpc';
 import { SearchIndex } from '@/lib/search';
-
-const roles: MemberRole[] = ['owner', 'admin', 'member'];
-
-const collator = new Intl.Collator('zh-Hans-CN', { numeric: true });
 
 type Row = { kind: 'section'; key: string; label: string } | { kind: 'member'; key: string; member: GroupMember };
 
 const memberRow = (member: GroupMember): Row => ({ kind: 'member', key: `member:${member.uin}`, member });
 
 /**
- * Every member under a heading per role and in name order within it; while searching, the members found, best match
- * first.
+ * Every member under a heading per role, from members already in listing order; while searching, the members found,
+ * best match first.
  */
 function toRows(members: GroupMember[], index: SearchIndex<GroupMember>, query: string): Row[] {
   if (query.trim()) return index.search(query).map(memberRow);
   const rows: Row[] = [];
-  for (const role of roles) {
-    const inRole = members
-      .filter((member) => member.role === role)
-      .sort((a, b) => collator.compare(memberName(a), memberName(b)));
+  for (const role of memberRoles) {
+    const inRole = members.filter((member) => member.role === role);
     if (inRole.length === 0) continue;
     // There is one owner; counting it says nothing.
     const label = role === 'owner' ? roleLabels[role] : `${roleLabels[role]} (${inRole.length})`;
@@ -80,13 +75,14 @@ export default function MemberPanel({ group, docked, isOpen, onClose }: Props) {
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [docked, isOpen, onClose]);
-  // Spelling out every name is the costly part of searching, so it is done once per member list.
+  // Spelling out every name is the costly part of searching, so it is done once per member list. Search results that
+  // match equally well keep the listing order.
+  const sorted = useMemo(() => members.data && sortMembers(members.data), [members.data]);
   const index = useMemo(
-    () =>
-      new SearchIndex(members.data ?? [], (member) => ({ names: [member.card, member.nickname], number: member.uin })),
-    [members.data],
+    () => new SearchIndex(sorted ?? [], (member) => ({ names: [member.card, member.nickname], number: member.uin })),
+    [sorted],
   );
-  const rows = useMemo(() => (members.data ? toRows(members.data, index, query) : []), [members.data, index, query]);
+  const rows = useMemo(() => (sorted ? toRows(sorted, index, query) : []), [sorted, index, query]);
 
   let body: ReactNode;
   if (members.isPending) {

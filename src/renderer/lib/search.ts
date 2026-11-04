@@ -4,8 +4,8 @@ import { pinyin } from 'pinyin-pro';
 export interface SearchFields {
   /** Remark, nickname, group card, group name: whichever the entry has. Empty ones are skipped. */
   names: readonly string[];
-  /** The QQ number or group number. */
-  number: number;
+  /** The QQ number or group number; absent for entries without one, such as 全体成员. */
+  number?: number;
 }
 
 /** How well an entry matches; lower is better. */
@@ -93,6 +93,7 @@ function rankNumber(number: string, query: string): MatchRank | undefined {
 interface Entry<T> {
   item: T;
   names: readonly PreparedName[];
+  /** Empty without a number. */
   number: string;
 }
 
@@ -106,7 +107,7 @@ export class SearchIndex<T> {
   constructor(items: readonly T[], fields: (item: T) => SearchFields) {
     this.entries = items.map((item) => {
       const { names, number } = fields(item);
-      return { item, names: names.filter(Boolean).map(prepare), number: String(number) };
+      return { item, names: names.filter(Boolean).map(prepare), number: number === undefined ? '' : String(number) };
     });
   }
 
@@ -117,7 +118,7 @@ export class SearchIndex<T> {
       const rank = rankName(name, query, spelled);
       if (rank !== undefined && (best === undefined || rank < best)) best = rank;
     }
-    if (/^\d+$/.test(query)) {
+    if (entry.number && /^\d+$/.test(query)) {
       const rank = rankNumber(entry.number, query);
       if (rank !== undefined && (best === undefined || rank < best)) best = rank;
     }

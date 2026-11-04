@@ -4,11 +4,13 @@ import type { ChatStore } from '#core/chat-store/service.ts';
 import { imageFormats, maxImageSize, type OutgoingSegment } from '#core/model/segment.ts';
 import { peerInput, publicProcedure } from '../procedures.ts';
 
-/** What the composer sends, in order: text and the images between it. */
+/** What the composer sends, in order: text, and the mentions and images among it. */
 const contentInput = z
   .array(
     z.discriminatedUnion('type', [
       z.object({ type: z.literal('text'), text: z.string().min(1) }),
+      // `uin` is null for @全体成员; `name` is without the '@', which the server adds.
+      z.object({ type: z.literal('mention'), uin: z.number().int().positive().nullable(), name: z.string().min(1) }),
       z.object({
         type: z.literal('image'),
         data: z.instanceof(Uint8Array).refine((data) => data.byteLength <= maxImageSize, '图片不能超过 30 MB'),
@@ -18,7 +20,7 @@ const contentInput = z
       }),
     ]),
   )
-  .refine((segments) => segments.some((segment) => segment.type === 'image' || segment.text.trim()), '消息不能为空')
+  .refine((segments) => segments.some((segment) => segment.type !== 'text' || segment.text.trim()), '消息不能为空')
   .refine(
     (segments) =>
       segments.reduce((length, segment) => length + (segment.type === 'text' ? segment.text.length : 0), 0) <= 5000,

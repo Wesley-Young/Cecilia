@@ -26,6 +26,8 @@ import type { ChatMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
 import { type ImageFormat, imageFormats, maxImageSize, summarize } from '#core/model/segment.ts';
 import { $createImageNode, $isImageNode, ImageNode, type PastedImage } from '@/components/ImageNode';
+import MentionMenu from '@/components/MentionMenu';
+import { $isMentionNode, MentionNode } from '@/components/MentionNode';
 import { type CoreInputs, core, errorMessage } from '@/lib/rpc';
 
 type Content = CoreInputs['messages']['send']['content'];
@@ -64,12 +66,17 @@ async function toPastedImage(file: File): Promise<PastedImage | string> {
   return { file, url: URL.createObjectURL(file), format, width, height };
 }
 
+type Part =
+  | { type: 'text'; text: string }
+  | { type: 'mention'; uin: number | null; name: string }
+  | { type: 'image'; image: PastedImage };
+
 /**
- * The editor's text and images in order, with the outer whitespace trimmed. The images are read later: reading a
+ * The editor's text, mentions and images in order, with the outer whitespace trimmed. The images are read later: reading a
  * file is asynchronous, and the editor is cleared as soon as the message is on its way.
  */
 function readContent(editor: LexicalEditor) {
-  const parts: ({ type: 'text'; text: string } | { type: 'image'; image: PastedImage })[] = [];
+  const parts: Part[] = [];
   const append = (text: string) => {
     const last = parts.at(-1);
     if (last?.type === 'text') last.text += text;
@@ -81,6 +88,7 @@ function readContent(editor: LexicalEditor) {
       if (!$isElementNode(block)) continue;
       for (const node of block.getChildren()) {
         if ($isImageNode(node)) parts.push({ type: 'image', image: node.getImage() });
+        else if ($isMentionNode(node)) parts.push({ type: 'mention', uin: node.getUin(), name: node.getName() });
         else append(node.getTextContent());
       }
     }
@@ -89,7 +97,7 @@ function readContent(editor: LexicalEditor) {
   if (first?.type === 'text') first.text = first.text.trimStart();
   const last = parts.at(-1);
   if (last?.type === 'text') last.text = last.text.trimEnd();
-  return parts.filter((part) => part.type === 'image' || part.text);
+  return parts.filter((part) => part.type !== 'text' || part.text);
 }
 
 /** Whether the caret is before everything, where Backspace removes the reply instead. */
@@ -114,6 +122,7 @@ function Editor({ peer, disabled, replyTo, onCancelReply }: Props) {
   const [hasContent, setHasContent] = useState(false);
   const [pasteError, setPasteError] = useState<string>();
   const urls = useRef(new Set<string>());
+  const mentioning = useRef(false);
   const canSend = !disabled && hasContent;
 
   useEffect(() => editor.setEditable(!disabled), [editor, disabled]);
@@ -149,7 +158,7 @@ function Editor({ peer, disabled, replyTo, onCancelReply }: Props) {
     setPasteError(undefined);
     const content: Content = await Promise.all(
       parts.map(async (part) => {
-        if (part.type === 'text') return part;
+        if (part.type !== 'image') return part;
         const { image } = part;
         const data = new Uint8Array(await image.file.arrayBuffer());
         return { type: 'image' as const, data, format: image.format, width: image.width, height: image.height };
@@ -174,6 +183,8 @@ function Editor({ peer, disabled, replyTo, onCancelReply }: Props) {
   const onEnter = useEffectEvent((event: KeyboardEvent | null) => {
     // Shift+Enter starts a new line; Enter while an IME is composing picks a candidate instead.
     if (!event || event.shiftKey || event.isComposing) return false;
+    // With the member list open, Enter picks a member.
+    if (mentioning.current) return false;
     event.preventDefault();
     void submit();
     return true;
@@ -211,7 +222,7 @@ function Editor({ peer, disabled, replyTo, onCancelReply }: Props) {
   // The whole block is the field: no border or send button, Enter is the way to send.
   // It takes a share of the window's height, within bounds for very short and very tall windows.
   return (
-    <div className="flex h-[clamp(8rem,25vh,16rem)] shrink-0 flex-col border-separator border-t bg-surface text-surface-foreground">
+    <div className="relative flex h-[clamp(8rem,25vh,16rem)] shrink-0 flex-col border-separator border-t bg-surface text-surface-foreground">
       {error && <p className="px-5 pt-2 text-xs text-danger">{error}</p>}
       {/* The reply comes first in the message, so it scrolls with the text instead of staying on top. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -232,22 +243,23 @@ function Editor({ peer, disabled, replyTo, onCancelReply }: Props) {
           />
         </div>
       </div>
+      {peer.scene === 'group' && <MentionMenu group={peer.uin} active={mentioning} />}
     </div>
   );
 }
 
-/** Plain text, which takes images among it, and undo. */
+/** Plain text, which takes mentions and images among it, and undo. */
 const composerExtension = defineExtension({
   name: '@cecilia/composer',
   namespace: 'composer',
-  nodes: [ImageNode],
+  nodes: [ImageNode, MentionNode],
   dependencies: [PlainTextExtension, HistoryExtension],
   onError: (error) => {
     throw error;
   },
 });
 
-/** Text with images among it: Enter sends, Shift+Enter starts a new line, Backspace at the start drops the reply. */
+/** Text with mentions and images among it: Enter sends, Shift+Enter starts a new line, Backspace at the start drops the reply. */
 export default function Composer(props: Props) {
   // The editor is placed by `Editor`, below the reply, rather than first in the composer.
   return (
