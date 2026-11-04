@@ -15,13 +15,14 @@ const contentTypes: Record<string, string> = {
 
 /**
  * Production CSP. Scripts are limited to bundled files; inline styles stay allowed because popover positioning
- * writes style attributes at runtime. Images may come from https, for avatars and message images.
+ * writes style attributes at runtime. Images may come from https, for avatars and message images, and from blob URLs,
+ * for images pasted into the composer.
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https:",
+  "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "connect-src 'self'",
   "object-src 'none'",

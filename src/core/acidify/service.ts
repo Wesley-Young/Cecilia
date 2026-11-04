@@ -22,6 +22,7 @@ import { type AccountSettings, isComplete } from '#core/model/settings.ts';
 import type { Secrets } from '#core/secrets/service.ts';
 import { bundledAppInfo } from './app-info.ts';
 import {
+  fromImageFormat,
   toDataUrl,
   toFriend,
   toGroup,
@@ -273,6 +274,12 @@ export class AcidifyClient extends ChatClient {
           case 'reply':
             builder.reply(BigInt(segment.seq));
             break;
+          case 'image': {
+            const { data } = segment;
+            const raw = new Int8Array(data.buffer, data.byteOffset, data.byteLength);
+            builder.image(raw, fromImageFormat(segment.format), segment.width, segment.height);
+            break;
+          }
         }
       }
     };

@@ -1,8 +1,29 @@
 import { z } from 'zod';
 
 import type { ChatStore } from '#core/chat-store/service.ts';
-import type { OutgoingSegment } from '#core/model/segment.ts';
+import { imageFormats, maxImageSize, type OutgoingSegment } from '#core/model/segment.ts';
 import { peerInput, publicProcedure } from '../procedures.ts';
+
+/** What the composer sends, in order: text and the images between it. */
+const contentInput = z
+  .array(
+    z.discriminatedUnion('type', [
+      z.object({ type: z.literal('text'), text: z.string().min(1) }),
+      z.object({
+        type: z.literal('image'),
+        data: z.instanceof(Uint8Array).refine((data) => data.byteLength <= maxImageSize, '图片不能超过 30 MB'),
+        format: z.enum(imageFormats),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      }),
+    ]),
+  )
+  .refine((segments) => segments.some((segment) => segment.type === 'image' || segment.text.trim()), '消息不能为空')
+  .refine(
+    (segments) =>
+      segments.reduce((length, segment) => length + (segment.type === 'text' ? segment.text.length : 0), 0) <= 5000,
+    '消息太长了',
+  );
 
 export function messageRoutes(store: ChatStore) {
   return {
@@ -18,15 +39,18 @@ export function messageRoutes(store: ChatStore) {
       .input(
         z.object({
           peer: peerInput,
-          text: z.string().trim().min(1, '消息不能为空').max(5000, '消息太长了'),
+          content: contentInput,
           /** The seq of the message replied to. */
           reply: z.number().int().positive().nullish(),
         }),
       )
       .mutation(({ input }) => {
-        const text: OutgoingSegment = { type: 'text', text: input.text };
+        const content: OutgoingSegment[] = input.content;
         // A reply always comes first.
-        return store.send(input.peer, input.reply == null ? [text] : [{ type: 'reply', seq: input.reply }, text]);
+        return store.send(
+          input.peer,
+          input.reply == null ? content : [{ type: 'reply', seq: input.reply }, ...content],
+        );
       }),
   };
 }

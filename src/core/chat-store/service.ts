@@ -8,10 +8,12 @@ import type { ChatContext } from '#core/context.ts';
 import { AppError } from '#core/errors.ts';
 import type { ChatMessage, RemoteMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
-import { type OutgoingSegment, type Segment, toLocalSegments } from '#core/model/segment.ts';
+import { type ImageFormat, type OutgoingSegment, type Segment, toLocalSegments } from '#core/model/segment.ts';
 import { type MessageRow, type MessageTable, toChatMessage } from './schema.ts';
 
-import { randomInt } from 'node:crypto';
+import { createHash, randomInt } from 'node:crypto';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { basename, extname, join } from 'node:path';
 
 /** The server returns at most this many messages per history request. */
 export const historyPageSize = 30;
@@ -22,6 +24,18 @@ export interface HistoryPage {
   /** Whether older messages may exist. */
   hasMore: boolean;
 }
+
+/** Starts the file id of an image sent from here, which is a file in the store's media directory. */
+const localImage = 'local:';
+
+const mimeTypes = {
+  png: 'image/png',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  tiff: 'image/tiff',
+} satisfies Record<ImageFormat, string>;
 
 /** Orders unsent messages, which have no seq yet, after every sent one. */
 const newestFirst = sql<number>`coalesce(seq, ${Number.MAX_SAFE_INTEGER})`;
@@ -38,11 +52,15 @@ export class ChatStore {
   private readonly client: ChatClient;
   private readonly contacts: ContactService;
 
-  constructor(ctx: ChatContext, kysely: KyselyService, client: ChatClient, contacts: ContactService) {
+  /** Holds the images of messages sent from here until the server has them. */
+  private readonly mediaDir: string;
+
+  constructor(ctx: ChatContext, kysely: KyselyService, client: ChatClient, contacts: ContactService, mediaDir: string) {
     this.ctx = ctx;
     this.kysely = kysely;
     this.client = client;
     this.contacts = contacts;
+    this.mediaDir = mediaDir;
   }
 
   private get db() {
@@ -187,7 +205,11 @@ export class ChatStore {
     const name = (peer.scene === 'group' && (await this.senderName(peer, self.uin))) || self.nickname;
     const reply = segments.find((segment) => segment.type === 'reply');
     const quote = reply && (await this.localQuote(peer, reply.seq));
-    const local = toLocalSegments(segments);
+    const local: Segment[] = [];
+    for (const segment of segments) {
+      if (segment.type === 'image') local.push(await this.saveImage(segment));
+      else local.push(...toLocalSegments([segment]));
+    }
     const row = await this.db
       .insertInto('cecilia_messages')
       .values({
@@ -211,6 +233,52 @@ export class ChatStore {
       this.ctx.logger.error(`Cannot save the message sent to ${peer.scene} ${peer.uin}`, error),
     );
     return message;
+  }
+
+  /** Keeps an image being sent, so the message can show it before the server has it. */
+  private async saveImage(segment: Extract<OutgoingSegment, { type: 'image' }>): Promise<Segment> {
+    // Named by content: the same picture sent twice is one file.
+    const name = `${createHash('sha256').update(segment.data).digest('hex')}.${segment.format}`;
+    await mkdir(this.mediaDir, { recursive: true });
+    await writeFile(join(this.mediaDir, name), segment.data);
+    const { width, height } = segment;
+    return { type: 'image', fileId: `${localImage}${name}`, width, height, summary: '[图片]' };
+  }
+
+  /** Where to load an image from: its saved file when it was sent from here, the server otherwise. */
+  async imageUrl(fileId: string): Promise<string> {
+    if (!fileId.startsWith(localImage)) return this.client.getImageUrl(fileId);
+    const name = fileId.slice(localImage.length);
+    const format = extname(name).slice(1);
+    if (basename(name) !== name || !(format in mimeTypes)) throw new AppError('bad_request', '无效的图片');
+    let data: Buffer;
+    try {
+      data = await readFile(join(this.mediaDir, name));
+    } catch {
+      throw new AppError('not_found', '图片已不存在');
+    }
+    return `data:${mimeTypes[format as ImageFormat]};base64,${data.toString('base64')}`;
+  }
+
+  /** Deletes the saved images that no unsent message shows any more; the server has the rest. */
+  async pruneImages() {
+    let names: string[];
+    try {
+      names = await readdir(this.mediaDir);
+    } catch {
+      return;
+    }
+    const rows = await this.db.selectFrom('cecilia_messages').select('segments').where('seq', 'is', null).execute();
+    const kept = new Set(
+      rows.flatMap((row) =>
+        (JSON.parse(row.segments) as Segment[]).flatMap((segment) =>
+          segment.type === 'image' && segment.fileId.startsWith(localImage)
+            ? [segment.fileId.slice(localImage.length)]
+            : [],
+        ),
+      ),
+    );
+    await Promise.all(names.filter((name) => !kept.has(name)).map((name) => rm(join(this.mediaDir, name))));
   }
 
   /** The reply segment for a message sent from here, built from the quoted message saved locally. */
@@ -270,6 +338,7 @@ export class ChatStore {
   /** Forgets every message, for when the account changes. */
   async clear() {
     await this.db.deleteFrom('cecilia_messages').execute();
+    await rm(this.mediaDir, { recursive: true, force: true });
   }
 
   /**

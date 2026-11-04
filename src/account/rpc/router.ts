@@ -34,7 +34,7 @@ export function createCoreRouter(services: RouterServices) {
     conversations: conversationRoutes(services.conversations),
     contacts: contactRoutes(services.contacts),
     messages: messageRoutes(services.store),
-    media: mediaRoutes(services.client),
+    media: mediaRoutes(services.store),
     settings: settingRoutes(services.account),
     ...updateRoutes(services.ctx),
   });

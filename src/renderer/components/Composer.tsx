@@ -1,12 +1,34 @@
 import { Button } from '@heroui/react';
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { useMutation } from '@tanstack/react-query';
+import {
+  $createParagraphNode,
+  $getRoot,
+  $getSelection,
+  $isElementNode,
+  $isRangeSelection,
+  CLEAR_HISTORY_COMMAND,
+  COMMAND_PRIORITY_HIGH,
+  KEY_BACKSPACE_COMMAND,
+  KEY_ENTER_COMMAND,
+  type LexicalEditor,
+  PASTE_COMMAND,
+} from 'lexical';
 import { Reply, X } from 'lucide-react';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import type { ChatMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
-import { summarize } from '#core/model/segment.ts';
-import { core, errorMessage } from '@/lib/rpc';
+import { type ImageFormat, imageFormats, maxImageSize, summarize } from '#core/model/segment.ts';
+import { $createImageNode, $isImageNode, ImageNode, type PastedImage } from '@/components/ImageNode';
+import { type CoreInputs, core, errorMessage } from '@/lib/rpc';
+
+type Content = CoreInputs['messages']['send']['content'];
 
 /** The message being replied to, above the text. */
 function ReplyBar({ message, onCancel }: { message: ChatMessage; onCancel: () => void }) {
@@ -24,6 +46,61 @@ function ReplyBar({ message, onCancel }: { message: ChatMessage; onCancel: () =>
   );
 }
 
+const formatOf = (type: string): ImageFormat | undefined => imageFormats.find((format) => type === `image/${format}`);
+
+/** Reads a pasted file as an image, or says why it cannot be sent. */
+async function toPastedImage(file: File): Promise<PastedImage | string> {
+  const format = formatOf(file.type);
+  if (!format) return '不支持这种图片格式';
+  if (file.size > maxImageSize) return '图片不能超过 30 MB';
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return '无法读取这张图片';
+  }
+  const { width, height } = bitmap;
+  bitmap.close();
+  return { file, url: URL.createObjectURL(file), format, width, height };
+}
+
+/**
+ * The editor's text and images in order, with the outer whitespace trimmed. The images are read later: reading a
+ * file is asynchronous, and the editor is cleared as soon as the message is on its way.
+ */
+function readContent(editor: LexicalEditor) {
+  const parts: ({ type: 'text'; text: string } | { type: 'image'; image: PastedImage })[] = [];
+  const append = (text: string) => {
+    const last = parts.at(-1);
+    if (last?.type === 'text') last.text += text;
+    else parts.push({ type: 'text', text });
+  };
+  editor.getEditorState().read(() => {
+    for (const [index, block] of $getRoot().getChildren().entries()) {
+      if (index > 0) append('\n');
+      if (!$isElementNode(block)) continue;
+      for (const node of block.getChildren()) {
+        if ($isImageNode(node)) parts.push({ type: 'image', image: node.getImage() });
+        else append(node.getTextContent());
+      }
+    }
+  });
+  const first = parts[0];
+  if (first?.type === 'text') first.text = first.text.trimStart();
+  const last = parts.at(-1);
+  if (last?.type === 'text') last.text = last.text.trimEnd();
+  return parts.filter((part) => part.type === 'image' || part.text);
+}
+
+/** Whether the caret is before everything, where Backspace removes the reply instead. */
+function $caretAtStart(): boolean {
+  const selection = $getSelection();
+  if (!$isRangeSelection(selection) || !selection.isCollapsed() || selection.anchor.offset !== 0) return false;
+  const node = selection.anchor.getNode();
+  const first = $getRoot().getFirstChild();
+  return node === first || ($isElementNode(first) && node === first.getFirstDescendant());
+}
+
 interface Props {
   peer: Peer;
   disabled: boolean;
@@ -31,56 +108,150 @@ interface Props {
   onCancelReply: () => void;
 }
 
-/** Plain text for now: Enter sends, Shift+Enter starts a new line, Backspace at the start drops the reply. */
-export default function Composer({ peer, disabled, replyTo, onCancelReply }: Props) {
-  const [text, setText] = useState('');
+function Editor({ peer, disabled, replyTo, onCancelReply }: Props) {
+  const [editor] = useLexicalComposerContext();
   const send = useMutation(core.messages.send.mutationOptions());
-  const field = useRef<HTMLTextAreaElement>(null);
-  const canSend = !disabled && text.trim().length > 0;
+  const [hasContent, setHasContent] = useState(false);
+  const [pasteError, setPasteError] = useState<string>();
+  const urls = useRef(new Set<string>());
+  const canSend = !disabled && hasContent;
 
+  useEffect(() => editor.setEditable(!disabled), [editor, disabled]);
+  // Images count as content: they read as their summary.
+  useEffect(
+    () =>
+      editor.registerUpdateListener(({ editorState }) =>
+        setHasContent(editorState.read(() => $getRoot().getTextContent().trim().length > 0)),
+      ),
+    [editor],
+  );
+  // Undo can bring a sent image back, so the files stay readable as long as the editor is here.
+  useEffect(() => {
+    const created = urls.current;
+    return () => {
+      for (const url of created) URL.revokeObjectURL(url);
+    };
+  }, []);
   // Choosing a message to reply to goes straight on to typing the reply.
   useEffect(() => {
-    if (replyTo) field.current?.focus();
-  }, [replyTo]);
+    if (replyTo) editor.focus();
+  }, [editor, replyTo]);
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSend) return;
-    send.mutate({ peer, text, reply: replyTo?.seq });
-    setText('');
+    const parts = readContent(editor);
+    const reply = replyTo?.seq;
+    // Undo does not bring a sent message back.
+    editor.update(() => $getRoot().clear().append($createParagraphNode()), {
+      onUpdate: () => editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined),
+    });
     onCancelReply();
+    setPasteError(undefined);
+    const content: Content = await Promise.all(
+      parts.map(async (part) => {
+        if (part.type === 'text') return part;
+        const { image } = part;
+        const data = new Uint8Array(await image.file.arrayBuffer());
+        return { type: 'image' as const, data, format: image.format, width: image.width, height: image.height };
+      }),
+    );
+    send.mutate({ peer, content, reply });
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter while an IME is composing picks a candidate instead.
-    if (event.nativeEvent.isComposing) return;
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      submit();
-    } else if (event.key === 'Backspace' && replyTo) {
-      // The reply sits before the text, so Backspace at the very start deletes it like a character.
-      const { selectionStart, selectionEnd } = event.currentTarget;
-      if (selectionStart !== 0 || selectionEnd !== 0) return;
-      event.preventDefault();
-      onCancelReply();
-    }
+  const paste = async (files: File[]) => {
+    const results = await Promise.all(files.map(toPastedImage));
+    const images = results.filter((result) => typeof result !== 'string');
+    setPasteError(results.find((result) => typeof result === 'string'));
+    if (images.length === 0) return;
+    for (const image of images) urls.current.add(image.url);
+    editor.update(() => {
+      // The selection is gone when the editor lost focus while the files were read.
+      const selection = $getSelection() ?? $getRoot().selectEnd();
+      selection.insertNodes(images.map($createImageNode));
+    });
   };
 
+  const onEnter = useEffectEvent((event: KeyboardEvent | null) => {
+    // Shift+Enter starts a new line; Enter while an IME is composing picks a candidate instead.
+    if (!event || event.shiftKey || event.isComposing) return false;
+    event.preventDefault();
+    void submit();
+    return true;
+  });
+  const onBackspace = useEffectEvent((event: KeyboardEvent) => {
+    // The reply sits before the text, so Backspace at the very start deletes it like a character.
+    if (!replyTo || !$caretAtStart()) return false;
+    event.preventDefault();
+    onCancelReply();
+    return true;
+  });
+  const onPaste = useEffectEvent((event: ClipboardEvent | InputEvent | KeyboardEvent) => {
+    if (!(event instanceof ClipboardEvent) || !event.clipboardData) return false;
+    // Office apps put a picture of what was copied next to the text; the text is what was meant.
+    if (event.clipboardData.getData('text/plain')) return false;
+    const files = [...event.clipboardData.files].filter((file) => file.type.startsWith('image/'));
+    if (files.length === 0) return false;
+    event.preventDefault();
+    void paste(files);
+    return true;
+  });
+  useEffect(() => {
+    const unregister = [
+      editor.registerCommand(KEY_ENTER_COMMAND, (event) => onEnter(event), COMMAND_PRIORITY_HIGH),
+      editor.registerCommand(KEY_BACKSPACE_COMMAND, (event) => onBackspace(event), COMMAND_PRIORITY_HIGH),
+      editor.registerCommand(PASTE_COMMAND, (event) => onPaste(event), COMMAND_PRIORITY_HIGH),
+    ];
+    return () => {
+      for (const done of unregister) done();
+    };
+  }, [editor]);
+
+  const error = pasteError ?? (send.error ? errorMessage(send.error) : undefined);
+  const placeholder = disabled ? '离线中，暂时无法发送' : '输入消息，Enter 发送，Shift + Enter 换行';
   // The whole block is the field: no border or send button, Enter is the way to send.
   // It takes a share of the window's height, within bounds for very short and very tall windows.
   return (
     <div className="flex h-[clamp(8rem,25vh,16rem)] shrink-0 flex-col border-separator border-t bg-surface text-surface-foreground">
-      {send.error && <p className="px-5 pt-2 text-xs text-danger">{errorMessage(send.error)}</p>}
+      {error && <p className="px-5 pt-2 text-xs text-danger">{error}</p>}
       {replyTo && <ReplyBar message={replyTo} onCancel={onCancelReply} />}
-      <textarea
-        ref={field}
-        aria-label="消息"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={onKeyDown}
-        placeholder={disabled ? '离线中，暂时无法发送' : '输入消息，Enter 发送，Shift + Enter 换行'}
-        disabled={disabled}
-        className="selectable min-h-0 flex-1 resize-none bg-transparent px-5 py-3 text-[14px] leading-relaxed outline-none placeholder:text-muted disabled:cursor-not-allowed"
-      />
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
+        <PlainTextPlugin
+          contentEditable={
+            <ContentEditable
+              aria-label="消息"
+              aria-placeholder={placeholder}
+              placeholder={
+                <p className="pointer-events-none absolute top-3 left-5 text-[14px] text-muted leading-relaxed">
+                  {placeholder}
+                </p>
+              }
+              className={`selectable min-h-full whitespace-pre-wrap wrap-anywhere px-5 py-3 text-[14px] leading-relaxed outline-none ${
+                disabled ? 'cursor-not-allowed' : ''
+              }`}
+            />
+          }
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+      </div>
+      <HistoryPlugin />
     </div>
+  );
+}
+
+/** Text with images among it: Enter sends, Shift+Enter starts a new line, Backspace at the start drops the reply. */
+export default function Composer(props: Props) {
+  return (
+    <LexicalComposer
+      initialConfig={{
+        namespace: 'composer',
+        nodes: [ImageNode],
+        editable: !props.disabled,
+        onError: (error) => {
+          throw error;
+        },
+      }}
+    >
+      <Editor {...props} />
+    </LexicalComposer>
   );
 }

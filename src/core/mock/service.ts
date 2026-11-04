@@ -152,7 +152,7 @@ interface Picture {
   hue: number;
 }
 
-/** A gradient picture; mock file ids are its JSON, so `getImageUrl` can draw it again. */
+/** A gradient picture; its file id is its JSON, so `getImageUrl` can draw it again. */
 function placeholderImage({ width, height, sticker, hue }: Picture): string {
   const [x, y, r] = [width / 2, height / 3, Math.min(width, height) / 8];
   const spin = sticker
@@ -263,9 +263,13 @@ export class MockClient extends ChatClient {
     const seq = this.nextSeq(peer);
     const time = Math.floor(Date.now() / 1000);
     // Like the server, it sends the quoted message along with a reply.
-    const echoed = segments.flatMap((segment) =>
-      segment.type === 'reply' ? [this.quote(peer, segment.seq)] : toLocalSegments([segment]),
-    );
+    const echoed = segments.flatMap((segment): Segment[] => {
+      if (segment.type === 'reply') return [this.quote(peer, segment.seq)];
+      if (segment.type !== 'image') return toLocalSegments([segment]);
+      // Where the server would store the image, the mock keeps it in the file id.
+      const fileId = `data:image/${segment.format};base64,${Buffer.from(segment.data).toString('base64')}`;
+      return [{ type: 'image', fileId, width: segment.width, height: segment.height, summary: '[图片]' }];
+    });
     // The server echoes messages sent from this account back to every device, this one included.
     this.emitMessage({
       peer,
@@ -342,6 +346,7 @@ export class MockClient extends ChatClient {
   async getImageUrl(fileId: string): Promise<string> {
     this.ensureOnline();
     await delay(300);
+    if (fileId.startsWith('data:')) return fileId;
     return placeholderImage(JSON.parse(fileId) as Picture);
   }
 

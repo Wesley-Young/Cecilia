@@ -25,12 +25,20 @@ export type Segment =
 
 export type SegmentType = Segment['type'];
 
+/** The image formats the server takes. */
+export const imageFormats = ['png', 'jpeg', 'gif', 'webp', 'bmp', 'tiff'] as const;
+export type ImageFormat = (typeof imageFormats)[number];
+
+/** The largest image that can be sent, in bytes. */
+export const maxImageSize = 30 * 1024 * 1024;
+
 /** A segment the client can send. */
 export type OutgoingSegment =
   | { type: 'text'; text: string }
   | { type: 'mention'; uin: number | null; name: string }
   | { type: 'face'; faceId: number; isLarge?: boolean }
-  | { type: 'reply'; seq: number };
+  | { type: 'reply'; seq: number }
+  | { type: 'image'; data: Uint8Array; format: ImageFormat; width: number; height: number };
 
 const unreachable = (value: never): never => {
   throw new Error(`Unhandled segment ${JSON.stringify(value)}`);
@@ -84,6 +92,9 @@ export function toLocalSegments(segments: readonly OutgoingSegment[]): Segment[]
         return [{ type: 'face', faceId: segment.faceId, summary: '[表情]', isLarge: segment.isLarge ?? false }];
       case 'reply':
         // Showing it needs the quoted message, which the store fills in.
+        return [];
+      case 'image':
+        // Showing it needs a file the store saves first.
         return [];
       default:
         return unreachable(segment);

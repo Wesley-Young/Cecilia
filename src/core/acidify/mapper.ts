@@ -6,6 +6,7 @@ import {
   BotIncomingSegment,
   type BotUserInfo,
   type GroupMemberRole,
+  ImageFormat,
   type KtList,
   MessageScene,
   type QRCodeState,
@@ -16,11 +17,23 @@ import type { Friend, Gender, Group, GroupMember, MemberRole, UserProfile } from
 import type { QrCodeState } from '#core/model/login.ts';
 import type { RemoteMessage } from '#core/model/message.ts';
 import type { Peer, Scene } from '#core/model/peer.ts';
-import type { Segment } from '#core/model/segment.ts';
+import type { ImageFormat as Format, Segment } from '#core/model/segment.ts';
 
 // The only module that reads acidify's Kotlin objects; everything past it sees plain data.
 
 const list = <T>(items: KtList<T>): readonly T[] => items.asJsReadonlyArrayView();
+
+export function fromImageFormat(format: Format): ImageFormat {
+  const formats = {
+    png: ImageFormat.PNG,
+    jpeg: ImageFormat.JPEG,
+    gif: ImageFormat.GIF,
+    webp: ImageFormat.WEBP,
+    bmp: ImageFormat.BMP,
+    tiff: ImageFormat.TIFF,
+  } satisfies Record<Format, ImageFormat>;
+  return formats[format];
+}
 
 /** Temporary sessions are not shown. */
 function toScene(scene: MessageScene): Scene | undefined {

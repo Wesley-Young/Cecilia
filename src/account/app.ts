@@ -30,7 +30,7 @@ export function createAccount(config: AccountConfig, secrets: HostSecrets): Chat
   ctx.install(SettingsPlugin);
   ctx.install(config.mock ? MockPlugin : AcidifyPlugin);
   ctx.install(ContactsPlugin);
-  ctx.install(ChatStorePlugin);
+  ctx.install(ChatStorePlugin, { mediaDir: join(config.profileDir, 'outgoing') });
   ctx.install(ConversationsPlugin);
   ctx.install(AccountPlugin);
   ctx.install(RpcPlugin);
