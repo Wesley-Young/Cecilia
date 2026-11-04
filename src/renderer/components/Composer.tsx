@@ -213,25 +213,29 @@ function Editor({ peer, disabled, replyTo, onCancelReply }: Props) {
   return (
     <div className="flex h-[clamp(8rem,25vh,16rem)] shrink-0 flex-col border-separator border-t bg-surface text-surface-foreground">
       {error && <p className="px-5 pt-2 text-xs text-danger">{error}</p>}
-      {replyTo && <ReplyBar message={replyTo} onCancel={onCancelReply} />}
-      <div className="relative min-h-0 flex-1 overflow-y-auto">
-        <PlainTextPlugin
-          contentEditable={
-            <ContentEditable
-              aria-label="消息"
-              aria-placeholder={placeholder}
-              placeholder={
-                <p className="pointer-events-none absolute top-3 left-5 text-[14px] text-muted leading-relaxed">
-                  {placeholder}
-                </p>
-              }
-              className={`selectable min-h-full whitespace-pre-wrap wrap-anywhere px-5 py-3 text-[14px] leading-relaxed outline-none ${
-                disabled ? 'cursor-not-allowed' : ''
-              }`}
-            />
-          }
-          ErrorBoundary={LexicalErrorBoundary}
-        />
+      {/* The reply comes first in the message, so it scrolls with the text instead of staying on top. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {replyTo && <ReplyBar message={replyTo} onCancel={onCancelReply} />}
+        {/* The text fills the rest, so a click anywhere below the reply lands in it. */}
+        <div className="relative flex flex-1 flex-col">
+          <PlainTextPlugin
+            contentEditable={
+              <ContentEditable
+                aria-label="消息"
+                aria-placeholder={placeholder}
+                placeholder={
+                  <p className="pointer-events-none absolute top-3 left-5 text-[14px] text-muted leading-relaxed">
+                    {placeholder}
+                  </p>
+                }
+                className={`selectable flex-1 whitespace-pre-wrap wrap-anywhere px-5 py-3 text-[14px] leading-relaxed outline-none ${
+                  disabled ? 'cursor-not-allowed' : ''
+                }`}
+              />
+            }
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+        </div>
       </div>
       <HistoryPlugin />
     </div>
