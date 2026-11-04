@@ -35,6 +35,17 @@ export function trimAroundPictures(segments: readonly Segment[]): Segment[] {
   });
 }
 
+/**
+ * A mention reads as a word of its own: the text after it starts with one space. Most senders type that space
+ * already, so it is added only where it is missing.
+ */
+export function spaceAfterMentions(segments: readonly Segment[]): Segment[] {
+  return segments.map((segment, index) => {
+    if (segment.type !== 'text' || segments[index - 1]?.type !== 'mention' || /^\s/.test(segment.text)) return segment;
+    return { ...segment, text: ` ${segment.text}` };
+  });
+}
+
 function fit(width: number, height: number) {
   // Some images come without a size.
   if (width <= 0 || height <= 0) return { width: imageBox / 2, height: imageBox / 2 };
@@ -171,7 +182,7 @@ export function SegmentView({ segment }: { segment: Segment }) {
     case 'text':
       return <>{segment.text}</>;
     case 'mention':
-      return <span className="font-medium">{segment.name} </span>;
+      return <span className="font-medium">{segment.name}</span>;
     case 'face':
       return <span>{segment.summary}</span>;
     case 'image':

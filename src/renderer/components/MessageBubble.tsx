@@ -7,7 +7,14 @@ import Flash from '@/components/Flash';
 import GreyTip from '@/components/GreyTip';
 import PeerAvatar from '@/components/PeerAvatar';
 import PersonButton from '@/components/PersonButton';
-import { isPicture, PictureView, ReplyQuote, SegmentView, trimAroundPictures } from '@/components/SegmentView';
+import {
+  isPicture,
+  PictureView,
+  ReplyQuote,
+  SegmentView,
+  spaceAfterMentions,
+  trimAroundPictures,
+} from '@/components/SegmentView';
 
 interface Props {
   message: ChatMessage;
@@ -99,7 +106,7 @@ export default function MessageBubble(props: Props) {
               } ${outgoing ? 'bg-bubble-out text-bubble-out-foreground' : 'bg-bubble-in text-bubble-in-foreground'} ${sending}`}
             >
               {reply && <ReplyQuote segment={reply} onJump={onJumpToReply} />}
-              {trimAroundPictures(message.segments).map((segment, index) => (
+              {spaceAfterMentions(trimAroundPictures(message.segments)).map((segment, index) => (
                 // Segments never reorder within a message.
                 // biome-ignore lint/suspicious/noArrayIndexKey: see above
                 <SegmentView key={index} segment={segment} />
