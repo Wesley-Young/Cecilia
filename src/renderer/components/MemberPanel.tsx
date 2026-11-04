@@ -6,6 +6,7 @@ import { VList } from 'virtua';
 
 import { type GroupMember, memberName } from '#core/model/contact.ts';
 import PeerAvatar from '@/components/PeerAvatar';
+import PersonButton from '@/components/PersonButton';
 import { roleLabels } from '@/lib/format';
 import { memberRoles, sortMembers } from '@/lib/members';
 import { core, errorMessage } from '@/lib/rpc';
@@ -33,10 +34,17 @@ function toRows(members: GroupMember[], index: SearchIndex<GroupMember>, query: 
   return rows;
 }
 
-function MemberRow({ member }: { member: GroupMember }) {
+/** Opens the member's card on a click, and their menu on a right click. */
+function MemberRow({ group, member }: { group: number; member: GroupMember }) {
   const name = memberName(member);
   return (
-    <div className="flex items-center gap-2 px-3 py-1">
+    <PersonButton
+      chat={{ scene: 'group', uin: group }}
+      uin={member.uin}
+      name={name}
+      placement="left top"
+      className="flex w-full items-center gap-2 px-3 py-1 text-left hover:bg-default"
+    >
       <PeerAvatar peer={{ scene: 'friend', uin: member.uin }} name={name} size="xs" />
       <span className="min-w-0 flex-1 truncate text-[13px]">{name}</span>
       {member.title && (
@@ -44,7 +52,7 @@ function MemberRow({ member }: { member: GroupMember }) {
           {member.title}
         </Chip>
       )}
-    </div>
+    </PersonButton>
   );
 }
 
@@ -111,7 +119,7 @@ export default function MemberPanel({ group, docked, isOpen, onClose }: Props) {
               {row.label}
             </p>
           ) : (
-            <MemberRow key={row.key} member={row.member} />
+            <MemberRow key={row.key} group={group} member={row.member} />
           )
         }
       </VList>

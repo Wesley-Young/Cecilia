@@ -47,8 +47,14 @@ export interface GroupMember {
 }
 
 /** What a user's profile adds to the friend list; fetched each time it is shown. */
+/** What anyone's public profile says, friend or not. Empty strings and 0 stand for what is not filled in. */
 export interface UserProfile {
   uin: number;
+  nickname: string;
+  bio: string;
+  gender: Gender;
+  age: number;
+  qid: string;
   level: number;
   country: string;
   city: string;

@@ -1,14 +1,15 @@
 import { Button, Chip, Spinner } from '@heroui/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { LogOut, MessagesSquare, Settings, Users, WifiOff } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
-import type { Conversation } from '#core/model/contact.ts';
+import { type Conversation, friendName } from '#core/model/contact.ts';
 import type { LoginState } from '#core/model/login.ts';
 import type { ChatMessage } from '#core/model/message.ts';
 import { type Peer, peerKey, samePeer } from '#core/model/peer.ts';
+import { type ChatActions, ChatActionsContext } from '@/components/ChatActions';
 import ChatTitle from '@/components/ChatTitle';
-import Composer from '@/components/Composer';
+import Composer, { type ComposerHandle } from '@/components/Composer';
 import ConversationList from '@/components/ConversationList';
 import MemberPanel from '@/components/MemberPanel';
 import MessageList from '@/components/MessageList';
@@ -79,7 +80,13 @@ function MemberCount(props: {
   );
 }
 
-function ChatPane({ conversation, online }: { conversation: Conversation; online: boolean }) {
+interface ChatPaneProps {
+  conversation: Conversation;
+  online: boolean;
+  onOpenChat: (peer: Peer) => void;
+}
+
+function ChatPane({ conversation, online, onOpenChat }: ChatPaneProps) {
   const markRead = useMutation(core.conversations.markRead.mutationOptions());
   const docked = useMediaQuery(dockedQuery);
   const [membersOpen, setMembersOpen] = useState(false);
@@ -92,24 +99,34 @@ function ChatPane({ conversation, online }: { conversation: Conversation; online
   const onReachEnd = useCallback(() => {
     if (unread > 0) mutate({ peer });
   }, [mutate, peer, unread]);
+  const composer = useRef<ComposerHandle>(null);
+  const actions = useMemo<ChatActions>(
+    () => ({
+      mention: (uin, name) => composer.current?.mention(uin, name),
+      openChat: (uin) => onOpenChat({ scene: 'friend', uin }),
+    }),
+    [onOpenChat],
+  );
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col bg-background">
-      <header className="app-drag flex h-14 shrink-0 items-center gap-2 border-separator border-b px-5">
-        <h2 className="-ml-2 flex min-w-0">
-          <ChatTitle conversation={conversation} onShowMembers={docked ? undefined : () => setMembersOpen(true)} />
-        </h2>
-        {group && <MemberCount group={peer.uin} docked={docked} isSelected={membersOpen} onChange={setMembersOpen} />}
-      </header>
-      {/* Clips the member column while it slides in and out. */}
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <MessageList peer={peer} onReachEnd={onReachEnd} onReply={setReplyTo} />
-          <Composer peer={peer} disabled={!online} replyTo={replyTo} onCancelReply={cancelReply} />
+    <ChatActionsContext value={actions}>
+      <section className="flex min-w-0 flex-1 flex-col bg-background">
+        <header className="app-drag flex h-14 shrink-0 items-center gap-2 border-separator border-b px-5">
+          <h2 className="-ml-2 flex min-w-0">
+            <ChatTitle conversation={conversation} onShowMembers={docked ? undefined : () => setMembersOpen(true)} />
+          </h2>
+          {group && <MemberCount group={peer.uin} docked={docked} isSelected={membersOpen} onChange={setMembersOpen} />}
+        </header>
+        {/* Clips the member column while it slides in and out. */}
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <MessageList peer={peer} onReachEnd={onReachEnd} onReply={setReplyTo} />
+            <Composer ref={composer} peer={peer} disabled={!online} replyTo={replyTo} onCancelReply={cancelReply} />
+          </div>
+          {group && <MemberPanel group={peer.uin} docked={docked} isOpen={membersOpen} onClose={closeMembers} />}
         </div>
-        {group && <MemberPanel group={peer.uin} docked={docked} isOpen={membersOpen} onClose={closeMembers} />}
-      </div>
-    </section>
+      </section>
+    </ChatActionsContext>
   );
 }
 
@@ -118,7 +135,18 @@ export default function MainView({ state, conversations }: { state: LoginState; 
   const logout = useMutation(core.login.logout.mutationOptions());
   const info = useQuery(shell.system.info.queryOptions());
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const current = selected && conversations.find((conversation) => samePeer(conversation.peer, selected));
+  const listed = selected && conversations.find((conversation) => samePeer(conversation.peer, selected));
+  // A friend opened from a card or a menu may have no conversation yet; sending the first message starts one.
+  const unlisted = selected?.scene === 'friend' && !listed ? selected.uin : undefined;
+  const friend = useQuery({
+    ...core.contacts.friend.queryOptions({ uin: unlisted ?? 0 }),
+    enabled: unlisted !== undefined,
+  }).data;
+  const current: Conversation | undefined =
+    listed ??
+    (selected && friend
+      ? { peer: selected, name: friendName(friend), summary: '', time: 0, unread: 0, pinned: false }
+      : undefined);
   const self = state.kind === 'online' ? state.self : undefined;
 
   return (
@@ -161,7 +189,12 @@ export default function MainView({ state, conversations }: { state: LoginState; 
       </aside>
       {current ? (
         // Everything in it, from the draft to the message being replied to, belongs to one conversation.
-        <ChatPane key={peerKey(current.peer)} conversation={current} online={state.kind === 'online'} />
+        <ChatPane
+          key={peerKey(current.peer)}
+          conversation={current}
+          online={state.kind === 'online'}
+          onOpenChat={setSelected}
+        />
       ) : (
         <section className="app-drag flex flex-1 flex-col items-center justify-center gap-3 text-muted">
           <MessagesSquare className="size-10 opacity-40" />

@@ -46,6 +46,8 @@ export abstract class ChatClient {
   abstract getGroups(forceUpdate?: boolean): Promise<Group[]>;
   abstract getGroupMembers(group: number, forceUpdate?: boolean): Promise<GroupMember[]>;
   abstract getUserProfile(uin: number): Promise<UserProfile>;
+  /** An empty `card` clears it, so the member shows under their nickname. */
+  abstract setMemberCard(group: number, uin: number, card: string): Promise<void>;
   abstract getPinned(): Promise<PinnedPeers>;
 
   /** `clientSeq` and `random` come back on the echoed message, so the caller can match it to its pending copy. */

@@ -105,6 +105,15 @@ export class ContactService {
     return this.client.getUserProfile(uin);
   }
 
+  /** Changes a member's group card, here as well as on the server, and announces the member list as changed. */
+  async setMemberCard(group: number, uin: number, card: string) {
+    await this.client.setMemberCard(group, uin, card);
+    const members = this.members.get(group);
+    const member = members?.get(uin);
+    if (members && member) members.set(uin, { ...member, card });
+    this.ctx.emit('contacts/members', { group });
+  }
+
   /** A member's group card or nickname; undefined until the group's member list has been loaded. */
   async memberName(group: number, uin: number): Promise<string | undefined> {
     if (!this.memberFetches.has(group)) return undefined;

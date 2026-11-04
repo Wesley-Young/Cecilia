@@ -186,7 +186,17 @@ export function toGroupMember(member: BotGroupMember): GroupMember {
 }
 
 export function toUserProfile(info: BotUserInfo): UserProfile {
-  return { uin: Number(info.uin), level: info.level, country: info.country, city: info.city };
+  return {
+    uin: Number(info.uin),
+    nickname: info.nickname,
+    bio: info.bio,
+    gender: toGender(info.gender),
+    age: info.age,
+    qid: info.qid,
+    level: info.level,
+    country: info.country,
+    city: info.city,
+  };
 }
 
 export function toUinList(uins: KtList<bigint>): number[] {

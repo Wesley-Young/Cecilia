@@ -6,6 +6,7 @@ import { type ChatMessage, recallNotice } from '#core/model/message.ts';
 import Flash from '@/components/Flash';
 import GreyTip from '@/components/GreyTip';
 import PeerAvatar from '@/components/PeerAvatar';
+import PersonButton from '@/components/PersonButton';
 import { isPicture, PictureView, ReplyQuote, SegmentView, trimAroundPictures } from '@/components/SegmentView';
 
 interface Props {
@@ -55,7 +56,7 @@ export default function MessageBubble(props: Props) {
   const showName = !continued && message.peer.scene === 'group';
   // A double click anywhere on the row replies, except on the quote and other controls, which act on single clicks.
   const onDoubleClick = (event: MouseEvent) => {
-    if (event.target instanceof Element && event.target.closest('button, a')) return;
+    if (event.target instanceof Element && event.target.closest('button, a, [role="button"]')) return;
     onReply?.();
   };
   return (
@@ -69,7 +70,15 @@ export default function MessageBubble(props: Props) {
       {highlighted && <Flash className={`-bottom-0.5 ${continued ? 'top-0' : 'top-2.5'}`} />}
       <div className="w-8 shrink-0">
         {!continued && (
-          <PeerAvatar peer={{ scene: 'friend', uin: message.sender.uin }} name={message.sender.name} size="sm" />
+          <PersonButton
+            chat={message.peer}
+            uin={message.sender.uin}
+            name={message.sender.name}
+            placement={outgoing ? 'left top' : 'right top'}
+            className="flex rounded-full"
+          >
+            <PeerAvatar peer={{ scene: 'friend', uin: message.sender.uin }} name={message.sender.name} size="sm" />
+          </PersonButton>
         )}
       </div>
       {/* At most 70% of the row, and no wider than reads comfortably on a wide window. */}

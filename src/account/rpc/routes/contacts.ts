@@ -13,5 +13,9 @@ export function contactRoutes(contacts: ContactService) {
     /** Null until the group list has loaded, or for a group this account has left. */
     group: publicProcedure.input(z.object({ uin })).query(({ input }) => contacts.group(input.uin) ?? null),
     members: publicProcedure.input(z.object({ group: uin })).query(({ input }) => contacts.membersOf(input.group)),
+    /** An empty card clears it. */
+    setMemberCard: publicProcedure
+      .input(z.object({ group: uin, uin, card: z.string().trim() }))
+      .mutation(({ input }) => contacts.setMemberCard(input.group, input.uin, input.card)),
   };
 }

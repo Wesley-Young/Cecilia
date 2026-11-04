@@ -251,6 +251,10 @@ export class AcidifyClient extends ChatClient {
     return toUserProfile(await this.online().fetchUserInfoByUin(BigInt(uin)));
   }
 
+  async setMemberCard(group: number, uin: number, card: string) {
+    await this.online().setGroupMemberCard(BigInt(group), BigInt(uin), card);
+  }
+
   async getPinned(): Promise<PinnedPeers> {
     const pins = await this.online().getPins();
     return { friends: toUinList(pins.friendUins), groups: toUinList(pins.groupUins) };

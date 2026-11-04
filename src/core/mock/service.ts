@@ -248,7 +248,28 @@ export class MockClient extends ChatClient {
   async getUserProfile(uin: number): Promise<UserProfile> {
     this.ensureOnline();
     await delay(400);
-    return { uin, level: 1 + (uin % 64), country: '中国', city: ['上海', '杭州', '成都'][uin % 3] ?? '' };
+    const friend = friends.find((candidate) => candidate.uin === uin);
+    const member = members.find((candidate) => candidate.uin === uin);
+    return {
+      uin,
+      nickname: friend?.nickname ?? member?.nickname ?? self.nickname,
+      bio: friend?.bio ?? (uin % 2 === 0 ? '这个人很懒，什么都没写。' : ''),
+      gender: friend?.gender ?? (['male', 'female', 'unknown'] as const)[uin % 3] ?? 'unknown',
+      age: friend?.age ?? 18 + (uin % 20),
+      qid: friend?.qid ?? '',
+      level: 1 + (uin % 64),
+      country: '中国',
+      city: ['上海', '杭州', '成都'][uin % 3] ?? '',
+    };
+  }
+
+  async setMemberCard(_group: number, uin: number, card: string) {
+    this.ensureOnline();
+    await delay(300);
+    if (card.includes('失败')) throw new AppError('bad_gateway', '模拟的修改失败');
+    const index = members.findIndex((member) => member.uin === uin);
+    const member = members[index];
+    if (member) members[index] = { ...member, card };
   }
 
   async getPinned(): Promise<PinnedPeers> {

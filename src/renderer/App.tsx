@@ -1,4 +1,4 @@
-import { Spinner } from '@heroui/react';
+import { Spinner, Toast } from '@heroui/react';
 import { useQuery } from '@tanstack/react-query';
 import { useSubscription } from '@trpc/tanstack-react-query';
 
@@ -26,5 +26,11 @@ export default function App() {
     state.kind === 'online' ||
     state.kind === 'offline' ||
     (state.kind === 'logging-in' && conversations.data.length > 0);
-  return showMain ? <MainView state={state} conversations={conversations.data} /> : <LoginView state={state} />;
+  return (
+    <>
+      {showMain ? <MainView state={state} conversations={conversations.data} /> : <LoginView state={state} />}
+      {/* Says what an action with no other visible result did, such as copying. */}
+      <Toast.Provider placement="bottom" />
+    </>
+  );
 }

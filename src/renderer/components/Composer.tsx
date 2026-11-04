@@ -7,6 +7,7 @@ import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionCompose
 import { useMutation } from '@tanstack/react-query';
 import {
   $createParagraphNode,
+  $createTextNode,
   $getRoot,
   $getSelection,
   $isElementNode,
@@ -20,14 +21,14 @@ import {
   PASTE_COMMAND,
 } from 'lexical';
 import { Reply, X } from 'lucide-react';
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { type Ref, useEffect, useEffectEvent, useImperativeHandle, useRef, useState } from 'react';
 
 import type { ChatMessage } from '#core/model/message.ts';
 import type { Peer } from '#core/model/peer.ts';
 import { type ImageFormat, imageFormats, maxImageSize, summarize } from '#core/model/segment.ts';
 import { $createImageNode, $isImageNode, ImageNode, type PastedImage } from '@/components/ImageNode';
 import MentionMenu from '@/components/MentionMenu';
-import { $isMentionNode, MentionNode } from '@/components/MentionNode';
+import { $createMentionNode, $isMentionNode, MentionNode } from '@/components/MentionNode';
 import { type CoreInputs, core, errorMessage } from '@/lib/rpc';
 
 type Content = CoreInputs['messages']['send']['content'];
@@ -109,15 +110,37 @@ function $caretAtStart(): boolean {
   return node === first || ($isElementNode(first) && node === first.getFirstDescendant());
 }
 
+/** What the rest of the chat can do to the composer. */
+export interface ComposerHandle {
+  /** Puts a mention at the caret and focuses the composer; `name` is without the '@'. */
+  mention: (uin: number, name: string) => void;
+}
+
 interface Props {
   peer: Peer;
   disabled: boolean;
   replyTo: ChatMessage | undefined;
   onCancelReply: () => void;
+  ref?: Ref<ComposerHandle>;
 }
 
-function Editor({ peer, disabled, replyTo, onCancelReply }: Props) {
+function Editor({ peer, disabled, replyTo, onCancelReply, ref }: Props) {
   const [editor] = useLexicalComposerContext();
+  useImperativeHandle(
+    ref,
+    () => ({
+      mention(uin, name) {
+        editor.update(() => {
+          // Where the caret was last, or at the end when the composer has not been used yet.
+          const selection = $getSelection() ?? $getRoot().selectEnd();
+          // Followed by a space, as one picked from the @ menu is.
+          selection.insertNodes([$createMentionNode(uin, `@${name}`), $createTextNode(' ')]);
+        });
+        editor.focus();
+      },
+    }),
+    [editor],
+  );
   const send = useMutation(core.messages.send.mutationOptions());
   const [hasContent, setHasContent] = useState(false);
   const [pasteError, setPasteError] = useState<string>();
